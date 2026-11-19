@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 
+import { readJsonObject } from './request-body.mjs';
 import { initFinance, overview, editFinance, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
@@ -36,6 +37,11 @@ async function pluggy(path, apiKey, body) {
   if (!response.ok) fail(502, 'A Pluggy recusou a solicitação. Verifique suas credenciais e tente novamente.');
   return response.json();
 }
+async function authenticate() {
+  const { apiKey } = await pluggy('/auth', null, { clientId, clientSecret });
+  if (!apiKey) fail(502, 'Resposta de autenticação inválida.');
+  return apiKey;
+}
 const server = http.createServer(async (req, res) => {
   const json = (status, value) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -55,15 +61,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
-    if (req.headers.origin !== 'http://' + host || req.headers['content-type'] !== 'application/json') fail(403, 'Origem inválida.');
-    let raw = '';
-    for await (const chunk of req) {
-      raw += chunk;
-      if (raw.length > 2048) fail(413, 'Solicitação grande demais.');
-    }
-    let body;
-    try { body = JSON.parse(raw); } catch { fail(400, 'JSON inválido.'); }
-    if (!body || typeof body !== 'object' || Array.isArray(body)) fail(400, 'Objeto JSON esperado.');
+    if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
+    const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
+    if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
+    const body = await readJsonObject(req);
     if (edits.includes(req.url)) {
       editFinance(db, req.url, body);
       return json(200, {ok:true});
@@ -71,13 +72,12 @@ const server = http.createServer(async (req, res) => {
     if (!configured) fail(503, 'Configure as credenciais Pluggy e reinicie a Moneta.');
     const id = body.itemId;
     if (req.url === '/api/connections' && (typeof id !== 'string' || !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))) fail(400, 'Identificador inválido.');
-    const { apiKey } = await pluggy('/auth', null, { clientId, clientSecret });
-    if (!apiKey) fail(502, 'Resposta de autenticação inválida.');
     if (req.url === '/api/sync') {
-      syncJob ??= synchronize(db, path => pluggy(path, apiKey)).finally(() => { syncJob = null; });
+      syncJob ??= authenticate().then(key => synchronize(db, path => pluggy(path, key))).finally(() => { syncJob = null; });
       await syncJob;
       return json(200, {ok:true});
     }
+    const apiKey = await authenticate();
     if (req.url === '/api/connect-token') {
       const { accessToken } = await pluggy('/connect_token', apiKey, { clientUserId });
       if (!accessToken) fail(502, 'Token indisponível.');

@@ -30,6 +30,7 @@ export function initFinance(db) {
 export function overview(db) {
   const categories = db.prepare('SELECT * FROM categories ORDER BY name').all();
   const rules = db.prepare('SELECT * FROM rules ORDER BY id').all();
+  const normalizedRules = rules.map(rule => ({ term: fold(rule.term), category: rule.category }));
   const manual = new Map(db.prepare('SELECT * FROM assignments').all().map(x => [x.tx, x.category]));
   const aliases = new Map();
   for (const [name,...others] of templates) {
@@ -42,7 +43,8 @@ export function overview(db) {
     accounts.push(...data.accounts);
     holdings.push(...data.holdings);
     for (const tx of data.transactions) {
-      const rule = rules.find(r => fold(tx.description).includes(fold(r.term)));
+      const description = fold(tx.description);
+      const rule = normalizedRules.find(r => description.includes(r.term));
       const category = manual.get(tx.id) ?? rule?.category ?? aliases.get(fold(tx.providerCategory)) ?? null;
       transactions.push({...tx, category, manual:manual.has(tx.id)});
     }
@@ -66,7 +68,11 @@ export function editFinance(db, path, body) {
     db.prepare('DELETE FROM rules WHERE id=?').run(body.id);
   } else {
     const id = label(body.id);
-    if (!overview(db).transactions.some(tx => tx.id === id)) bad('Transação desconhecida.');
+    const exists = db.prepare(`
+      SELECT 1 FROM snapshots, json_each(snapshots.payload, '$.transactions') AS tx
+      WHERE json_extract(tx.value, '$.id') = ? LIMIT 1
+    `).get(id);
+    if (!exists) bad('Transação desconhecida.');
     if (category == null) db.prepare('DELETE FROM assignments WHERE tx=?').run(id);
     else db.prepare('INSERT OR REPLACE INTO assignments VALUES(?,?)').run(id,category);
   }
