@@ -42,16 +42,62 @@ function table(headers, rows, empty) {
 const periodRows = () => data.transactions.filter(t => t.date.startsWith(month.value || 'invalid') && t.currency === currency.value);
 const sum = (list, value) => list.reduce((total,row) => total + value(row),0);
 function report() {
-  const pane = $('#report');
-  if (!data.sources.length) {
-    pane.replaceChildren(tag('p','Conecte uma instituição em Conexões e sincronize para gerar seu primeiro relatório.'));
-    return;
+  const loaded = data.sources.length > 0;
+  const period = month.value || 'invalid';
+  const summary = summarize(data,period,currency.value);
+  const amount = value => loaded ? money(value) : '—';
+  $('#net-worth').textContent = amount(summary.net);
+  $('#month-metrics').replaceChildren(metrics([
+    ['Receitas do mês', loaded ? summary.income : null],
+    ['Despesas do mês', loaded ? summary.spent : null],
+    ['Resultado do mês', loaded ? summary.income-summary.spent : null],
+  ]));
+  const flow = $('#flow');
+  flow.replaceChildren();
+  if (month.value) {
+    const [year,number] = month.value.split('-').map(Number);
+    const series = Array.from({length:6}, (_,i) => {
+      const date = new Date(year,number-6+i,1);
+      const key = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
+      const values = summarize(data,key,currency.value);
+      return {date, income:values.income, spent:values.spent};
+    });
+    const peak = Math.max(1,...series.flatMap(point => [point.income,point.spent]));
+    for (const point of series) {
+      const col = tag('div'), bars = tag('div');
+      const label = point.date.toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+      col.title = label+' · Receitas '+amount(point.income)+' · Despesas '+amount(point.spent);
+      col.setAttribute('aria-label',col.title);
+      bars.className = 'bars';
+      for (const value of [point.income,point.spent]) {
+        const bar = tag('i');
+        bar.style.height = (value/peak*100)+'%';
+        bars.append(bar);
+      }
+      col.append(bars,tag('small',label)); flow.append(col);
+    }
   }
-  const {income,spent,byCategory,gross,net,credit,invested} = summarize(data,month.value || 'invalid',currency.value);
-  pane.replaceChildren(metrics([['Receitas',income],['Despesas',spent],['Resultado do mês',income-spent]]),
-    tag('h2','Despesas por categoria'),table(['Categoria','Total'],[...byCategory].sort((a,b) => b[1]-a[1]).map(([id,n]) => [categoryName(id),money(n)]),'Nenhuma despesa efetivada no mês.'),
-    tag('h2','Patrimônio na última sincronização'),metrics([['Patrimônio bruto',gross],['Patrimônio líquido',net],['Dívida de cartões',credit],['Investimentos líquidos',invested]]),
-    tag('p','O fluxo mensal considera a data do lançamento e exclui pendências e categorias de movimentação interna. O patrimônio usa os saldos atuais na moeda selecionada.'));
+  if (!loaded) {
+    const link = tag('a','Configurar conexões ↗');
+    link.href = '#conexoes';
+    flow.append(link);
+  }
+  const breakdown = $('#breakdown');
+  breakdown.replaceChildren();
+  for (const [id,value] of [...summary.byCategory].sort((a,b) => b[1]-a[1])) {
+    const row = tag('div'), track = tag('progress');
+    track.max = summary.spent; track.value = value;
+    track.setAttribute('aria-label',categoryName(id));
+    row.append(tag('span',categoryName(id)),tag('strong',money(value)),track);
+    breakdown.append(row);
+  }
+  if (!breakdown.childElementCount) breakdown.append(tag('p','Nenhuma despesa efetivada neste mês.'));
+  $('#recent').replaceChildren(table(['Data','Descrição','Valor'],periodRows().slice(0,5).map(t =>
+    [formatDate(t.date),t.description,money(t.amount)]),'Nenhum lançamento neste período.'));
+  const position = $('#position'); position.replaceChildren();
+  for (const [name,value] of [['Patrimônio bruto',summary.gross],['Investimentos líquidos',summary.invested],['Dívida de cartões',summary.credit]]) {
+    position.append(tag('dt',name),tag('dd',amount(value)));
+  }
 }
 let ledgerLimit = 100;
 function ledger() {
@@ -99,6 +145,7 @@ export function navigate() {
   const page = [...document.querySelectorAll('main > section')].find(s => '#'+s.id === location.hash)?.id || 'relatorio';
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== page;
   for (const a of document.querySelectorAll('nav a')) a.setAttribute('aria-current',a.hash === '#'+page ? 'page' : 'false');
+  $('#page-title').textContent = document.querySelector('nav a[aria-current=page]').lastChild.textContent;
   $('.toolbar').hidden = !['relatorio','transacoes','cartoes','conexoes'].includes(page);
   $('#period').hidden = $('#unit').hidden = page === 'conexoes';
   if (!data) return;

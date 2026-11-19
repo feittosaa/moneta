@@ -1,14 +1,21 @@
 <!doctype html>
-<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moneta</title><link rel="stylesheet" href="/style.css">
-<header><strong>Moneta</strong><nav aria-label="Navegação principal"><a href="#relatorio">Relatório</a><a href="#transacoes">Transações</a><a href="#cartoes">Cartões</a><a href="#categorias">Categorias</a><a href="#regras">Regras</a><a href="#conexoes">Conexões</a><a href="#configuracao">Configuração</a></nav></header>
-<main>
-<div class="toolbar"><label id="period">Mês <input type="month" id="month" required></label><label id="unit">Moeda <select id="currency"></select></label><span id="fresh"></span><button id="sync" disabled>Sincronizar</button></div>
-<section id="relatorio"><h1>Relatório mensal</h1><div id="report"></div></section>
-<section id="transacoes" hidden><h1>Transações</h1><div class="filters"><label>Buscar descrição<input id="search" type="search"></label><label>Conta ou cartão<select id="account"></select></label><label>Categoria<select id="filter-category"></select></label></div><div id="ledger"></div></section>
-<section id="cartoes" hidden><h1>Cartões</h1><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
-<section id="categorias" hidden><h1>Categorias</h1><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div id="category-list"></div></section>
-<section id="regras" hidden><h1>Regras de categoria</h1><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><form id="rule-form"><label>Quando a descrição contiver<input name="term" required maxlength="100"></label><label>Aplicar categoria<select name="category" id="rule-category"></select></label><button>Criar regra</button></form><div id="rule-list"></div></section>
-<section id="conexoes" hidden><h1>Minhas conexões</h1><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul></section>
-<section id="configuracao" hidden><h1>Configuração</h1><h2>Credenciais Pluggy</h2><p id="config"></p><p>Preencha <code>PLUGGY_CLIENT_ID</code> e <code>PLUGGY_CLIENT_SECRET</code> no arquivo <code>.env</code> da Moneta e reinicie o servidor.</p></section>
-<p id="message" role="status"></p></main><script type="module" src="/app.js"></script></html>
+</head><body><aside><a class="brand" href="#relatorio"><b aria-hidden="true">M</b>Moneta</a><nav aria-label="Navegação principal"><a href="#relatorio"><i aria-hidden="true">▦</i>Visão geral</a><a href="#transacoes"><i aria-hidden="true">⇄</i>Transações</a><a href="#cartoes"><i aria-hidden="true">▱</i>Cartões</a><hr><a href="#categorias"><i aria-hidden="true">▤</i>Categorias</a><a href="#regras"><i aria-hidden="true">≛</i>Regras</a><hr><a href="#conexoes"><i aria-hidden="true">⌁</i>Conexões</a><a href="#configuracao"><i aria-hidden="true">⚙</i>Configuração</a></nav><div id="fresh" role="status">Carregando dados…</div></aside><main>
+<header class="topbar"><h1 id="page-title">Visão geral</h1><div class="toolbar"><label id="period">Mês <input type="month" id="month" required></label><label id="unit">Moeda <select id="currency"></select></label><button id="sync" disabled>Sincronizar</button></div></header>
+<section id="relatorio"><div id="report">
+<div class="balance"><div><span class="eyebrow">Patrimônio líquido</span><strong id="net-worth">—</strong><small>Posição na última sincronização</small></div><div class="orbit" aria-hidden="true"></div></div>
+<div id="month-metrics"></div>
+<div class="dashboard-grid">
+<div class="panel"><h2>Fluxo mensal</h2><div class="legend"><span>Receitas</span><span>Despesas</span></div><div id="flow"></div></div>
+<div class="panel"><h2>Despesas por categoria</h2><div id="breakdown"></div></div>
+<div class="panel"><div class="panel-title"><h2>Transações recentes</h2><a href="#transacoes">Ver todas ↗</a></div><div id="recent"></div></div>
+<div class="panel"><h2>Composição patrimonial</h2><dl id="position"></dl></div>
+</div></div></section>
+<section id="transacoes" hidden><div class="filters"><label>Buscar descrição<input id="search" type="search"></label><label>Conta ou cartão<select id="account"></select></label><label>Categoria<select id="filter-category"></select></label></div><div id="ledger"></div></section>
+<section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
+<section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div id="category-list"></div></section>
+<section id="regras" hidden><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><form id="rule-form"><label>Quando a descrição contiver<input name="term" required maxlength="100"></label><label>Aplicar categoria<select name="category" id="rule-category"></select></label><button>Criar regra</button></form><div id="rule-list"></div></section>
+<section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul></section>
+<section id="configuracao" hidden><h2>Credenciais Pluggy</h2><p id="config"></p><p>Preencha <code>PLUGGY_CLIENT_ID</code> e <code>PLUGGY_CLIENT_SECRET</code> no arquivo <code>.env</code> da Moneta e reinicie o servidor.</p></section>
+<p id="message" role="status"></p></main><script type="module" src="/app.js"></script></body></html>
