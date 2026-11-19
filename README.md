@@ -11,7 +11,7 @@ mkdir -p -m 700 data
 docker compose up -d --build
 ```
 
-Abra http://127.0.0.1:4173. O Compose lê as credenciais Pluggy do arquivo `.env` e monta `./data` para reutilizar o SQLite existente. Em uma instalação nova, copie `.env.example` para `.env` e preencha as credenciais antes de sincronizar. Se a execução direta já estiver ativa, encerre-a antes de subir o container na mesma porta. Use `docker compose down` para parar.
+Abra http://127.0.0.1:4173. Em **Configuração**, informe o Client ID e o Client Secret da sua aplicação Pluggy e clique em **Validar e salvar**. O Compose monta `./data` para preservar as credenciais e os dados financeiros. Se a execução direta já estiver ativa, encerre-a antes de subir o container na mesma porta. Use `docker compose down` para parar.
 
 O serviço roda com UID/GID 1000 por padrão. Em Linux com outros IDs, defina `MONETA_UID` e `MONETA_GID` no `.env` com os valores de `id -u` e `id -g`.
 
@@ -20,15 +20,14 @@ O serviço roda com UID/GID 1000 por padrão. Em Linux com outros IDs, defina `M
 Use Node.js 22.16 ou superior. Na raiz do projeto:
 
 ```sh
-cp -n .env.example .env
-node --env-file=.env server.mjs
+node --env-file-if-exists=.env server.mjs
 ```
 
-Abra http://127.0.0.1:4173. Para conectar uma instituição, preencha as duas variáveis do arquivo .env com as credenciais da sua aplicação Pluggy e reinicie o servidor. A conexão requer internet para a API e o widget. O servidor escuta somente no loopback.
+Abra http://127.0.0.1:4173. Cadastre as credenciais em **Configuração**. Elas entram em vigor assim que a Pluggy as valida. O botão **Reiniciar servidor** reinicia o processo que atende a aplicação tanto no Docker quanto na execução direta. A conexão requer internet para a API e o widget. O servidor escuta somente no loopback.
 
 ## Dados e integração
 
-O banco local em data/moneta.sqlite guarda o perfil, vínculos, saldos, investimentos, lançamentos, categorias e regras. Preserve esse arquivo entre execuções. GET /api/connections fornece a lista local em JSON para uma futura integração com a Ayla. As chaves de API são usadas somente no servidor.
+O banco local em data/moneta.sqlite guarda o perfil, vínculos, saldos, investimentos, lançamentos, categorias e regras. Preserve esse arquivo entre execuções. GET /api/connections fornece a lista local em JSON para uma futura integração com a Ayla. O servidor guarda as credenciais cadastradas em `data/pluggy.json`, com permissão de leitura e escrita apenas para o proprietário. Proteja as cópias dessa pasta, pois o arquivo contém o segredo em texto simples. Instalações com credenciais no ambiente continuam a usá-las até que um novo par seja salvo pela interface.
 
 ## Telas financeiras
 

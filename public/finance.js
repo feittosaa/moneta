@@ -160,7 +160,7 @@ async function refresh() {
   choices(currency,[...units].map(u => [u,u]));
   choices($('#account'),[['','Todas'],...data.accounts.map(a => [a.id,accountName(a)])]);
   choices($('#filter-category'),[['','Todas'],['none','Sem categoria'],...data.categories.map(c => [c.id,c.name])]);
-  $('#fresh').textContent = data.sources.length ? 'Atualizado em '+new Date(data.sources[0].updated).toLocaleString('pt-BR') : 'Aguardando sincronização';
+  $('#fresh').textContent = data.sources.length ? 'Atualizado em '+new Date(data.sources[0].updated).toLocaleString('pt-BR') : 'Nenhum dado importado';
   navigate();
 }
 async function save(path,body,form) {

@@ -19,6 +19,35 @@ function cents(value) {
   if (!Number.isSafeInteger(n)) throw new Error('Valor monetário inválido.');
   return n;
 }
+function bankName(connector, accounts) {
+  if (fold(connector) !== 'meupluggy') return connector;
+  for (const account of accounts) {
+    const name = account.name?.trim();
+    if (!name) continue;
+    const normalized = fold(name);
+    if (/\bitau\b/.test(normalized)) return 'Itaú';
+    if (/\bxp\b/.test(normalized)) return 'XP';
+    if (/^(banco|bank|cooperativa) .+/.test(normalized)) return name;
+  }
+  return connector;
+}
+
+export function restoreBankNames(db) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const rows = db.prepare(`SELECT c.id, c.institution, s.payload FROM connections c
+      JOIN snapshots s ON s.item=c.id WHERE lower(c.institution)='meupluggy'`).all();
+    for (const row of rows) {
+      const snapshot = JSON.parse(row.payload);
+      const institution = bankName(row.institution, snapshot.accounts);
+      if (institution === row.institution) continue;
+      for (const account of snapshot.accounts) account.institution = institution;
+      db.prepare('UPDATE connections SET institution=? WHERE id=?').run(institution,row.id);
+      db.prepare('UPDATE snapshots SET payload=? WHERE item=?').run(JSON.stringify(snapshot),row.id);
+    }
+    db.exec('COMMIT');
+  } catch (error) { db.exec('ROLLBACK'); throw error; }
+}
 export function initFinance(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY, name TEXT NOT NULL, key TEXT UNIQUE NOT NULL, custom INTEGER NOT NULL, internal INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rules(id INTEGER PRIMARY KEY, term TEXT NOT NULL, category INTEGER NOT NULL);
@@ -117,11 +146,13 @@ export async function synchronize(db, get) {
   const records = [];
   for (const item of db.prepare('SELECT * FROM connections').all()) {
     const accounts = [], transactions = new Map();
-    for (const a of await collect(get,'/accounts',{itemId:item.id})) {
+    const sourceAccounts = await collect(get,'/accounts',{itemId:item.id});
+    const institution = bankName(item.institution, sourceAccounts);
+    for (const a of sourceAccounts) {
       const credit = a.creditData || {};
       const line = totalCreditLine(credit);
       const balance = cents(a.balance), limit = cents(credit.creditLimit ?? line?.customizedLimitAmount ?? line?.limitAmount);
-      accounts.push({id:a.id, institution:item.institution, name:a.name || a.subtype, last4:String(a.number || '').slice(-4),
+      accounts.push({id:a.id, institution, name:a.name || a.subtype, last4:String(a.number || '').slice(-4),
         type:a.type, currency:a.currencyCode, balance, limit,
         // Cartões do mesmo contrato na mesma conexão informam o mesmo limite e o mesmo saldo.
         // O patrimônio conta essa dívida uma vez só.
@@ -139,13 +170,17 @@ export async function synchronize(db, get) {
     }
     const positions = await collect(get,'/investments',{itemId:item.id});
     const holdings = positions.map(p => ({id:p.id,name:p.name,currency:p.currencyCode,net:cents(p.balance),gross:cents(p.amount)}));
-    records.push([item.id,JSON.stringify({accounts,transactions:[...transactions.values()],holdings})]);
+    records.push([item.id,institution,JSON.stringify({accounts,transactions:[...transactions.values()],holdings})]);
   }
   const stamp = new Date().toISOString();
   db.exec('BEGIN IMMEDIATE');
   try {
     const put = db.prepare('INSERT OR REPLACE INTO snapshots VALUES(?,?,?)');
-    for (const [id,payload] of records) put.run(id,payload,stamp);
+    const rename = db.prepare('UPDATE connections SET institution=? WHERE id=?');
+    for (const [id,institution,payload] of records) {
+      put.run(id,payload,stamp);
+      rename.run(institution,id);
+    }
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
 }

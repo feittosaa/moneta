@@ -16,6 +16,11 @@
 <section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
 <section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div id="category-list"></div></section>
 <section id="regras" hidden><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><form id="rule-form"><label>Quando a descrição contiver<input name="term" required maxlength="100"></label><label>Aplicar categoria<select name="category" id="rule-category"></select></label><button>Criar regra</button></form><div id="rule-list"></div></section>
-<section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul></section>
-<section id="configuracao" hidden><h2>Credenciais Pluggy</h2><p id="config"></p><p>Preencha <code>PLUGGY_CLIENT_ID</code> e <code>PLUGGY_CLIENT_SECRET</code> no arquivo <code>.env</code> da Moneta e reinicie o servidor.</p></section>
+<section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul>
+</section>
+<section id="configuracao" hidden><h2>Credenciais Pluggy</h2><p id="config"></p><form id="credentials-form">
+<label>Client ID<input name="clientId" required spellcheck="false" autocapitalize="none" autocomplete="off"></label>
+<label>Client Secret<input name="clientSecret" type="password" required autocomplete="off"></label>
+<button>Validar e salvar</button></form>
+<h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button></section>
 <p id="message" role="status"></p></main><script type="module" src="/app.js"></script></body></html>

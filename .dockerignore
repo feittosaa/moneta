@@ -1,6 +1,7 @@
 **
 !Dockerfile
 !server.mjs
+!backend.mjs
 !finance.mjs
 !request-body.mjs
 !public/
