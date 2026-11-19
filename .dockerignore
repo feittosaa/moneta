@@ -1,0 +1,7 @@
+**
+!Dockerfile
+!server.mjs
+!finance.mjs
+!request-body.mjs
+!public/
+!public/**

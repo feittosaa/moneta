@@ -1,0 +1,12 @@
+services:
+  moneta:
+    build: .
+    user: "${MONETA_UID:-1000}:${MONETA_GID:-1000}"
+    environment:
+      PLUGGY_CLIENT_ID: "${PLUGGY_CLIENT_ID:-}"
+      PLUGGY_CLIENT_SECRET: "${PLUGGY_CLIENT_SECRET:-}"
+      PORT: "${PORT:-4173}"
+    ports:
+      - "127.0.0.1:${PORT:-4173}:${PORT:-4173}"
+    volumes:
+      - ./data:/app/data:Z

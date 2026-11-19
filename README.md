@@ -2,7 +2,20 @@
 
 Aplicação local de usuário único para conectar instituições via Pluggy. A implementação usa Node.js e SQLite, com interface em português.
 
-## Execução
+## Execução com Docker Compose
+
+Na raiz do projeto, prepare a pasta de dados e suba o serviço:
+
+```sh
+mkdir -p -m 700 data
+docker compose up -d --build
+```
+
+Abra http://127.0.0.1:4173. O Compose lê as credenciais Pluggy do arquivo `.env` e monta `./data` para reutilizar o SQLite existente. Em uma instalação nova, copie `.env.example` para `.env` e preencha as credenciais antes de sincronizar. Se a execução direta já estiver ativa, encerre-a antes de subir o container na mesma porta. Use `docker compose down` para parar.
+
+O serviço roda com UID/GID 1000 por padrão. Em Linux com outros IDs, defina `MONETA_UID` e `MONETA_GID` no `.env` com os valores de `id -u` e `id -g`.
+
+## Execução direta com Node.js
 
 Use Node.js 22.16 ou superior. Na raiz do projeto:
 

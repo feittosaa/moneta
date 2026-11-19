@@ -92,4 +92,4 @@ const server = http.createServer(async (req, res) => {
     json(error.status || 502, { error: error.status ? error.message : 'Não foi possível concluir a operação. Tente novamente.' });
   }
 });
-server.listen(port, '127.0.0.1', () => console.log('Moneta em http://127.0.0.1:' + port));
+server.listen(port, process.env.MONETA_BIND_ADDRESS || '127.0.0.1', () => console.log('Moneta em http://127.0.0.1:' + port));
