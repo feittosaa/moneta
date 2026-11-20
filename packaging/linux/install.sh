@@ -9,6 +9,9 @@ set -eu
 repo=feittosaa/moneta
 bin="${XDG_BIN_HOME:-$HOME/.local/bin}"
 share="${XDG_DATA_HOME:-$HOME/.local/share}"
+# O AppImage é extraído aqui: dispensa o FUSE e deixa o serviço rodar com o sandbox do systemd.
+lib="$HOME/.local/lib/moneta"
+data="$share/moneta"
 desktop="$share/applications/moneta.desktop"
 icon="$share/icons/hicolor/512x512/apps/moneta.png"
 unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/moneta.service"
@@ -29,6 +32,7 @@ if [ "${1:-}" = "--remover" ]; then
     has_systemd && systemctl --user daemon-reload || true
   fi
   rm -f "$bin/moneta" "$desktop" "$icon"
+  rm -rf "$lib" "$lib.antigo"
   echo "Moneta removido. Seus dados continuam em $share/moneta."
   exit 0
 fi
@@ -37,7 +41,7 @@ case "$(uname -m)" in
   x86_64|amd64) ;;
   *) echo "Por enquanto o Moneta para Linux existe só para processadores x86_64." >&2; exit 1 ;;
 esac
-for tool in curl sha256sum; do
+for tool in curl sha256sum mktemp; do
   command -v "$tool" >/dev/null 2>&1 || { echo "Instale o $tool e rode o comando de novo." >&2; exit 1; }
 done
 
@@ -53,11 +57,20 @@ if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
   exit 1
 fi
 
-mkdir -p "$bin" "$(dirname "$desktop")" "$(dirname "$icon")"
-# Troca por renomeação: um Moneta ainda rodando continua com o arquivo antigo até reiniciar,
-# em vez de ter o executável sobrescrito por baixo dele.
-install -m 755 "$tmp" "$bin/.moneta.novo"
-mv -f "$bin/.moneta.novo" "$bin/moneta"
+mkdir -p "$bin" "$(dirname "$desktop")" "$(dirname "$icon")" "$(dirname "$lib")"
+mkdir -p -m 700 "$data"
+# Extrai ao lado do destino (não em /tmp, que pode não permitir executar) e troca por renomeação:
+# um Moneta ainda rodando continua com os arquivos antigos até reiniciar.
+work="$(mktemp -d "$lib.novo.XXXXXX")"
+trap 'rm -f "$tmp"; rm -rf "$work"' EXIT
+chmod 755 "$tmp"
+(cd "$work" && "$tmp" --appimage-extract >/dev/null)
+chmod -R go-w "$work/squashfs-root"
+rm -rf "$lib.antigo"
+[ -e "$lib" ] && mv "$lib" "$lib.antigo"
+mv "$work/squashfs-root" "$lib"
+# Versões até a 1.1.0 instalavam o próprio AppImage aqui; agora é um atalho para o app extraído.
+ln -sfn "$lib/AppRun" "$bin/moneta"
 curl -fsSL "https://raw.githubusercontent.com/$repo/main/public/web-app-manifest-512x512.png" -o "$icon" || true
 cat > "$desktop" <<DESKTOP
 [Desktop Entry]
@@ -84,13 +97,34 @@ Description=Moneta, painel de finanças pessoais
 After=network-online.target
 
 [Service]
-ExecStart=$bin/moneta --background
+ExecStart=$lib/AppRun --background
 Environment=PORT=4173
 Restart=on-failure
 RestartSec=10
 # Os dados ficam na memória do Moneta: uma queda não pode gravá-la em disco.
 LimitCORE=0
 UMask=0077
+# Sandbox: o Moneta só escreve na pasta de dados, não ganha privilégios, não vê os dispositivos
+# nem o /tmp do resto do sistema e só abre conexões de rede comuns.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=$data
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
 
 [Install]
 WantedBy=default.target
@@ -105,12 +139,10 @@ elif [ -f "$unit" ] && has_systemd && systemctl --user is-active --quiet moneta.
   # Atualização com o serviço já instalado: reinicia para usar a versão nova.
   systemctl --user restart moneta.service
 fi
+rm -rf "$lib.antigo"
 
 echo "Moneta instalado. Abra pelo menu de aplicativos ou rode: moneta"
 case ":$PATH:" in
   *":$bin:"*) ;;
   *) echo "Observação: $bin não está no PATH. Use o menu de aplicativos ou rode $bin/moneta." ;;
 esac
-if ! command -v fusermount3 >/dev/null 2>&1 && ! command -v fusermount >/dev/null 2>&1; then
-  echo "Se o Moneta não abrir, instale o pacote fuse3 (ou fuse) da sua distribuição."
-fi
