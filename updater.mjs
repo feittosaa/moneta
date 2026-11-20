@@ -1,9 +1,9 @@
-// Atualização do Moneta pelo próprio app (instalações de desktop no Linux e no Windows).
+// Atualização da Moneta pelo próprio app (instalações de desktop no Linux e no Windows).
 //
 // - Consulta a última release no GitHub e compara com a versão empacotada (package.json, escrito
 //   por packaging/build.sh; no checkout ele não existe e a atualização fica desligada).
 // - Baixa o instalador da plataforma, confere o SHA-256 com o SHA256SUMS.txt da mesma release e o
-//   executa fora do processo do Moneta, que é encerrado e volta já na versão nova.
+//   executa fora do processo da Moneta, que é encerrado e volta já na versão nova.
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -75,7 +75,7 @@ export function createUpdater({ dataDir, desktop, stop }) {
     if (!supported) throw Object.assign(new Error('A atualização pelo app existe só nas instalações para Linux e Windows.'), { status: 409 });
     if (installing) throw Object.assign(new Error('A atualização já está em andamento.'), { status: 409 });
     await check(true);
-    if (!newer(latest, current)) throw Object.assign(new Error('O Moneta já está na versão mais recente.'), { status: 409 });
+    if (!newer(latest, current)) throw Object.assign(new Error('A Moneta já está na versão mais recente.'), { status: 409 });
     installing = true;
     try {
       const [sums, content] = await Promise.all([get(download + 'SHA256SUMS.txt', 'text'), get(download + file, 'binary')]);
@@ -88,13 +88,13 @@ export function createUpdater({ dataDir, desktop, stop }) {
       const path = join(folder, file);
       writeFileSync(path, content, { mode: 0o700 });
       if (platform === 'windows') {
-        // O instalador encerra o Moneta (gravando o cofre), atualiza em silêncio e abre a versão nova.
+        // O instalador encerra a Moneta (gravando o cofre), atualiza em silêncio e abre a versão nova.
         spawn(path, ['/S', '/abrir'], { detached: true, stdio: 'ignore' }).unref();
       } else if (insideService()) {
         // Fora do sandbox e do grupo do serviço, que o instalador reinicia ao terminar.
         await run('systemd-run', ['--user', '--collect', '--quiet', '--unit=moneta-atualizacao-' + Date.now(), 'sh', path]);
       } else {
-        // Aberto pela janela ou pelo atalho: instala, encerra este Moneta e abre o novo.
+        // Aberto pela janela ou pelo atalho: instala, encerra esta Moneta e abre a nova.
         await run('sh', [path]);
         const moneta = join(process.env.XDG_BIN_HOME || join(homedir(), '.local', 'bin'), 'moneta');
         spawn('sh', ['-c', 'sleep 3; exec "$0"', moneta], { detached: true, stdio: 'ignore' }).unref();

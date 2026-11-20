@@ -1,5 +1,5 @@
 # Instalador de teste com a janela nativa (Tauri), sem publicar release: roda a cada envio que mexa
-# na janela ou no empacotamento, e pela aba Actions. O Moneta-Setup.exe fica nos artefatos da execução.
+# na janela ou no empacotamento, e pela aba Actions. A Moneta-Setup.exe fica nos artefatos da execução.
 name: Janela nativa
 
 on:

@@ -1,7 +1,7 @@
 #!/bin/sh
-# Instala o Moneta para o usuário atual, sem pedir senha de administrador:
+# Instala a Moneta para o usuário atual, sem pedir senha de administrador:
 #   curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh
-# Para também iniciar o Moneta em segundo plano sempre que você entrar no computador:
+# Para também iniciar a Moneta em segundo plano sempre que você entrar no computador:
 #   curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --iniciar-com-o-sistema
 # Para remover (os dados em ~/.local/share/moneta são mantidos):
 #   curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --remover
@@ -35,13 +35,13 @@ if [ "${1:-}" = "--remover" ]; then
   fi
   rm -f "$bin/moneta" "$desktop" "$icon"
   rm -rf "$lib" "$lib.antigo"
-  echo "Moneta removido. Seus dados continuam em $share/moneta."
+  echo "Moneta removida. Seus dados continuam em $share/moneta."
   exit 0
 fi
 
 case "$(uname -m)" in
   x86_64|amd64) ;;
-  *) echo "Por enquanto o Moneta para Linux existe só para processadores x86_64." >&2; exit 1 ;;
+  *) echo "Por enquanto a Moneta para Linux existe só para processadores x86_64." >&2; exit 1 ;;
 esac
 for tool in curl sha256sum mktemp; do
   command -v "$tool" >/dev/null 2>&1 || { echo "Instale o $tool e rode o comando de novo." >&2; exit 1; }
@@ -50,7 +50,7 @@ done
 url="https://github.com/$repo/releases/latest/download"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
-echo "Baixando o Moneta…"
+echo "Baixando a Moneta…"
 curl -fL --progress-bar "$url/Moneta-x86_64.AppImage" -o "$tmp"
 expected="$(curl -fsSL "$url/SHA256SUMS.txt" | awk '$2 == "Moneta-x86_64.AppImage" { print $1 }')"
 actual="$(sha256sum "$tmp" | awk '{ print $1 }')"
@@ -62,7 +62,7 @@ fi
 mkdir -p "$bin" "$(dirname "$desktop")" "$(dirname "$icon")" "$(dirname "$lib")"
 mkdir -p -m 700 "$data"
 # Extrai ao lado do destino (não em /tmp, que pode não permitir executar) e troca por renomeação:
-# um Moneta ainda rodando continua com os arquivos antigos até reiniciar.
+# uma Moneta ainda rodando continua com os arquivos antigos até reiniciar.
 work="$(mktemp -d "$lib.novo.XXXXXX")"
 trap 'rm -f "$tmp"; rm -rf "$work"' EXIT
 chmod 755 "$tmp"
@@ -88,10 +88,10 @@ StartupWMClass=moneta
 DESKTOP
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$(dirname "$desktop")" >/dev/null 2>&1 || true
 
-# Serviço de usuário: liga o Moneta em segundo plano, na porta 4173, a cada login.
+# Serviço de usuário: liga a Moneta em segundo plano, na porta 4173, a cada login.
 if [ "$autostart" = true ]; then
   if ! has_systemd; then
-    echo "Não encontrei o systemd de usuário; o Moneta não vai iniciar sozinho. Abra pelo menu quando quiser usar." >&2
+    echo "Não encontrei o systemd de usuário; a Moneta não vai iniciar sozinha. Abra pelo menu quando quiser usar." >&2
   else
     mkdir -p "$(dirname "$unit")"
     cat > "$unit" <<UNIT
@@ -104,10 +104,10 @@ ExecStart=$lib/AppRun --background
 Environment=PORT=4173
 Restart=on-failure
 RestartSec=10
-# Os dados ficam na memória do Moneta: uma queda não pode gravá-la em disco.
+# Os dados ficam na memória da Moneta: uma queda não pode gravá-la em disco.
 LimitCORE=0
 UMask=0077
-# Sandbox: o Moneta só escreve na pasta de dados, não ganha privilégios, não vê os dispositivos
+# Sandbox: a Moneta só escreve na pasta de dados, não ganha privilégios, não vê os dispositivos
 # nem o /tmp do resto do sistema e só abre conexões de rede comuns.
 NoNewPrivileges=yes
 ProtectSystem=strict
@@ -135,8 +135,8 @@ UNIT
     systemctl --user daemon-reload
     systemctl --user enable moneta.service >/dev/null 2>&1
     systemctl --user restart moneta.service
-    echo "O Moneta agora inicia sozinho, em segundo plano, sempre que você entrar no computador."
-    echo "Ele fica em http://127.0.0.1:4173. Para desligar o início automático: systemctl --user disable --now moneta"
+    echo "A Moneta agora inicia sozinha, em segundo plano, sempre que você entrar no computador."
+    echo "Ela fica em http://127.0.0.1:4173. Para desligar o início automático: systemctl --user disable --now moneta"
   fi
 elif [ -f "$unit" ] && has_systemd && systemctl --user is-active --quiet moneta.service; then
   # Atualização com o serviço já instalado: reinicia para usar a versão nova.
@@ -144,7 +144,7 @@ elif [ -f "$unit" ] && has_systemd && systemctl --user is-active --quiet moneta.
 fi
 rm -rf "$lib.antigo"
 
-echo "Moneta instalado. Abra pelo menu de aplicativos ou rode: moneta"
+echo "Moneta instalada. Abra pelo menu de aplicativos ou rode: moneta"
 case ":$PATH:" in
   *":$bin:"*) ;;
   *) echo "Observação: $bin não está no PATH. Use o menu de aplicativos ou rode $bin/moneta." ;;

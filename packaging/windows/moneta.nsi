@@ -1,4 +1,4 @@
-; Instalador do Moneta para Windows. Instala só para o usuário atual, sem pedir administrador.
+; Instalador da Moneta para Windows. Instala só para o usuário atual, sem pedir administrador.
 ; Gerado por packaging/build.sh, que define VERSION, SOURCE, ICON e OUTFILE, e DESKTOP quando há a
 ; janela nativa (moneta.exe, feita com Tauri): ela abre o painel numa janela própria e mantém o
 ; servidor escondido, sem janela de terminal, com um ícone na bandeja.
@@ -15,7 +15,7 @@ BrandingText "Moneta ${VERSION}"
 
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey /LANG=1046 "ProductName" "Moneta"
-VIAddVersionKey /LANG=1046 "FileDescription" "Instalador do Moneta"
+VIAddVersionKey /LANG=1046 "FileDescription" "Instalador da Moneta"
 VIAddVersionKey /LANG=1046 "ProductVersion" "${VERSION}"
 VIAddVersionKey /LANG=1046 "FileVersion" "${VERSION}"
 VIAddVersionKey /LANG=1046 "LegalCopyright" "Licença MIT"
@@ -25,15 +25,15 @@ VIAddVersionKey /LANG=1046 "LegalCopyright" "Licença MIT"
 !ifdef DESKTOP
   !define TARGET "$INSTDIR\moneta.exe"
   !define ARGS ""
-  !define MUI_WELCOMEPAGE_TEXT "O Moneta é um painel de finanças pessoais que roda no seu computador.$\r$\n$\r$\nEle abre numa janela própria e, ao fechar, continua na bandeja do Windows, sincronizando em segundo plano. Para conectar seus bancos, siga o Guia, no menu do Moneta.$\r$\n$\r$\nClique em Avançar para continuar."
+  !define MUI_WELCOMEPAGE_TEXT "A Moneta é um painel de finanças pessoais que roda no seu computador.$\r$\n$\r$\nEle abre numa janela própria e, ao fechar, continua na bandeja do Windows, sincronizando em segundo plano. Para conectar seus bancos, siga o Guia, no menu da Moneta.$\r$\n$\r$\nClique em Avançar para continuar."
 !else
   !define TARGET "$INSTDIR\node.exe"
   !define ARGS '--disable-warning=ExperimentalWarning "$INSTDIR\app\server.mjs" --desktop'
-  !define MUI_WELCOMEPAGE_TEXT "O Moneta é um painel de finanças pessoais que roda no seu computador.$\r$\n$\r$\nDepois de instalar, ele abre no navegador. Para conectar seus bancos, siga o Guia, no menu do Moneta.$\r$\n$\r$\nClique em Avançar para continuar."
+  !define MUI_WELCOMEPAGE_TEXT "A Moneta é um painel de finanças pessoais que roda no seu computador.$\r$\n$\r$\nDepois de instalar, ela abre no navegador. Para conectar seus bancos, siga o Guia, no menu da Moneta.$\r$\n$\r$\nClique em Avançar para continuar."
 !endif
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION OpenMoneta
-!define MUI_FINISHPAGE_RUN_TEXT "Abrir o Moneta agora"
+!define MUI_FINISHPAGE_RUN_TEXT "Abrir a Moneta agora"
 
 !insertmacro MUI_PAGE_WELCOME
 !ifdef DESKTOP
@@ -52,7 +52,7 @@ FunctionEnd
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Moneta"
 !define RUN_KEY "Software\Microsoft\Windows\CurrentVersion\Run"
 
-; Um Moneta aberto prende os arquivos. Pede ao servidor para gravar o cofre e encerrar; se ele não
+; Uma Moneta aberta prende os arquivos. Pede ao servidor para gravar o cofre e encerrar; se ele não
 ; responder, fecha os processos desta instalação.
 !macro StopMoneta
   nsExec::Exec `powershell -NoProfile -NonInteractive -Command "try { $$k = (Get-Content -Raw $$env:LOCALAPPDATA\Moneta\acesso.key).Trim(); Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 -Method Post -Uri http://127.0.0.1:4173/api/shutdown -Headers @{Authorization = 'Bearer ' + $$k; Origin = 'http://127.0.0.1:4173'} -ContentType application/json -Body '{}' | Out-Null; Start-Sleep -Seconds 2 } catch {}"`
@@ -68,7 +68,7 @@ Function CheckWebView2
   StrCmp $0 "" 0 found
   ReadRegStr $0 HKCU "Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
   StrCmp $0 "" 0 found
-  MessageBox MB_YESNO|MB_ICONEXCLAMATION "O Moneta precisa do Microsoft Edge WebView2, que não foi encontrado neste computador.$\r$\n$\r$\nAbrir a página da Microsoft para instalar? Depois, rode este instalador de novo." IDNO +2
+  MessageBox MB_YESNO|MB_ICONEXCLAMATION "A Moneta precisa do Microsoft Edge WebView2, que não foi encontrado neste computador.$\r$\n$\r$\nAbrir a página da Microsoft para instalar? Depois, rode este instalador de novo." IDNO +2
   ExecShell "open" "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
   Abort
   found:
@@ -98,14 +98,14 @@ Section "Moneta" SecApp
 SectionEnd
 
 !ifdef DESKTOP
-; Liga o Moneta, só na bandeja, sempre que você entrar no Windows: a sincronização continua sem abrir janela.
+; Liga a Moneta, só na bandeja, sempre que você entrar no Windows: a sincronização continua sem abrir janela.
 Section "Iniciar com o Windows, em segundo plano" SecStartup
   WriteRegStr HKCU "${RUN_KEY}" "Moneta" '"$INSTDIR\moneta.exe" --background'
 SectionEnd
 !endif
 
-; Atualização pelo próprio app: o Moneta roda este instalador com /S /abrir. Em silêncio, mantém a escolha
-; anterior de iniciar com o Windows e, ao terminar, abre o Moneta de novo.
+; Atualização pelo próprio app: a Moneta roda este instalador com /S /abrir. Em silêncio, mantém a escolha
+; anterior de iniciar com o Windows e, ao terminar, abre a Moneta de novo.
 Function .onInit
 !ifdef DESKTOP
   Call CheckWebView2

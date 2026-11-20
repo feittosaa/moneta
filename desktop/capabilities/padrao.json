@@ -1,6 +1,6 @@
 {
   "identifier": "padrao",
-  "description": "A janela do Moneta não usa a ponte do Tauri: o painel conversa só com o servidor local.",
+  "description": "A janela da Moneta não usa a ponte do Tauri: o painel conversa só com o servidor local.",
   "windows": ["principal"],
   "permissions": []
 }

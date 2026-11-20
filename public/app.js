@@ -7,7 +7,7 @@ async function request(path, body) {
   const response = await fetch('/api/' + path, options);
   // Sem o cookie de acesso, mostra como entrar em vez de uma tela vazia.
   if (response.status === 401) $('#locked').hidden = false;
-  // Trancado (por senha ou sem a chave): a tela certa cobre os dados.
+  // Trancada (por senha ou sem a chave): a tela certa cobre os dados.
   if (response.status === 423) showLock();
   const data = await response.json();
   if (!response.ok) throw new Error(data.error);
@@ -28,7 +28,7 @@ async function refresh() {
   $('#config').textContent = credentialsError || (configured
     ? 'Credenciais salvas, ' + (protections[protection] || 'em arquivo que só o seu usuário consegue ler') + '.'
     : 'Credenciais pendentes.');
-  $('#hint').textContent = !configured ? 'Abra Configuração para habilitar a conexão via Pluggy. O Guia, no menu, mostra o passo a passo.' : connections.length ? '' : 'Nenhuma instituição vinculada ao Moneta. A sincronização começa após o vínculo.';
+  $('#hint').textContent = !configured ? 'Abra Configuração para habilitar a conexão via Pluggy. O Guia, no menu, mostra o passo a passo.' : connections.length ? '' : 'Nenhuma instituição vinculada à Moneta. A sincronização começa após o vínculo.';
   pluggy = { configured, connections: connections.length };
   reflectGuideCredentials();
   $('#connect').disabled = !configured;
@@ -163,7 +163,7 @@ $('#connect').onclick = async () => {
           $('#connect').disabled = true;
           await syncFinance();
           await refresh();
-          if (first) message('Primeira conexão salva. A Pluggy pode levar de alguns minutos a algumas horas para entregar todo o histórico, então nem todas as transações aparecem de imediato. O Moneta sincroniza sozinho a cada 6 horas, e você pode clicar em Sincronizar mais tarde para trazer o que faltou.');
+          if (first) message('Primeira conexão salva. A Pluggy pode levar de alguns minutos a algumas horas para entregar todo o histórico, então nem todas as transações aparecem de imediato. A Moneta sincroniza sozinha a cada 6 horas, e você pode clicar em Sincronizar mais tarde para trazer o que faltou.');
         } catch (error) {
           message('Falha ao registrar a conexão. ' + error.message);
         } finally {
@@ -184,7 +184,7 @@ $('#connect').onclick = async () => {
         if (registration) return;
         if (!widgetError && candidate?.id) return register(candidate);
         $('#connect').disabled = false;
-        if (!widgetError) message('A Pluggy fechou sem enviar uma conexão ao Moneta.');
+        if (!widgetError) message('A Pluggy fechou sem enviar uma conexão à Moneta.');
       },
       onError: () => {
         widgetError = true;
@@ -205,7 +205,7 @@ async function waitForRestart(instance) {
     const status = await fetch('/api/status').then(r => r.json()).catch(() => null);
     if (status?.instance && status.instance !== instance) return location.reload();
   }
-  $('#app-version').textContent = 'A atualização está demorando. Abra o Moneta de novo em instantes.';
+  $('#app-version').textContent = 'A atualização está demorando. Abra a Moneta de novo em instantes.';
 }
 async function checkUpdate() {
   const label = $('#app-version'), button = $('#app-update');
@@ -217,17 +217,17 @@ async function checkUpdate() {
     : installing ? 'Instalando a atualização…'
     : available ? 'Moneta ' + current + ' · nova versão ' + latest
     : supported && error ? 'Moneta ' + current + ' · não foi possível verificar atualizações'
-    : 'Moneta ' + current + (supported ? ' · atualizado' : '');
+    : 'Moneta ' + current + (supported ? ' · atualizada' : '');
   label.title = error || '';
   button.hidden = !available || installing;
   button.textContent = 'Instalar a versão ' + latest;
   button.onclick = async () => {
-    if (!confirm('Instalar o Moneta ' + latest + '? O Moneta fecha por alguns instantes e abre de novo já atualizado. Seus dados não são alterados.')) return;
+    if (!confirm('Instalar a Moneta ' + latest + '? A Moneta fecha por alguns instantes e abre de novo já atualizada. Seus dados não são alterados.')) return;
     button.disabled = true;
     label.textContent = 'Baixando e instalando a versão ' + latest + '…';
     try {
       const { instance } = await request('update/install', {});
-      label.textContent = 'Instalando a versão ' + latest + '. O Moneta reinicia sozinho.';
+      label.textContent = 'Instalando a versão ' + latest + '. A Moneta reinicia sozinha.';
       button.hidden = true;
       await waitForRestart(instance);
     } catch (error) {
@@ -250,7 +250,7 @@ request('status').then(({ desktop, locked }) => {
   unlocked = true;
   return loadVault();
 }).catch(() => {});
-// Se o Moneta trancar por inatividade, a página recarrega e some com os dados da tela.
+// Se a Moneta trancar por inatividade, a página recarrega e some com os dados da tela.
 setInterval(async () => {
   if (!unlocked) return;
   try { if ((await fetch('/api/status').then(r => r.json())).locked) location.reload(); } catch {}
@@ -282,8 +282,8 @@ async function loadVault() {
     (password ? 'cifrada com a sua senha e ' : '') + (keyProtections[protection] || 'num arquivo que só o seu usuário consegue ler') + '.';
   $('#vault-pending').hidden = !pending;
   $('#password-status').textContent = password
-    ? 'Ligado. O Moneta sobe trancado e tranca de novo depois de ' + $('#password-idle').querySelector(`option[value="${idle}"]`)?.textContent + ' sem uso. Enquanto estiver trancado, a sincronização automática fica parada.'
-    : 'Desligado. Com o modo cofre, o Moneta pede uma senha para abrir e tranca sozinho depois de um tempo sem uso. Enquanto estiver trancado, o banco fica protegido até de programas rodando com o seu usuário; em troca, a sincronização automática só acontece com ele aberto.';
+    ? 'Ligado. A Moneta sobe trancada e tranca de novo depois de ' + $('#password-idle').querySelector(`option[value="${idle}"]`)?.textContent + ' sem uso. Enquanto estiver trancada, a sincronização automática fica parada.'
+    : 'Desligado. Com o modo cofre, a Moneta pede uma senha para abrir e tranca sozinha depois de um tempo sem uso. Enquanto estiver trancada, o banco fica protegido até de programas rodando com o seu usuário; em troca, a sincronização automática só acontece com ele aberto.';
   $('#password-on').hidden = password;
   $('#password-settings').hidden = !password;
   $('#password-idle').value = String(idle);
@@ -330,7 +330,7 @@ async function restore(source) {
     if (!response.ok) throw new Error(data.error);
     const { created, summary = {} } = data.manifest;
     const counts = [summary.transactions != null && summary.transactions + ' transações', summary.categories != null && summary.categories + ' categorias', summary.connections != null && summary.connections + ' conexões'].filter(Boolean).join(', ');
-    if (!confirm('Restaurar o backup de ' + when(created) + (counts ? ' (' + counts + ')' : '') + '? O banco atual é substituído; antes disso, o Moneta guarda um backup automático dele.')) return;
+    if (!confirm('Restaurar o backup de ' + when(created) + (counts ? ' (' + counts + ')' : '') + '? O banco atual é substituído; antes disso, a Moneta guarda um backup automático dele.')) return;
     message('Restaurando o backup…');
     const { instance } = await request('backup/restore', { ...source, confirm: true });
     if (await waitRestart(instance)) location.reload();
@@ -430,11 +430,11 @@ $('#recovery-form').onsubmit = async event => {
   } catch (error) { $('#recovery-error').textContent = error.message; button.disabled = false; }
 };
 shutdown.onclick = async () => {
-  if (!confirm('Encerrar o Moneta? A sincronização automática para até você abrir o Moneta de novo.')) return;
+  if (!confirm('Encerrar a Moneta? A sincronização automática para até você abrir a Moneta de novo.')) return;
   save.disabled = restart.disabled = shutdown.disabled = true;
   try {
     await request('shutdown', {});
-    message('O Moneta foi encerrado. Você já pode fechar esta aba.');
+    message('A Moneta foi encerrada. Você já pode fechar esta aba.');
   } catch (error) {
     message(error.message);
     save.disabled = restart.disabled = shutdown.disabled = false;
