@@ -727,7 +727,7 @@ export function initializeFinance(api, message) {
   // Tema da interface, guardado neste navegador: escuro, claro ou igual ao sistema.
   const theme = $('#theme'), systemLight = matchMedia('(prefers-color-scheme: light)');
   function applyTheme() {
-    const choice = ['dark','light','system'].includes(localStorage.getItem('moneta-theme')) ? localStorage.getItem('moneta-theme') : 'dark';
+    const choice = ['dark','light','system'].includes(localStorage.getItem('moneta-theme')) ? localStorage.getItem('moneta-theme') : 'system';
     theme.value = choice;
     document.documentElement.dataset.theme = choice === 'light' || (choice === 'system' && systemLight.matches) ? 'light' : 'dark';
   }
