@@ -6,7 +6,8 @@ function element(tag,text) {
   if (text != null) node.textContent = text;
   return node;
 }
-const colors = ['#78A9FF','#FFD147','#75D8AB','#BAA4ED','#FF9780','#8DDDE8','#EBA1BD'];
+// Cores do gráfico vêm do tema ativo (variáveis CSS), para servir no escuro e no claro.
+const themeColor = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const selectedInvestments = new Set();
 const localDay = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
 const dateLabel = day => day.split('-').reverse().join('/');
@@ -35,6 +36,7 @@ function historyPoints(history,transactions,currency,from,to) {
 }
 
 export function renderPortfolio(history,transactions,currency,target,money) {
+  const colors = themeColor('--chart-palette').split(',').map(c => c.trim());
   const today = localDay(), now = today.slice(0,4);
   const year = $('#portfolio-year'), from = $('#portfolio-from'), to = $('#portfolio-to');
   const previous = year.value;
@@ -101,8 +103,8 @@ export function renderPortfolio(history,transactions,currency,target,money) {
   const x = point => duration ? left+width*(Date.parse(point.day)-first)/duration : left+width/2;
   function draw() {
     const series = [
-      {name:'Patrimônio líquido',color:'#FF6C43',values:points.map(p => p.net)},
-      {name:'Investimentos líquidos',color:'#69CA92',values:points.map(p => p.invested)},
+      {name:'Patrimônio líquido',color:themeColor('--chart-net'),values:points.map(p => p.net)},
+      {name:'Investimentos líquidos',color:themeColor('--positive'),values:points.map(p => p.invested)},
       ...added.filter(a => a.checkbox.checked).map(({holding,color}) => ({name:holding.name,color,
         values:points.map(p => p.holdings.find(h => h.id === holding.id)?.net)})),
     ];
@@ -112,13 +114,13 @@ export function renderPortfolio(history,transactions,currency,target,money) {
     const y = value => top + height*(1-(value-min)/(max-min));
     const index = Number(slider.value);
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle = '#3b4146';
+    ctx.strokeStyle = themeColor('--chart-grid');
     ctx.lineWidth = 1;
     for (let i=0; i<=4; i++) {
       const tick = top+height*i/4;
       ctx.beginPath(); ctx.moveTo(left,tick); ctx.lineTo(left+width,tick); ctx.stroke();
     }
-    ctx.fillStyle = '#acb6b5';
+    ctx.fillStyle = themeColor('--muted');
     ctx.font = '14px system-ui';
     ctx.fillText(dateLabel(points[0].day),left,302);
     if (duration) {

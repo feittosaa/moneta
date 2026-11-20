@@ -626,6 +626,16 @@ export function initializeFinance(api, message) {
     } catch (error) { currency.value = data.currency; notify(error.message); }
     finally { currency.disabled = false; navigate(); }
   };
+  // Tema da interface, guardado neste navegador: escuro, claro ou igual ao sistema.
+  const theme = $('#theme'), systemLight = matchMedia('(prefers-color-scheme: light)');
+  function applyTheme() {
+    const choice = ['dark','light','system'].includes(localStorage.getItem('moneta-theme')) ? localStorage.getItem('moneta-theme') : 'dark';
+    theme.value = choice;
+    document.documentElement.dataset.theme = choice === 'light' || (choice === 'system' && systemLight.matches) ? 'light' : 'dark';
+  }
+  applyTheme();
+  theme.onchange = () => { localStorage.setItem('moneta-theme',theme.value); applyTheme(); navigate(); };
+  systemLight.addEventListener('change',() => { applyTheme(); navigate(); });
   $('#sync').onclick = syncFinance;
   $('#current-month').onclick = () => {
     month.value = currentMonth();
