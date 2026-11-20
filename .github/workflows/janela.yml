@@ -1,0 +1,41 @@
+# Instalador de teste com a janela nativa (Tauri), sem publicar release: roda a cada envio que mexa
+# na janela ou no empacotamento, e pela aba Actions. O Moneta-Setup.exe fica nos artefatos da execução.
+name: Janela nativa
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [tauri]
+    paths: ['desktop/**', 'packaging/**', '.github/workflows/janela.yml']
+
+jobs:
+  janela-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar moneta.exe
+        run: cargo build --release --locked --manifest-path desktop/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moneta-windows
+          path: desktop/target/release/moneta.exe
+
+  instalador:
+    needs: janela-windows
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: moneta-windows
+          path: janela-windows
+      - name: Ferramentas de empacotamento
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Instaladores
+        env:
+          MONETA_DESKTOP_EXE: janela-windows/moneta.exe
+        run: packaging/build.sh 0.0.0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Moneta-Setup-teste
+          path: dist/Moneta-Setup.exe

@@ -55,7 +55,13 @@ mkdir -p "$win"
 cp "$work/node-v$node_version-win-x64/node.exe" "$win/node.exe"
 cp "$work/node-v$node_version-win-x64/LICENSE" "$win/NODE-LICENSE.txt"
 stage "$win/app"
-makensis -V2 -DVERSION="$version" -DSOURCE="$win" -DICON="$root/public/favicon.ico" -DOUTFILE="$dist/Moneta-Setup.exe" "$root/packaging/windows/moneta.nsi"
+# Janela nativa (Tauri), compilada no Windows pelo workflow e passada em MONETA_DESKTOP_EXE.
+desktop=()
+if [ -n "${MONETA_DESKTOP_EXE:-}" ]; then
+  cp "$MONETA_DESKTOP_EXE" "$win/moneta.exe"
+  desktop=(-DDESKTOP=1)
+fi
+makensis -V2 -DVERSION="$version" -DSOURCE="$win" -DICON="$root/public/favicon.ico" -DOUTFILE="$dist/Moneta-Setup.exe" "${desktop[@]}" "$root/packaging/windows/moneta.nsi"
 
 (cd "$dist" && sha256sum Moneta-x86_64.AppImage Moneta-Setup.exe install.sh > SHA256SUMS.txt)
 ls -lh "$dist"
