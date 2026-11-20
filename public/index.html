@@ -33,7 +33,7 @@
 <label>Categoria<select name="category"></select></label>
 <label>Nota<textarea name="note" maxlength="2000" rows="3"></textarea></label>
 <label class="check"><input name="createRule" type="checkbox"> Criar regra com esta categoria</label>
-<fieldset id="tx-rule" hidden><label>Aplicar quando<select name="ruleMode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label><div id="tx-conditions" class="conditions"></div></fieldset>
+<fieldset id="tx-rule" hidden><label>Prioridade<select name="rulePriority"><option value="1">1 · primeiro</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10 · por último</option></select></label><label>Aplicar quando<select name="ruleMode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label><div id="tx-conditions" class="conditions"></div></fieldset>
 <p id="tx-error" role="alert"></p>
 <div class="dialog-actions"><button type="button" id="tx-cancel">Cancelar</button><button>Salvar</button></div>
 </form></dialog></section>
@@ -76,10 +76,10 @@
 <dialog id="rule-editor" aria-labelledby="rule-heading"><form id="edit-rule-form"><h2 id="rule-heading">Editar regra</h2>
 <label id="edit-title-label">Nome<input name="title" required></label>
 <label>Categoria<select name="category" required></select></label>
-<div id="edit-options"><label>Prioridade<input name="priority" type="number" step="1"></label>
+<div id="edit-options"><label>Prioridade<select name="priority"><option value="1">1 · primeiro</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10 · por último</option></select></label>
 <label>Aplicar quando<select name="mode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label>
 <label class="check"><input type="checkbox" name="active"> Regra ativa</label></div>
-<div id="edit-conditions" class="conditions"></div><p role="alert" id="edit-error"></p>
+<p class="hint">Quando mais de uma regra serve para a mesma transação, vale a de prioridade menor: 1 é testada primeiro e 10 por último. Em empate, vale a ordem da lista. Suas regras são testadas antes das regras da Moneta.</p><div id="edit-conditions" class="conditions"></div><p role="alert" id="edit-error"></p>
 <div class="dialog-actions"><button type="button" id="edit-cancel">Cancelar</button><button type="submit">Salvar</button></div>
 </form></dialog></section>
 <section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul>

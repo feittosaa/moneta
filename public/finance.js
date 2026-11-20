@@ -255,8 +255,9 @@ function ledger() {
 const formatDate = value => value.split('-').reverse().join('/');
 function openTransaction(tx) {
   const dialog = $('#tx-dialog'), form = $('#tx-form');
-  const {category,note,createRule,ruleMode} = form.elements;
+  const {category,note,createRule,ruleMode,rulePriority} = form.elements;
   form.reset();
+  rulePriority.value = '5';
   $('#tx-error').textContent = '';
   $('#tx-title').textContent = tx.description;
   const account = data.accounts.find(a => a.id === tx.account);
@@ -283,7 +284,7 @@ function openTransaction(tx) {
     submit.disabled = true;
     try {
       await request('transaction',{id:tx.id,note:note.value,category:Number(category.value)||null,
-        rule:createRule.checked ? {name:tx.description.slice(0,100),mode:ruleMode.value,conditions} : null});
+        rule:createRule.checked ? {name:tx.description.slice(0,100),mode:ruleMode.value,priority:Number(rulePriority.value),conditions} : null});
       dialog.close();
       await refresh();
       notify('Transação salva.');
@@ -483,8 +484,8 @@ function editRule(rule = {}) {
   field('title').value = rule.name || '';
   choices(field('category'),data.categories.map(c => [c.id,c.name]));
   field('category').value = rule.category ?? '';
-  field('priority').value = rule.priority ?? 0;
-  field('priority').closest('label').hidden = rule.key == null;
+  // Regras do catálogo guardam números maiores; o editor mostra o nível de 1 a 10.
+  field('priority').value = String(rule.key != null ? rule.level : rule.priority ?? 5);
   field('mode').value = rule.mode || 'and';
   field('active').checked = rule.active ?? true;
   const root = $('#edit-conditions');
@@ -530,7 +531,8 @@ function exportRules(origin) {
   const action = id => target(id) ? [{op:'set_category',value:target(id)}] : [];
   // As regras criadas na Moneta vencem o catálogo; uma prioridade menor preserva isso em outra instalação.
   const first = Math.min(0,...data.catalogRules.map(r => r.priority)) - 1;
-  const own = origin === 'moneta' ? [] : data.rules.map(r => ({name:r.name || r.term,priority:first,is_active:r.active !== false,
+  // Abaixo de todo o catálogo, na ordem das prioridades de 1 a 10.
+  const own = origin === 'moneta' ? [] : data.rules.map(r => ({name:r.name || r.term,priority:first-10+r.priority,is_active:r.active !== false,
     conditions_op:r.mode || 'and',conditions:r.conditions || [{field:'description',op:'contains',value:r.term}],actions:action(r.category)}));
   const catalog = data.catalogRules.filter(r => !origin || (origin === 'mine') === Boolean(r.imported))
     .map(r => ({name:r.name,priority:r.priority,is_active:r.active,conditions_op:r.mode,conditions:r.conditions,actions:action(r.category)}));
@@ -578,13 +580,14 @@ function manage(page) {
     const origin = $('#rule-origin').value;
     const matches = (...values) => normalize(values.join(' ')).includes(query);
     // Regras importadas também são do usuário; só o catálogo padrão é da Moneta.
-    const rules = [...data.rules.map(r => ({...r,name:r.name || r.term,mine:true,status:r.active === false ? 'Desativada' : 'Ativa'})),
+    const rules = [...data.rules.map(r => ({...r,level:r.priority,name:r.name || r.term,mine:true,status:r.active === false ? 'Desativada' : 'Ativa'})),
       ...data.catalogRules.map(r => ({...r,mine:r.imported}))].map((r,index) => ({...r,order:index+1}));
     const visible = rules.filter(r => (!origin || (origin === 'mine') === r.mine) &&
       matches(r.name,r.mine ? mine : 'Moneta',r.imported ? 'importada' : '',categoryName(r.category),r.status,r.terms ?? ''));
     $('#rule-list').replaceChildren(sortableTable('regras',[
       {title:'Ordem',sort:r => r.order,cell:r => r.order},
       {title:'Regra',sort:r => r.name,cell:r => r.name},
+      {title:'Prioridade',sort:r => r.level,cell:r => r.level},
       {title:'Origem',sort:r => r.mine ? mine : 'Moneta',cell:r => r.mine ? originCell(mine,r.imported && 'importada') : 'Moneta'},
       {title:'Categoria',sort:r => categoryName(r.category),cell:r => categoryName(r.category)},
       {title:'Situação',sort:r => r.status,cell:r => r.status},
