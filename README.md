@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/web-app-manifest-512x512.png" alt="Logo da Moneta: perfil de uma figura clássica com coroa de louros, dentro de um círculo, como em uma moeda" width="160">
+  <img src="docs/logo.png" alt="Logo da Moneta: perfil de uma figura clássica com coroa de louros, dentro de um círculo, como em uma moeda" width="160">
 </p>
 
 <h1 align="center">Moneta</h1>
@@ -109,7 +109,7 @@ Nas tabelas de regras e de categorias, clique no título de uma coluna para orde
 
 ### Configuração
 
-Define a moeda padrão, as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
+Define a moeda padrão, o tema (escuro, claro ou igual ao sistema, guardado neste navegador), as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
 
 ### Barra superior
 

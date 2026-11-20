@@ -49,6 +49,7 @@ const assets = new Map([
   ['/finance.js', ['text/javascript', 'finance.js']],
   ['/style.css', ['text/css', 'style.css']],
   ['/favicon.svg', ['image/svg+xml', 'favicon.svg']],
+  ['/logo.png', ['image/png', 'logo.png']],
   ['/favicon.ico', ['image/x-icon', 'favicon.ico']],
   ['/favicon-96x96.png', ['image/png', 'favicon-96x96.png']],
   ['/apple-touch-icon.png', ['image/png', 'apple-touch-icon.png']],
