@@ -1,0 +1,159 @@
+import { portfolio } from './report.mjs';
+
+const $ = selector => document.querySelector(selector);
+function element(tag,text) {
+  const node = document.createElement(tag);
+  if (text != null) node.textContent = text;
+  return node;
+}
+const colors = ['#78A9FF','#FFD147','#75D8AB','#BAA4ED','#FF9780','#8DDDE8','#EBA1BD'];
+const selectedInvestments = new Set();
+const localDay = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+const dateLabel = day => day.split('-').reverse().join('/');
+
+function historyPoints(history,transactions,currency,from,to) {
+  const snapshots = new Map(), points = [];
+  const wallet = transactions.filter(t => t.account === 'wallet-'+currency);
+  const days = new Map();
+  for (const record of history) {
+    if (!days.has(record.day)) days.set(record.day,[]);
+    days.get(record.day).push(record);
+  }
+  for (const t of wallet) if (!days.has(t.date)) days.set(t.date,[]);
+  for (const day of [...days.keys()].sort()) {
+    for (const record of days.get(day)) snapshots.set(record.item,record);
+    if (day < from || day > to) continue;
+    const records = [...snapshots.values()];
+    const accounts = records.flatMap(record => record.accounts);
+    const holdings = records.flatMap(record => record.holdings).filter(h => h.currency === currency);
+    const cash = wallet.filter(t => t.date <= day);
+    if (!holdings.length && !accounts.some(a => a.currency === currency) && !cash.length) continue;
+    if (cash.length) accounts.push({type:'CASH',currency,auto:0,balance:cash.reduce((sum,t) => sum+t.amount,0)});
+    points.push({day,holdings,...portfolio({accounts,holdings},currency)});
+  }
+  return points;
+}
+
+export function renderPortfolio(history,transactions,currency,target,money) {
+  const today = localDay(), now = today.slice(0,4);
+  const year = $('#portfolio-year'), from = $('#portfolio-from'), to = $('#portfolio-to');
+  const previous = year.value;
+  const years = new Set([now,...history.map(row => row.day.slice(0,4)),...transactions.filter(t => t.account === 'wallet-'+currency).map(t => t.date.slice(0,4))]);
+  year.replaceChildren(...[...years].sort().reverse().map(y => new Option(y,y)));
+  year.value = years.has(previous) ? previous : now;
+  from.value ||= now+'-01-01';
+  to.value ||= today;
+  const custom = $('#portfolio-range').value === 'custom';
+  $('#portfolio-year-label').hidden = custom;
+  document.querySelectorAll('.portfolio-custom').forEach(field => { field.hidden = !custom; });
+  const start = custom ? from.value : year.value+'-01-01';
+  const end = custom ? to.value : year.value+'-12-31';
+  target.replaceChildren();
+  if (!start || !end || start > end) { target.textContent = 'Selecione um intervalo válido.'; return; }
+  const points = historyPoints(history,transactions,currency,start,end);
+  if (!points.length) { target.textContent = 'Nenhuma posição registrada nessa moeda e nesse período.'; return; }
+
+  const panel = element('div'), canvas = element('canvas'), detail = element('output');
+  panel.className = 'panel portfolio-chart';
+  canvas.width = 980; canvas.height = 320;
+  canvas.setAttribute('aria-label','Evolução do patrimônio e dos investimentos');
+  canvas.setAttribute('role','img');
+  const slider = element('input');
+  slider.type = 'range'; slider.min = 0; slider.max = points.length-1;
+  slider.value = points.length-1;
+  slider.setAttribute('aria-label','Consultar valores em uma data do gráfico');
+  slider.hidden = points.length < 2;
+  const chartHeading = element('h2','Evolução do patrimônio');
+  panel.append(chartHeading,canvas,slider,detail);
+  if (points.at(-1).holdings.some(h => h.stale)) {
+    panel.append(element('p','A posição mais recente inclui investimentos com o último saldo conhecido.'));
+  }
+  if (points.length === 1) panel.append(element('p','Há uma posição registrada neste período. A linha aparecerá quando houver mais registros.'));
+  const list = element('div');
+  list.className = 'panel portfolio-investments';
+  list.append(element('h2','Investimentos no período'));
+  const investments = new Map();
+  for (const point of points) for (const holding of point.holdings) investments.set(holding.id,holding);
+  const latest = new Map(points.at(-1).holdings.map(h => [h.id,h]));
+  const added = [];
+  for (const holding of investments.values()) {
+    const current = latest.get(holding.id);
+    const line = element('label'), checkbox = element('input');
+    const color = colors[added.length % colors.length];
+    const key = currency+'-'+holding.id;
+    checkbox.type = 'checkbox'; checkbox.checked = selectedInvestments.has(key);
+    checkbox.style.accentColor = color;
+    line.title = current?.stale ? 'Último saldo conhecido'+(current.lastSeen ? ' em '+dateLabel(current.lastSeen.slice(0,10)) : '') : 'Mostrar ou ocultar este investimento no gráfico';
+    line.append(checkbox,element('span',holding.name),element('strong',current ? money(current.net)+(current.stale ? ' · Último saldo conhecido' : '') : 'Fora da última posição'));
+    list.append(line);
+    added.push({key,holding,color,checkbox});
+    checkbox.onchange = () => {
+      if (checkbox.checked) selectedInvestments.add(key);
+      else selectedInvestments.delete(key);
+      draw();
+    };
+  }
+  if (!added.length) list.append(element('p','Nenhum investimento registrado no período.'));
+  target.append(panel,list);
+  const ctx = canvas.getContext('2d');
+  const left = 24, width = 932, top = 16, height = 260;
+  const first = Date.parse(points[0].day), duration = Date.parse(points.at(-1).day)-first;
+  const x = point => duration ? left+width*(Date.parse(point.day)-first)/duration : left+width/2;
+  function draw() {
+    const series = [
+      {name:'Patrimônio líquido',color:'#FF6C43',values:points.map(p => p.net)},
+      {name:'Investimentos líquidos',color:'#69CA92',values:points.map(p => p.invested)},
+      ...added.filter(a => a.checkbox.checked).map(({holding,color}) => ({name:holding.name,color,
+        values:points.map(p => p.holdings.find(h => h.id === holding.id)?.net)})),
+    ];
+    const values = series.flatMap(s => s.values).filter(Number.isFinite);
+    const min = values.reduce((low,n) => Math.min(low,n),0);
+    const max = values.reduce((high,n) => Math.max(high,n),min+1);
+    const y = value => top + height*(1-(value-min)/(max-min));
+    const index = Number(slider.value);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle = '#3b4146';
+    ctx.lineWidth = 1;
+    for (let i=0; i<=4; i++) {
+      const tick = top+height*i/4;
+      ctx.beginPath(); ctx.moveTo(left,tick); ctx.lineTo(left+width,tick); ctx.stroke();
+    }
+    ctx.fillStyle = '#acb6b5';
+    ctx.font = '14px system-ui';
+    ctx.fillText(dateLabel(points[0].day),left,302);
+    if (duration) {
+      const last = dateLabel(points.at(-1).day);
+      ctx.fillText(last,left+width-ctx.measureText(last).width,302);
+    }
+    ctx.beginPath(); ctx.moveTo(x(points[index]),top); ctx.lineTo(x(points[index]),top+height); ctx.stroke();
+    for (const s of series) {
+      ctx.beginPath(); ctx.strokeStyle = s.color; ctx.lineWidth = 2.5;
+      let started = false;
+      s.values.forEach((value,i) => {
+        if (!Number.isFinite(value)) { started = false; return; }
+        if (started) ctx.lineTo(x(points[i]),y(value));
+        else ctx.moveTo(x(points[i]),y(value));
+        started = true;
+      });
+      ctx.stroke();
+      if (!Number.isFinite(s.values[index])) continue;
+      ctx.beginPath(); ctx.fillStyle = s.color;
+      ctx.arc(x(points[index]),y(s.values[index]),4,0,Math.PI*2); ctx.fill();
+    }
+    detail.replaceChildren(element('strong',dateLabel(points[index].day)));
+    for (const s of series) {
+      const label = element('span',s.name+' · '+money(s.values[index]));
+      label.style.setProperty('--series-color',s.color);
+      detail.append(label);
+    }
+  }
+  canvas.onpointermove = canvas.onclick = event => {
+    const bounds = canvas.getBoundingClientRect();
+    const cursor = (event.clientX-bounds.left)*canvas.width/bounds.width;
+    let closest = 0;
+    for (let i=1; i<points.length; i++) if (Math.abs(x(points[i])-cursor) < Math.abs(x(points[closest])-cursor)) closest = i;
+    if (Number(slider.value) !== closest) { slider.value = closest; draw(); }
+  };
+  slider.oninput = draw;
+  draw();
+}
