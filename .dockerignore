@@ -6,3 +6,5 @@
 !request-body.mjs
 !public/
 !public/**
+!category-rules.mjs
+!default-rules.json
