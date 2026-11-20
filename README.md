@@ -138,7 +138,7 @@ Nas tabelas de regras e de categorias, clique no título de uma coluna para orde
 
 ### Configuração
 
-Define a moeda padrão, o tema (escuro, claro ou igual ao sistema, guardado neste navegador), as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
+Define a moeda padrão, o tema (igual ao sistema, que é o padrão, escuro ou claro, guardado neste navegador), as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
 
 ### Guia
 
