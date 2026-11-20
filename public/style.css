@@ -11,7 +11,7 @@ aside { background:#14191c; border-right:1px solid var(--line); position:sticky;
 a { color:var(--accent); text-decoration:none }
 a:hover { text-decoration:underline }
 .brand { display:flex; align-items:center; gap:10px; color:var(--text); font-size:26px; font-weight:650; letter-spacing:-1.6px; padding:0 10px; margin-bottom:42px }
-.brand b { display:grid; place-items:center; width:35px; height:35px; border-radius:11px 11px 11px 2px; color:#271008; background:var(--accent); font-family:Georgia,serif; font-style:italic }
+.brand img { width:38px; height:38px; flex:none }
 nav { display:grid; gap:4px }
 nav a { color:var(--muted); display:flex; align-items:center; gap:13px; border-radius:8px; padding:10px 13px; font-weight:550 }
 nav a:hover,nav a[aria-current=page] { background:#392119; color:var(--accent); text-decoration:none }
