@@ -173,7 +173,7 @@ tbody tr:hover,tbody tr:focus-within { background:#ffffff05 }
 .portfolio-investments label:hover,.portfolio-investments label:focus-within { background:#ffffff08 }
 .portfolio-investments strong { color:var(--text); font-size:13px; text-align:right }
 
-th .sort { display:inline-flex; align-items:center; gap:6px; padding:0; border:0; border-radius:4px; background:none; color:inherit; font-weight:inherit; text-align:left }
+th .sort { display:inline-flex; align-items:center; gap:6px; padding:0; border:0; border-radius:4px; background:none; color:inherit; font:inherit; letter-spacing:inherit; text-transform:inherit; text-align:left }
 th .sort span { color:var(--accent); opacity:.4 }
 th .sort:hover,th[aria-sort=ascending] .sort,th[aria-sort=descending] .sort { color:var(--text) }
 th .sort:hover span,th[aria-sort=ascending] .sort span,th[aria-sort=descending] .sort span { opacity:1 }
@@ -191,3 +191,27 @@ td small { font-size:12px }
 .bank-metric:hover [role=tooltip],.bank-metric:focus-within [role=tooltip] { visibility:visible; opacity:1 }
 .bank-metric [role=tooltip] p { margin:0 0 8px; font-size:12px }
 .bank-metric [role=tooltip] p:last-child { margin:8px 0 0 }
+
+/* Toque clássico: serifada de estilo antigo nos títulos, rótulos em versaletes,
+   filetes duplos e ornamentos discretos sobre a mesma paleta. */
+@font-face { font-family:"Goudy Bookletter 1911"; src:url(/fonts/GoudyBookletter1911.ttf) format("truetype"); font-display:swap }
+:root {
+  --serif:"Goudy Bookletter 1911","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --gilt:#c9a46a; --gilt-line:#c9a46a2e;
+  scrollbar-color:#414b50 transparent;
+}
+body { background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .05 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),var(--canvas) }
+.brand { font-family:"GC Troja Pro","Troja Pro",var(--serif); font-size:31px; font-weight:400; letter-spacing:.01em; line-height:1 }
+h1,h2 { font-family:var(--serif); font-weight:400; letter-spacing:0 }
+h1 { font-size:clamp(30px,2.8vw,44px); line-height:1.1 }
+h2 { font-size:21px }
+.topbar { padding-bottom:18px; border-bottom:3px double var(--line) }
+th,.eyebrow,.metrics article > span { font-family:var(--serif); text-transform:uppercase; letter-spacing:.12em }
+th { font-size:12.5px; font-weight:400 }
+.eyebrow { font-size:14px; color:#ffe5d5 }
+.metrics article > span { font-size:12.5px }
+.panel,.metrics article,.filters,section > form,dialog { box-shadow:inset 0 0 0 4px var(--panel),inset 0 0 0 5px var(--gilt-line) }
+.balance::after { content:""; position:absolute; inset:6px; border:1px solid #ffe5d530; border-radius:11px; pointer-events:none }
+section > h2::after { content:""; display:block; width:32px; height:1px; margin-top:7px; background:var(--gilt) }
+nav hr { position:relative; overflow:visible }
+nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:0 8px; background:#14191c; color:var(--gilt); font-size:8px; line-height:1 }
