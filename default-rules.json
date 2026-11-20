@@ -1,0 +1,720 @@
+[
+  {
+    "pack": "Moneta",
+    "name": "Pagamento de fatura de cartão",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "type",
+        "op": "equals",
+        "value": "debit"
+      },
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "^(pagamento|pagto|pgto|pag)\\.?\\s+(de\\s+|da\\s+)?fatura\\b|\\bfatura\\s+(do\\s+)?cartao\\b|^pagamento\\s+para\\s+banco\\s+xp(\\s+s\\.?\\s*a\\.?)?$"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Pagamento de fatura"
+      }
+    ],
+    "priority": 0
+  },
+  {
+    "pack": "Moneta",
+    "name": "Aplicações e resgates",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(aplicacao|aplic|resgate|resg)\\b\\.?\\s*(em\\s+|de\\s+|do\\s+|da\\s+)?(cdb|lci|lca|rdb|lc|tesouro|fundo|fundos|poupanca|automatica|aut)\\b|\\btesouro direto\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Movimentação de investimentos"
+      }
+    ],
+    "priority": 40
+  },
+  {
+    "pack": "Moneta",
+    "name": "Salário e proventos",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "type",
+        "op": "equals",
+        "value": "credit"
+      },
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(salario|salarios|folha de pagamento|pro labore|pro-labore|proventos|adiantamento salarial|decimo terceiro)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Salário"
+      }
+    ],
+    "priority": 30
+  },
+  {
+    "pack": "Moneta",
+    "name": "Rendimentos e dividendos",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "type",
+        "op": "equals",
+        "value": "credit"
+      },
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(rendimento|rendimentos|dividendo|dividendos|juros sobre capital|jcp|amortizacao)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Rendimentos"
+      }
+    ],
+    "priority": 30
+  },
+  {
+    "pack": "Moneta",
+    "name": "Uber Eats",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\buber\\s*\\*?\\s*eats\\b|\\bubereats\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Alimentação"
+      }
+    ],
+    "priority": 5
+  },
+  {
+    "pack": "Moneta",
+    "name": "Delivery de comida",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(ifood|ifd|rappi|ze delivery|aiqfome|james delivery|99food)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Alimentação"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Redes de fast-food e cafés",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(mcdonald'?s|mc donalds|arcos dourados|burger king|bk brasil|subway|habib'?s|giraffas|bob'?s|spoleto|outback|starbucks|kfc|popeyes|china in box|coco bambu|madero)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Alimentação"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Restaurantes, bares e padarias",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(restaurante|lanchonete|pizzaria|hamburgueria|churrascaria|padaria|panificadora|confeitaria|cafeteria|sorveteria|acaiteria|bar e restaurante|boteco|sushi|temakeria)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Alimentação"
+      }
+    ],
+    "priority": 20
+  },
+  {
+    "pack": "Moneta",
+    "name": "Supermercados e atacarejos",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(supermercado|supermercados|hipermercado|minimercado|mercadinho|mercearia|atacadao|assai|carrefour|pao de acucar|zaffari|prezunic|sams club|makro|savegnago|angeloni|bistek|verdemar|st marche|hortifruti|sacolao|quitanda|acougue)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Mercado"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Mercado de bairro",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\bmercado\\b(?!\\s*(livre|pago))"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Mercado"
+      }
+    ],
+    "priority": 20
+  },
+  {
+    "pack": "Moneta",
+    "name": "Aplicativos de transporte",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(uber|cabify|indrive|indriver)\\b(?![\\s*]*eats)|\\b99\\s*(app|pop|taxi|tecnologia)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Transporte"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Combustível",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(posto|auto posto|combustivel|combustiveis|shell|ipiranga|petrobras|br mania|raizen)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Transporte"
+      }
+    ],
+    "priority": 20
+  },
+  {
+    "pack": "Moneta",
+    "name": "Estacionamento e pedágio",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(estacionamento|estapar|zona azul|sem parar|conectcar|veloe|taggy|pedagio|ecovias|autoban)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Transporte"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Transporte público",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(metro|sptrans|bilhete unico|riocard|jae|cptm|supervia|onibus|brt)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Transporte"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Passagens",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(latam|gol linhas|voegol|azul linhas|voeazul|clickbus|buser|rodoviaria)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Transporte"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Streaming de vídeo e música",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(netflix|spotify|disney|hbo\\s*max|globoplay|paramount|deezer|crunchyroll|mubi|telecine|youtube)\\b|\\bamazon\\s*prime|\\bprime\\s*video\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Assinaturas"
+      }
+    ],
+    "priority": 5
+  },
+  {
+    "pack": "Moneta",
+    "name": "Aplicativos e armazenamento",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\bapple\\.com/bill\\b|\\bgoogle\\s*(one|storage)\\b|\\b(icloud|dropbox|adobe|openai|chatgpt|anthropic|notion|github|canva)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Assinaturas"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Marketplaces",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\bmercado\\s*livre\\b|\\bmercadolivre\\b|\\b(amazon|amzn|shopee|aliexpress|shein|temu|magalu|magazine luiza|americanas|submarino|casas bahia|ponto frio|kabum|netshoes|centauro|dafiti)"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Compras"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Lojas de departamento e casa",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(renner|riachuelo|c\\s*&\\s*a|zara|hering|leroy merlin|tok\\s*&\\s*stok|ikea|decathlon|fast shop|havan|polishop|camicado)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Compras"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Aluguel e condomínio",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(aluguel|condominio|quinto andar|quintoandar|imobiliaria)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Moradia"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Energia elétrica",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(enel|cemig|copel|celesc|coelba|neoenergia|equatorial energia|cpfl|energisa|elektro|light sa|light servicos)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Moradia"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Água e gás",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(sabesp|cedae|aguas do rio|copasa|sanepar|embasa|compesa|cagece|caesb|corsan|saneago|comgas|naturgy|ultragaz|liquigas|supergasbras|copagaz)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Moradia"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Internet, TV e telefone",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(claro|vivo|tim|oi fibra|oi movel|sky|algar telecom|brisanet|ligga|unifique|vero internet)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Moradia"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Clínicas veterinárias e pet shops",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(petz|cobasi|petlove|pet ?shop|pet center|veterinaria|veterinario|clinica veterinaria|agropet|racao)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Pet"
+      }
+    ],
+    "priority": 5
+  },
+  {
+    "pack": "Moneta",
+    "name": "Farmácias",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(farmacia|drogaria|droga ?raia|drogasil|pague menos|panvel|ultrafarma|drogao)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Saúde"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Planos, clínicas e exames",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(unimed|amil|bradesco saude|sulamerica saude|hapvida|notredame|porto saude|clinica|laboratorio|hospital|odonto|odontologia|dentista|fleury|dasa|hermes pardini|lavoisier)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Saúde"
+      }
+    ],
+    "priority": 20
+  },
+  {
+    "pack": "Moneta",
+    "name": "Academias",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(smart ?fit|bluefit|bodytech|selfit|academia|gympass|wellhub|totalpass)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Saúde"
+      }
+    ],
+    "priority": 20
+  },
+  {
+    "pack": "Moneta",
+    "name": "Beleza e higiene",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(barbearia|barber|salao de beleza|cabeleireiro|cabeleireira|manicure|estetica|depilacao|sephora|boticario|natura|avon|eudora|beleza na web|epoca cosmeticos)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Cuidados Pessoais"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Escolas, cursos e livros",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(escola|colegio|faculdade|universidade|curso|cursos|udemy|alura|coursera|rocketseat|descomplica|duolingo|cultura inglesa|ccaa|fisk|kumon|livraria)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Educação"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Cinema, shows e eventos",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(cinemark|cinepolis|kinoplex|uci|sympla|eventim|ticketmaster|ingresse|bilheteria|teatro)\\b|\\bingresso\\.?com\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Lazer"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Jogos",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(steam|steampowered|playstation|psn|xbox|nintendo|epic games|riot games|blizzard|nuuvem)\\b|\\bbattle\\.net\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Lazer"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Hospedagem e viagens",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(airbnb|hotel|hoteis|pousada|decolar|123\\s*milhas|maxmilhas|hurb|trivago|expedia)\\b|\\bbooking\\.com\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Lazer"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Serviços avulsos",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(lavanderia|chaveiro|cartorio|correios|sedex|despachante|grafica)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Serviços"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Tarifas bancárias",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(tarifa|tarifas|anuidade|cesta de servicos|pacote de servicos|iof)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Impostos & Taxas"
+      }
+    ],
+    "priority": 30
+  },
+  {
+    "pack": "Moneta",
+    "name": "Impostos e licenciamento",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(iptu|ipva|darf|imposto|simples nacional|receita federal|detran|licenciamento)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Impostos & Taxas"
+      }
+    ],
+    "priority": 30
+  },
+  {
+    "pack": "Moneta",
+    "name": "Doações e contribuições",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "\\b(doacao|doacoes|dizimo|caridade|vakinha|apoia\\.se|catarse|unicef|igreja|paroquia)\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Doações"
+      }
+    ],
+    "priority": 10
+  },
+  {
+    "pack": "Moneta",
+    "name": "Pix, TED e transferências",
+    "conditions_op": "and",
+    "conditions": [
+      {
+        "field": "description",
+        "op": "regex",
+        "value": "^(pix|ted|doc|transf|transferencia)\\b|\\b(pix|ted|transferencia)\\s+(enviad[oa]|recebid[oa])\\b"
+      }
+    ],
+    "actions": [
+      {
+        "op": "set_category",
+        "value": "Transferências"
+      }
+    ],
+    "priority": 90
+  }
+]

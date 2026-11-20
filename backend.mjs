@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 
 import { readJsonObject } from './request-body.mjs';
-import { initFinance, restoreBankNames, overview, editFinance, synchronize } from './finance.mjs';
+import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
 const instance = randomUUID();
@@ -38,10 +38,13 @@ initFinance(db);
 restoreBankNames(db);
 let syncJob;
 let restarting = false;
-const edits = ['/api/categories','/api/rules','/api/rules/remove','/api/assignment'];
+const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment'];
 const assets = new Map([
   ['/', ['text/html', 'index.html']],
   ['/app.js', ['text/javascript', 'app.js']],
+  ['/movement.mjs', ['text/javascript','movement.mjs']],
+  ['/card-periods.mjs', ['text/javascript','card-periods.mjs']],
+  ['/portfolio.js', ['text/javascript', 'portfolio.js']],
   ['/report.mjs', ['text/javascript', 'report.mjs']],
   ['/finance.js', ['text/javascript', 'finance.js']],
   ['/style.css', ['text/css', 'style.css']],
@@ -64,6 +67,24 @@ async function authenticate(pair = credentials) {
   if (!apiKey) fail(502, 'Resposta de autenticação inválida.');
   return apiKey;
 }
+const syncInterval = 6 * 60 * 60 * 1000;
+let lastAttempt = 0;
+function sync() {
+  if (syncJob) return syncJob;
+  lastAttempt = Date.now();
+  syncJob = authenticate().then(key => synchronize(db,path => pluggy(path,key))).finally(() => { syncJob = null; });
+  return syncJob;
+}
+const syncTimer = setInterval(() => {
+  if (!configured() || restarting || syncJob || Date.now()-lastAttempt < syncInterval) return;
+  const count = db.prepare('SELECT count(*) AS total FROM connections').get().total;
+  if (!count) return;
+  const stats = db.prepare('SELECT count(*) AS total, min(updated) AS oldest FROM snapshots').get();
+  if (stats.total >= count && Date.now()-Date.parse(stats.oldest) < syncInterval) return;
+  sync().catch(() => console.warn('Falha na sincronização automática da Pluggy. A cópia local foi preservada.'));
+},60_000);
+syncTimer.unref();
+
 const server = http.createServer(async (req, res) => {
   const json = (status, value) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -72,7 +93,10 @@ const server = http.createServer(async (req, res) => {
   try {
     const host = req.headers.host;
     if (!['localhost:' + port, '127.0.0.1:' + port].includes(host)) fail(403, 'Host inválido.');
-    if (req.method === 'GET' && req.url === '/api/status') return json(200, { instance });
+    if (req.method === 'GET' && req.url === '/api/status') {
+      const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
+      return json(200, {instance,updated});
+    }
     if (req.method === 'GET' && assets.has(req.url)) {
       const [type, file] = assets.get(req.url);
       res.setHeader('Content-Type', type + '; charset=utf-8');
@@ -82,12 +106,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/connections') {
       return json(200, { configured: configured(), connections: db.prepare('SELECT * FROM connections ORDER BY institution, id').all() });
     }
+    if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
-    const body = await readJsonObject(req);
+    const body = await readJsonObject(req, req.url.startsWith('/api/rules') ? 2 * 1024 * 1024 : req.url === '/api/transaction' ? 16384 : undefined);
     if (restarting) fail(503, 'O servidor está reiniciando.');
     if (req.url === '/api/settings/pluggy') {
       const pair = {};
@@ -103,23 +128,27 @@ const server = http.createServer(async (req, res) => {
       restarting = true;
       res.once('finish', () => {
         server.close(() => {
-          db.close();
-          process.send('restart', () => process.disconnect());
+          clearInterval(syncTimer);
+          const close = () => {
+            db.close();
+            process.send('restart', () => process.disconnect());
+          };
+          if (syncJob) syncJob.then(close,close);
+          else close();
         });
       });
       return json(202, { instance });
     }
     if (edits.includes(req.url)) {
-      editFinance(db, req.url, body);
-      return json(200, {ok:true});
+      const result = editFinance(db, req.url, body);
+      return json(200, result ?? {ok:true});
     }
     if (!configured()) fail(503, 'Cadastre as credenciais da Pluggy em Configuração.');
     const id = body.itemId;
     const importing = req.url === '/api/connections/import';
     if ((importing || req.url === '/api/connections') && (typeof id !== 'string' || !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))) fail(400, 'Identificador inválido.');
     if (req.url === '/api/sync') {
-      syncJob ??= authenticate().then(key => synchronize(db, path => pluggy(path, key))).finally(() => { syncJob = null; });
-      await syncJob;
+      await sync();
       return json(200, {ok:true});
     }
     const apiKey = await authenticate();
