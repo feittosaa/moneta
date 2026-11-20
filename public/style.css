@@ -286,3 +286,13 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 .locked-card p { margin:0 0 12px; line-height:1.6 }
 .locked-card .locked-hint { color:var(--muted); font-size:13px; margin:0 }
 .locked-card code { padding:1px 6px; border-radius:6px; background:var(--field); border:1px solid var(--field-line) }
+
+/* Cofre do banco */
+.vault-alert { margin:12px 0 16px; padding:14px 16px; border-left:4px solid var(--accent); border-radius:0 10px 10px 0; background:var(--nav-active); max-width:48rem }
+.vault-alert p { margin:0 0 10px }
+#vault-code-text { display:block; margin:6px 0 12px; padding:10px 12px; border-radius:8px; background:var(--field); border:1px solid var(--field-line); font-size:15px; letter-spacing:.04em; word-break:break-all; user-select:all }
+#recovery { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:24px; background:var(--canvas) }
+#recovery-form { display:grid; gap:12px; text-align:left }
+#recovery-form h2,#recovery-form img { text-align:center }
+#recovery-form input { font-family:monospace; letter-spacing:.04em }
+#recovery-error:empty { display:none }

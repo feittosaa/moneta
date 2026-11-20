@@ -88,9 +88,18 @@
 <label>Client ID<input name="clientId" required spellcheck="false" autocapitalize="none" autocomplete="off"></label>
 <label>Client Secret<input name="clientSecret" type="password" required autocomplete="off"></label>
 <button>Validar e salvar</button></form>
+<h2>Cofre do banco</h2><p id="vault-status"></p>
+<div id="vault-pending" class="vault-alert" hidden><p><strong>Anote a chave de recuperação.</strong> Sem ela, se o TPM do computador for apagado (numa atualização de BIOS, por exemplo) ou se você trocar de computador, não há como abrir o banco. Guarde num gerenciador de senhas ou no papel, longe do computador.</p><button type="button" id="vault-show">Mostrar chave de recuperação</button></div>
+<div id="vault-code" class="vault-alert" hidden><p>Chave de recuperação:</p><code id="vault-code-text"></code><div class="dialog-actions"><button type="button" id="vault-copy">Copiar</button><button type="button" id="vault-confirm">Já guardei num lugar seguro</button></div></div>
+<button type="button" id="vault-rotate">Gerar nova chave de recuperação</button>
 <h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button> <button id="shutdown" type="button" hidden>Encerrar o Moneta</button></section>
 <section id="guia" hidden><article id="guide" class="guide"></article></section>
 <p id="message" role="status"></p></main>
+<div id="recovery" hidden><form class="locked-card" id="recovery-form" aria-labelledby="recovery-title">
+<img src="/logo.png" alt="" width="56" height="56"><h2 id="recovery-title">O cofre do banco está trancado</h2>
+<p>Este computador não conseguiu abrir a chave do banco. Isso acontece quando o TPM é apagado ou quando os dados vêm de outro computador. Digite a chave de recuperação que você anotou para abrir o cofre e lacrar a chave de novo aqui.</p>
+<label>Chave de recuperação<input name="code" required autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="MONETA-XXXXX-XXXXX-…"></label>
+<p id="recovery-error" role="alert"></p><button>Abrir o cofre</button></form></div>
 <div id="locked" hidden><div class="locked-card" role="alertdialog" aria-labelledby="locked-title" aria-describedby="locked-text">
 <img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso ao Moneta</h2>
 <p id="locked-text">Abra o Moneta pelo menu de aplicativos, ou rode <code>moneta</code> no terminal. Ele abre o navegador já com o acesso liberado, e depois disso este endereço passa a funcionar direto.</p>

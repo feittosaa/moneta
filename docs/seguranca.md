@@ -12,10 +12,11 @@ O Moneta guarda dados financeiros e a chave de acesso à Pluggy. Este documento 
 | Site que aponta um domínio próprio para `127.0.0.1` (DNS rebinding) | Conferência do cabeçalho `Host`: só `localhost` e `127.0.0.1` |
 | Página do Moneta embutida em outro site (clickjacking) | `frame-ancestors 'none'` e `X-Frame-Options: DENY` |
 | Script injetado rodando na página | CSP sem scripts embutidos: só os arquivos do próprio Moneta e o widget da Pluggy |
-| Cópia do disco, do backup ou da pasta de dados levando o Client Secret | No Linux, credenciais lacradas com `systemd-creds --user` (TPM 2.0 quando existe); no Windows, DPAPI do usuário |
-| Dados apagados que continuam no arquivo do banco | `PRAGMA secure_delete = ON` |
+| Cópia do disco, do backup ou da pasta de dados levando os lançamentos | Banco inteiro cifrado com AES-256-GCM em `moneta.cofre`; nada do banco fica legível em disco, nem o esquema |
+| Cópia do disco, do backup ou da pasta de dados levando o Client Secret ou a chave do banco | No Linux, segredos lacrados com `systemd-creds --user` (TPM 2.0 quando existe); no Windows, DPAPI do usuário |
+| Arquivo do banco adulterado ou corrompido | A tag do AES-GCM impede abrir um cofre alterado; uma gravação interrompida cai para `moneta.cofre.anterior` |
 | Arquivo de banco adulterado executando funções ou gatilhos | `PRAGMA trusted_schema = OFF` |
-| Tabelas temporárias de consultas indo parar no disco | `PRAGMA temp_store = MEMORY` |
+| Tabelas temporárias de consultas indo parar no disco | Banco só na memória e `PRAGMA temp_store = MEMORY` |
 
 ## Como funciona o acesso
 
@@ -27,6 +28,22 @@ O Moneta guarda dados financeiros e a chave de acesso à Pluggy. Este documento 
 No Docker e no Node direto não há atalho: o endereço de entrada sai no log ao iniciar (`docker compose logs moneta`).
 
 Para invalidar todos os navegadores autorizados, apague `acesso.key` e reinicie o Moneta.
+
+## Banco cifrado (o cofre)
+
+O `node:sqlite` do Node.js não suporta SQLCipher, e o projeto não usa dependências externas. Por isso o Moneta cifra o banco inteiro na própria aplicação, só com `node:sqlite`, `node:crypto` e `node:zlib`:
+
+- **Durante o uso**, o SQLite roda em `:memory:`. Nenhum arquivo do banco em texto puro existe em disco.
+- **No disco** fica só `moneta.cofre`: esquema e linhas exportados em JSON (preservando inteiros grandes e BLOBs), comprimidos com gzip e cifrados com AES-256-GCM. O formato é `MONETA\0` + versão + nonce de 12 bytes + texto cifrado + tag de 16 bytes. O cabeçalho é autenticado e cada gravação usa um nonce novo.
+- **Gravação:** depois de cada alteração confirmada (antes de responder ao navegador), ao fim de cada sincronização, a cada 15 segundos se houver mudança e ao receber `SIGTERM`, `SIGINT` ou `SIGHUP`. A gravação é atômica (arquivo temporário `0600`, `fsync` e `rename`), e a versão anterior fica em `moneta.cofre.anterior`.
+- **Chave:** 32 bytes aleatórios, lacrados como as credenciais (`banco.cred` ou `banco.dpapi`). A chave é lacrada antes de qualquer gravação, então nunca existe um cofre sem a chave guardada.
+- **Migração** de um `moneta.sqlite` antigo, como no artigo: `wal_checkpoint(TRUNCATE)`, impressão digital SHA-256 de esquema e linhas, cofre gravado e relido do disco, impressão digital de novo. O texto puro (inclusive `-wal` e `-shm`) só é sobrescrito e apagado se as duas baterem.
+
+### Chave de recuperação
+
+A chave do cofre em Base32, com 2 bytes de SHA-256 para pegar erros de digitação: `MONETA-XXXXX-…`. A página Configuração mostra a chave até você confirmar que a guardou. Depois disso ela não aparece mais: para ter uma nova, use **Gerar nova chave de recuperação**, que troca a chave do cofre e invalida a anterior, inclusive na gravação anterior.
+
+Se a chave lacrada não abrir (TPM apagado numa atualização de BIOS, dados levados para outro computador), o Moneta sobe trancado e pede a chave de recuperação. Ela abre o cofre e é lacrada de novo no computador atual.
 
 ## Credenciais da Pluggy
 
@@ -43,15 +60,16 @@ Para forçar o arquivo comum (por exemplo, para testes), use `MONETA_SECRET_STOR
 Estes riscos são conhecidos e aceitos por enquanto:
 
 - **Processos do mesmo usuário.** Um programa malicioso rodando com o seu usuário consegue ler `acesso.key`, abrir o lacre das credenciais (o `systemd-creds --user` abre para qualquer processo do usuário) e ler o banco. O artigo resolve isso pedindo a senha do sistema a cada abertura (Polkit) e fechando o cofre após 15 minutos parado. Isso é incompatível com o Moneta ligado em segundo plano sincronizando sozinho, e fica como opção futura.
-- **Banco em texto puro dentro da pasta protegida.** As permissões impedem outros usuários de ler, mas uma cópia da pasta (backup, disco removido) leva os lançamentos legíveis. As credenciais não vão junto, porque estão lacradas.
+- **Docker:** sem `systemd-creds` dentro do container, a chave do cofre fica em `banco.key`, ao lado do cofre. Uma cópia da pasta `data/` leva os dois. No Docker, a proteção do banco depende das permissões do volume.
+- **Banco na memória** enquanto o Moneta está ligado: um processo com acesso à memória do Moneta (o mesmo usuário com ptrace, ou root) consegue ler os dados.
+- **Backups antigos em texto puro**, feitos antes do cofre, continuam legíveis até serem apagados.
 - **Root ou o kernel comprometido** quebram qualquer proteção enquanto o Moneta está ligado.
 - **SSD e sistemas copy-on-write** (Btrfs) podem guardar blocos antigos depois que um arquivo é apagado ou sobrescrito, inclusive do `pluggy.json` migrado.
 - **Windows:** a proteção por DPAPI foi escrita, mas ainda não foi testada num Windows real. Se o lacre falhar, o Moneta volta ao arquivo `0600`.
 
 ## Próximos passos
 
-1. **Banco criptografado.** O `node:sqlite` não suporta SQLCipher. As opções são criptografar os blocos de dados financeiros na aplicação (AES-256-GCM, com a chave lacrada como as credenciais) ou trocar para uma biblioteca com SQLCipher, o que traz uma dependência nativa. A migração deve seguir o artigo: checkpoint, backup `0600`, impressão digital SHA-256 do conteúdo antes e depois, e troca atômica só se tudo bater.
-2. **Serviço do systemd endurecido.** Extrair o AppImage na instalação para dispensar o FUSE e então ligar `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só na pasta de dados, `PrivateTmp`, `RestrictAddressFamilies`, `LimitCORE=0` e `UMask=0077`.
-3. **Backups verificados.** Exportação com manifesto, HMAC e teste de restauração logo após criar, como o `.mbbackup` do artigo.
-4. **Modo cofre (opcional).** Pedir a senha do sistema para abrir o Moneta e fechar após um tempo parado, para quem abrir mão da sincronização em segundo plano.
-5. **Teste no Windows** do lacre por DPAPI.
+1. **Serviço do systemd endurecido.** Extrair o AppImage na instalação para dispensar o FUSE e então ligar `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só na pasta de dados, `PrivateTmp`, `RestrictAddressFamilies`, `LimitCORE=0` e `UMask=0077`.
+2. **Backups verificados.** Exportação com manifesto, HMAC e teste de restauração logo após criar, como o `.mbbackup` do artigo.
+3. **Modo cofre (opcional).** Pedir a senha do sistema para abrir o Moneta e fechar após um tempo parado, para quem abrir mão da sincronização em segundo plano.
+4. **Teste no Windows** do lacre por DPAPI.
