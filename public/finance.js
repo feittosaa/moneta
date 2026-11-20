@@ -117,8 +117,16 @@ function report() {
   ]);
   const detail = tag('small');
   detail.className = 'expense-detail';
-  detail.append(tag('b','Débito '+amount(summary.debit)),tag('i','+'),tag('b','Faturas '+amount(summary.invoices)));
-  if (summary.cashSpent) detail.append(tag('i','+'),tag('b','Dinheiro '+amount(summary.cashSpent)));
+  // Cada parcela leva o próprio "+", para a quebra de linha não deixar o sinal sozinho no fim.
+  const part = (text, tone) => {
+    const item = tag('em');
+    item.append(tag('i','+'),tag('b',text));
+    if (tone) item.className = tone;
+    return item;
+  };
+  detail.append(tag('b','Débito '+amount(summary.debit)),part('Faturas '+amount(summary.invoices),'invoice-part'));
+  if (summary.cashSpent) detail.append(part('Dinheiro '+amount(summary.cashSpent)));
+  if (summary.voucherSpent) detail.append(part('Vales '+amount(summary.voucherSpent)));
   indicators.children[1].append(detail);
   $('#month-metrics').replaceChildren(indicators);
   $('#bill-note').textContent = !loaded ? '' : [
@@ -135,9 +143,10 @@ function report() {
       const date = new Date(year,number-6+i,1);
       const key = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
       const values = summarize(data,key,currency.value);
-      return {date, income:values.income, spent:values.spent,invoices:values.invoices,cashSpent:values.cashSpent};
+      return {date, income:values.income, spent:values.spent,invoices:values.invoices,cashSpent:values.cashSpent,voucherSpent:values.voucherSpent};
     });
-    $('.legend span:nth-child(2)').textContent = series.some(p => p.cashSpent) ? 'Débito e dinheiro' : 'Débito';
+    const extra = [series.some(p => p.cashSpent) && 'dinheiro',series.some(p => p.voucherSpent) && 'vales'].filter(Boolean);
+    $('.legend span:nth-child(2)').textContent = 'Débito'+(extra.length ? (extra.length > 1 ? ', '+extra[0]+' e ' : ' e ')+extra.at(-1) : '');
     const peak = Math.max(1,...series.flatMap(point => [point.income,point.spent]));
     for (const point of series) {
       const col = tag('div'), bars = tag('div');
@@ -266,14 +275,23 @@ function cardAmount(tx) {
   return value;
 }
 function cards() {
-  const list = data.accounts.filter(a => ['CREDIT','BANK'].includes(a.type) && a.currency === currency.value);
-  const cardName = a => [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  vouchers();
+  const list = data.accounts.filter(a => ['CREDIT','BANK','VOUCHER'].includes(a.type) && a.currency === currency.value);
+  const cardName = a => a.type === 'VOUCHER' ? 'Vale · '+a.name : [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
   choices($('#card'),list.map(a => [a.id,cardName(a)]));
   const card = list.find(a => a.id === $('#card').value);
   const pane = $('#card-detail');
   if (!card) {pane.replaceChildren(tag('p','Nenhum cartão ou conta sincronizada nesta moeda.')); return;}
   pane.replaceChildren(tag('h2',cardName(card)));
   if (!month.value) return;
+  if (card.type === 'VOUCHER') {
+    const voucher = data.vouchers.find(v => 'voucher-'+v.id === card.id);
+    const spent = periodRows().filter(t => t.account === card.id && t.amount < 0);
+    pane.append(metrics([['Creditado e gasto no mês',-sum(spent,t => t.amount),'purchase-metric'],['Valor de cada crédito',voucher.amount]]),
+      tag('p',recurrence(voucher)+' · '+voucherPeriod(voucher)),
+      table(['Data','Descrição','Categoria','Valor'],spent.map(t => [formatDate(t.date),t.description,categoryName(t.category),cardAmount(t)]),'Nenhum crédito deste vale no mês.'));
+    return;
+  }
   if (card.type === 'BANK') {
     const accountDebits = periodRows().filter(t => t.account === card.id && t.amount < 0);
     const debitPurchases = accountDebits.filter(t => /^(?:CARTAO|COMPRA_CARTAO|CARTAO_(?:DE_)?DEBITO|COMPRA_CARTAO_(?:DE_)?DEBITO)$/.test(t.operation) ||
@@ -301,6 +319,69 @@ function cards() {
   pane.append(table(['Data','Descrição','Parcela','Categoria','Valor'],period.rows.map(t => [
     t.projected ? 'Prevista' : formatDate(t.date),t.description,t.installment ? t.installment+'/'+t.installments : '—',categoryName(t.category),cardAmount(t)
   ]),'Nenhum lançamento vinculado a esta fatura.'));
+}
+const weekdayNames = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+function recurrence(v) {
+  const start = new Date(v.start_date+'T12:00:00Z');
+  if (v.frequency === 'once') return 'Uso único';
+  if (v.frequency === 'daily') return v.weekdays ? 'Diário, em dias úteis' : 'Diário';
+  if (v.frequency === 'weekly') return 'Semanal, '+(start.getUTCDay() % 6 ? 'toda ' : 'todo ')+weekdayNames[start.getUTCDay()];
+  return 'Mensal, todo dia '+start.getUTCDate();
+}
+function voucherPeriod(v) {
+  if (v.frequency === 'once') return 'Crédito em '+formatDate(v.start_date);
+  if (!v.end_date) return 'Desde '+formatDate(v.start_date);
+  const ended = v.end_date < new Date().toLocaleDateString('en-CA');
+  return formatDate(v.start_date)+' a '+formatDate(v.end_date)+(ended ? ' · encerrado' : '');
+}
+function vouchers() {
+  const list = data.vouchers.filter(v => v.currency === currency.value);
+  $('#voucher-list').replaceChildren(table(['Vale','Valor','Recorrência','Categoria','Período','Ações'],list.map(v => {
+    const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+    actions.className = 'rule-actions';
+    edit.onclick = () => editVoucher(v);
+    remove.onclick = () => {
+      if (confirm('Excluir o vale '+v.name+'? Os créditos já lançados por ele também saem do histórico. Para manter o histórico, edite o vale e informe o último crédito.'))
+        save('/vouchers/remove',{id:v.id});
+    };
+    actions.append(edit,remove);
+    return [v.name,money(v.amount),recurrence(v),categoryName(v.category),voucherPeriod(v),actions];
+  }),'Nenhum vale cadastrado nesta moeda.'));
+}
+function editVoucher(voucher) {
+  const dialog = $('#voucher-editor'), form = $('#voucher-form'), field = name => form.elements.namedItem(name);
+  form.reset();
+  $('#voucher-error').textContent = '';
+  $('#voucher-heading').textContent = voucher ? 'Editar vale' : 'Adicionar vale';
+  choices(field('category'),[['','Selecione'],...data.categories.filter(c => !c.internal).map(c => [c.id,c.name])]);
+  field('name').value = voucher?.name ?? '';
+  field('amount').value = voucher ? (voucher.amount/100).toFixed(2) : '';
+  field('category').value = voucher?.category ?? '';
+  field('frequency').value = voucher?.frequency ?? 'monthly';
+  field('weekdays').checked = Boolean(voucher?.weekdays);
+  field('start').value = voucher?.start_date ?? new Date().toLocaleDateString('en-CA');
+  field('end').value = voucher?.end_date ?? '';
+  const update = () => {
+    const frequency = field('frequency').value;
+    $('#voucher-weekdays').hidden = frequency !== 'daily';
+    $('#voucher-end').hidden = frequency === 'once';
+    $('#voucher-start-label').textContent = frequency === 'once' ? 'Data do crédito' : 'Primeiro crédito';
+    field('end').min = field('start').value;
+  };
+  field('frequency').onchange = field('start').onchange = update;
+  update();
+  $('#voucher-cancel').onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const frequency = field('frequency').value;
+    try {
+      await request('vouchers',{id:voucher?.id,name:field('name').value,amount:Math.round(Number(field('amount').value)*100),currency:voucher?.currency ?? currency.value,
+        category:Number(field('category').value) || null,frequency,start:field('start').value,
+        end:frequency === 'once' ? null : field('end').value || null,weekdays:field('weekdays').checked});
+      dialog.close(); await refresh(); notify('Vale salvo.');
+    } catch (error) { $('#voucher-error').textContent = error.message; notify(error.message); }
+  };
+  dialog.showModal();
 }
 function editRule(rule = {}) {
   const dialog = $('#rule-editor'), form = $('#edit-rule-form');
@@ -731,6 +812,7 @@ export function initializeFinance(api, message) {
     save('/categories',{name:form.elements.name.value,color:form.elements.color.value,internal:form.elements.internal.checked},form);
   };
   $('#new-rule').onclick = () => editRule();
+  $('#new-voucher').onclick = () => editVoucher();
   $('#export-rules').onclick = () => {
     const origin = $('#rule-origin').value;
     const rules = exportRules(origin);

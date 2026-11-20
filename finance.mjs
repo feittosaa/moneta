@@ -54,6 +54,34 @@ export function restoreBankNames(db) {
 }
 const localDay = timestamp => new Date(timestamp).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
 
+// Vales (transporte, alimentação, bônus) não chegam pela Pluggy. Cada crédito vira, na mesma data,
+// uma receita em Benefícios e uma despesa na categoria do vale.
+export function voucherDates(voucher, until) {
+  const last = voucher.end_date && voucher.end_date < until ? voucher.end_date : until;
+  if (voucher.start_date > last) return [];
+  if (voucher.frequency === 'once') return [voucher.start_date];
+  const [year,month,day] = voucher.start_date.split('-').map(Number);
+  const dates = [];
+  for (let i = 0; ; i++) {
+    let date;
+    if (voucher.frequency === 'monthly') {
+      // No mês sem o dia de início (31, 30, 29), o crédito cai no último dia.
+      const length = new Date(Date.UTC(year,month+i,0)).getUTCDate();
+      date = new Date(Date.UTC(year,month-1+i,Math.min(day,length)));
+    } else date = new Date(Date.UTC(year,month-1,day+i*(voucher.frequency === 'weekly' ? 7 : 1)));
+    const iso = date.toISOString().slice(0,10);
+    if (iso > last) return dates;
+    if (!(voucher.frequency === 'daily' && voucher.weekdays && [0,6].includes(date.getUTCDay()))) dates.push(iso);
+  }
+}
+const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  new Date(value+'T12:00:00Z').toISOString().slice(0,10) === value;
+function voucherOccurrence(db, id) {
+  const [, voucher, date] = /^voucher-(\d+)-(\d{4}-\d{2}-\d{2})-(?:in|out)$/.exec(id) || [];
+  const row = voucher && db.prepare('SELECT * FROM vouchers WHERE id=?').get(Number(voucher));
+  return Boolean(row && voucherDates(row,localDay(Date.now())).includes(date));
+}
+
 export function portfolioHistory(db) {
   return db.prepare('SELECT * FROM portfolio_history ORDER BY day,item').all()
     .map(({payload,...row}) => ({...row,...JSON.parse(payload)}));
@@ -66,7 +94,9 @@ export function initFinance(db) {
     CREATE TABLE IF NOT EXISTS assignments(tx TEXT PRIMARY KEY, category INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS preferences(name TEXT PRIMARY KEY,value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS portfolio_history(item TEXT NOT NULL, day TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(item,day));
-    CREATE TABLE IF NOT EXISTS snapshots(item TEXT PRIMARY KEY, payload TEXT NOT NULL, updated TEXT NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS snapshots(item TEXT PRIMARY KEY, payload TEXT NOT NULL, updated TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY, name TEXT NOT NULL, currency TEXT NOT NULL, amount INTEGER NOT NULL,
+      category INTEGER, frequency TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT, weekdays INTEGER NOT NULL DEFAULT 0);`);
   const seedHistory = db.prepare('INSERT OR IGNORE INTO portfolio_history VALUES (?,?,?)');
   for (const row of db.prepare('SELECT * FROM snapshots').all()) {
     const {accounts,holdings} = JSON.parse(row.payload);
@@ -183,9 +213,23 @@ export function overview(db, {frozen = true} = {}) {
   });
   append({holdings:[],transactions:cash,accounts:[...balances].map(([currency,balance]) =>
     ({id:'wallet-'+currency,type:'CASH',name:'Carteira',currency,balance,auto:0}))});
+  const benefits = categories.find(c => c.key === 'beneficios')?.id ?? null;
+  const today = localDay(Date.now());
+  const vouchers = db.prepare('SELECT * FROM vouchers ORDER BY name,id').all();
+  for (const voucher of vouchers) {
+    const account = 'voucher-'+voucher.id;
+    accounts.push({id:account,type:'VOUCHER',institution:'Vale',name:voucher.name,kind:voucher.name,currency:voucher.currency,balance:0,auto:0});
+    for (const date of voucherDates(voucher,today)) {
+      for (const [side,amount,category] of [['in',voucher.amount,benefits],['out',-voucher.amount,voucher.category]]) {
+        const id = account+'-'+date+'-'+side;
+        transactions.push({id,date,description:voucher.name,amount,currency:voucher.currency,account,pending:false,providerCategory:'',
+          voucher:voucher.id,note:notes.get(id) || '',category:manual.get(id) ?? category,manual:manual.has(id)});
+      }
+    }
+  }
   transactions.sort((a,b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
   const currency = db.prepare("SELECT value FROM preferences WHERE name='currency'").get()?.value || 'BRL';
-  return {currency,bills,categories,rules,catalogRules:inherited.map(({matches,...rule}) => rule),accounts,holdings,transactions,sources};
+  return {currency,bills,categories,rules,vouchers,catalogRules:inherited.map(({matches,...rule}) => rule),accounts,holdings,transactions,sources};
 }
 // Lançamentos cuja categoria muda quando as regras passam a valer para todo o histórico.
 export function ruleChanges(db) {
@@ -211,6 +255,36 @@ export function editFinance(db, path, body) {
       return;
     }
     db.prepare('INSERT INTO wallet VALUES(?,?,?,?,?,?)').run(body.id,body.date,body.currency,body.amount,body.kind,description);
+    return;
+  }
+  if (path === '/api/vouchers') {
+    const voucher = {name:label(body.name),amount:body.amount,currency:body.currency,category:body.category,frequency:body.frequency,
+      start_date:body.start,end_date:body.end ?? null,weekdays:Number(body.frequency === 'daily' && body.weekdays === true)};
+    if (!Number.isSafeInteger(voucher.amount) || voucher.amount <= 0) bad('Informe um valor maior que zero.');
+    if (!Intl.supportedValuesOf('currency').includes(voucher.currency)) bad('Moeda inválida.');
+    if (!Number.isInteger(voucher.category) || !db.prepare('SELECT 1 FROM categories WHERE id=? AND deleted=0').get(voucher.category)) bad('Selecione uma categoria.');
+    if (!['once','daily','weekly','monthly'].includes(voucher.frequency)) bad('Recorrência inválida.');
+    if (!validDate(voucher.start_date)) bad('Data inválida.');
+    if (voucher.frequency === 'once') voucher.end_date = null;
+    if (voucher.end_date != null && (!validDate(voucher.end_date) || voucher.end_date < voucher.start_date)) bad('A data final deve ser igual ou posterior ao início.');
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare("INSERT OR IGNORE INTO categories(name,key,custom,internal) VALUES ('Benefícios','beneficios',0,0)").run();
+      const fields = Object.keys(voucher);
+      if (body.id == null) db.prepare('INSERT INTO vouchers('+fields+') VALUES ('+fields.map(() => '?')+')').run(...Object.values(voucher));
+      else if (!Number.isSafeInteger(body.id) || !db.prepare('UPDATE vouchers SET '+fields.map(f => f+'=?')+' WHERE id=?').run(...Object.values(voucher),body.id).changes) bad('Vale desconhecido.');
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+    return;
+  }
+  if (path === '/api/vouchers/remove') {
+    if (!Number.isSafeInteger(body.id)) bad('Vale desconhecido.');
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare('DELETE FROM vouchers WHERE id=?').run(body.id);
+      for (const table of ['assignments','notes']) db.prepare('DELETE FROM '+table+" WHERE tx GLOB ?").run('voucher-'+body.id+'-*');
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
     return;
   }
   if (path === '/api/transaction') {
@@ -272,6 +346,7 @@ export function editFinance(db, path, body) {
     try {
       db.prepare('UPDATE categories SET deleted=1 WHERE id=?').run(body.id);
       for (const table of ['rules','assignments','rule_history']) db.prepare('DELETE FROM '+table+' WHERE category=?').run(body.id);
+      db.prepare('UPDATE vouchers SET category=NULL WHERE category=?').run(body.id);
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
     return;
@@ -299,7 +374,7 @@ export function editFinance(db, path, body) {
       SELECT 1 FROM snapshots, json_each(snapshots.payload, '$.transactions') AS tx
       WHERE json_extract(tx.value, '$.id') = ? UNION ALL SELECT 1 FROM wallet WHERE id=? LIMIT 1
     `).get(id,id);
-    if (!exists) bad('Transação desconhecida.');
+    if (!exists && !voucherOccurrence(db,id)) bad('Transação desconhecida.');
     if (category == null) db.prepare('DELETE FROM assignments WHERE tx=?').run(id);
     else db.prepare('INSERT OR REPLACE INTO assignments VALUES(?,?)').run(id,category);
   }

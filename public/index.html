@@ -43,7 +43,22 @@
 <label>Descrição<input name="description" maxlength="100"></label><button>Registrar</button></form>
 <p>Adicionar e retirar saldo ajustam a carteira. Receitas e despesas em dinheiro entram no resultado do mês.</p>
 <h2>Movimentações do mês</h2><div id="wallet-list"></div></section>
-<section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
+<section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div>
+<div class="panel-title vouchers-title"><h2>Vales</h2><button type="button" id="new-voucher">Adicionar vale</button></div>
+<p>Vale-transporte, vale-alimentação e bônus não chegam pela Pluggy. Cada crédito entra como receita em Benefícios e, na mesma data, como despesa na categoria do vale.</p>
+<div id="voucher-list"></div>
+<dialog id="voucher-editor" aria-labelledby="voucher-heading"><form id="voucher-form">
+<h2 id="voucher-heading">Adicionar vale</h2>
+<label>Nome<input name="name" required maxlength="100" placeholder="Vale-alimentação"></label>
+<label>Valor de cada crédito<input name="amount" type="number" min="0.01" step="0.01" required></label>
+<label>Categoria do gasto<select name="category" required></select></label>
+<label>Recorrência<select name="frequency"><option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="daily">Diária</option><option value="once">Uso único</option></select></label>
+<label class="check" id="voucher-weekdays"><input type="checkbox" name="weekdays"> Só dias úteis (segunda a sexta)</label>
+<label><span id="voucher-start-label">Primeiro crédito</span><input name="start" type="date" required></label>
+<label id="voucher-end">Último crédito (opcional)<input name="end" type="date"></label>
+<p id="voucher-error" role="alert"></p>
+<div class="dialog-actions"><button type="button" id="voucher-cancel">Cancelar</button><button>Salvar</button></div>
+</form></dialog></section>
 <section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label>Cor<input type="color" name="color" value="#78a9ff"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div class="filters"><label>Origem<select id="category-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="category-list"></div>
 <dialog id="category-editor" aria-labelledby="category-heading"><form id="edit-category-form">
 <h2 id="category-heading">Editar categoria</h2><label>Nome<input name="name" required maxlength="100"></label>
@@ -56,7 +71,7 @@
 <p id="apply-description">A Moneta vai reavaliar os lançamentos de todas as contas e meses com as regras ativas. As categorias escolhidas manualmente serão preservadas.</p>
 <p id="apply-summary" role="status"></p><div id="apply-preview"></div>
 <div class="dialog-actions"><button type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply" disabled>Confirmar e aplicar</button></div>
-</dialog><button type="button" id="new-rule">Criar regra</button><button type="button" id="export-rules" title="Baixa em JSON as regras da origem escolhida no filtro abaixo">Exportar regras</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><div class="filters"><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><label>Origem<select id="rule-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="rule-list"></div>
+</dialog><button type="button" id="new-rule">Criar regra</button> <button type="button" id="export-rules" title="Baixa em JSON as regras da origem escolhida no filtro abaixo">Exportar regras</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><div class="filters"><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><label>Origem<select id="rule-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="rule-list"></div>
 <dialog id="rule-editor" aria-labelledby="rule-heading"><form id="edit-rule-form"><h2 id="rule-heading">Editar regra</h2>
 <label id="edit-title-label">Nome<input name="title" required></label>
 <label>Categoria<select name="category" required></select></label>
