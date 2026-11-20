@@ -23,9 +23,9 @@ function choices(select, options) {
 let hiddenAmounts = localStorage.getItem('moneta-hide-amounts') === 'true';
 const money = n => hiddenAmounts ? '••••' : n == null ? 'Indisponível' : (n === 0 ? 0 : n/100).toLocaleString('pt-BR',{style:'currency',currency:currency.value});
 const accountName = a => [a.institution,a.name,a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
-const categoryName = id => id === 'invoice' ? 'Fatura sem detalhamento' : data.categories.find(c => c.id === id)?.name || 'Sem categoria';
+const categoryName = id => id === 'invoice' ? 'Fatura sem detalhamento' : id === 'invoices' ? 'Faturas de cartão' : data.categories.find(c => c.id === id)?.name || 'Sem categoria';
 function categoryColor(id) {
-  return data.categories.find(c => c.id === id)?.color || (id === 'invoice' ? 'var(--invoice)' : 'var(--muted)');
+  return data.categories.find(c => c.id === id)?.color || (id === 'invoice' || id === 'invoices' ? 'var(--invoice)' : 'var(--muted)');
 }
 function categoryLabel(id) {
   const label = tag('span',categoryName(id));
@@ -131,8 +131,10 @@ function report() {
     track.style.setProperty('--category-color',categoryColor(id));
     track.setAttribute('aria-label',categoryName(id));
     const link = tag('a');
-    link.href = '#transacoes?'+new URLSearchParams({mes:period,categoria:String(id ?? 'none'),origem:invoicesOnly ? 'faturas' : 'despesas'});
-    link.title = 'Ver lançamentos de '+categoryName(id)+' no resumo deste mês';
+    const invoiceTotal = id === 'invoices';
+    link.href = '#transacoes?'+new URLSearchParams(invoiceTotal ? {mes:period,origem:'faturas'} :
+      {mes:period,categoria:String(id ?? 'none'),origem:invoicesOnly ? 'faturas' : 'despesas'});
+    link.title = invoiceTotal ? 'Ver as compras das faturas deste mês' : 'Ver lançamentos de '+categoryName(id)+' no resumo deste mês';
     link.append(categoryLabel(id));
     row.append(link,tag('strong',money(value)),track);
     breakdown.append(row);
@@ -152,7 +154,7 @@ function ledger() {
   let transactions = allMonths() ? data.transactions.filter(t => t.currency === currency.value) : periodRows();
   if (ledgerScope) {
     const summary = summarize(data,month.value,currency.value);
-    transactions = ledgerScope === 'faturas' ? summary.invoiceRows : [...summary.expenses,...summary.invoiceRows];
+    transactions = ledgerScope === 'faturas' ? summary.invoiceRows : summary.expenses;
     if (selected === 'invoice') {
       transactions = summary.invoiceByCategory.has('invoice') ? [{
         date:month.value+'-01',description:'Fatura sem detalhamento',category:'invoice',amount:-summary.invoiceByCategory.get('invoice'),projected:true
@@ -161,7 +163,7 @@ function ledger() {
     transactions.sort((a,b) => b.date.localeCompare(a.date));
   }
   $('#ledger-context').hidden = !ledgerScope;
-  $('#ledger-context-label').textContent = ledgerScope === 'faturas' ? 'Compras das faturas do mês selecionado.' : 'Lançamentos que compõem as despesas do mês selecionado.';
+  $('#ledger-context-label').textContent = ledgerScope === 'faturas' ? 'Compras das faturas do mês selecionado.' : 'Despesas do mês selecionado fora das faturas de cartão.';
   const rows = transactions.filter(t => (!$('#account').value || t.account === $('#account').value) &&
     (!selected || String(t.category ?? 'none') === selected) && t.description.toLocaleLowerCase().includes(query));
   const accounts = new Map(data.accounts.map(a => [a.id,accountName(a)]));
