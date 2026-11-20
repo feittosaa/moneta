@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Moneta</title><script>/* Aplica o tema antes da primeira pintura. */(()=>{const c=localStorage.getItem("moneta-theme");document.documentElement.dataset.theme=c==="light"||(c!=="dark"&&matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark"})()</script><link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><meta name="apple-mobile-web-app-title" content="Moneta"><link rel="manifest" href="/site.webmanifest"><link rel="stylesheet" href="/style.css">
+<title>Moneta</title><script src="/theme.js"></script><link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><meta name="apple-mobile-web-app-title" content="Moneta"><link rel="manifest" href="/site.webmanifest"><link rel="stylesheet" href="/style.css">
 </head><body><aside><a class="brand" href="#relatorio"><img src="/logo.png" alt="" width="38" height="38">Moneta</a><nav aria-label="Navegação principal"><a href="#relatorio"><i aria-hidden="true">▦</i>Visão geral</a><a href="#transacoes"><i aria-hidden="true">⇄</i>Transações</a><a href="#carteira"><i aria-hidden="true">▣</i>Carteira</a><a href="#cartoes"><i aria-hidden="true">▱</i>Cartões</a><a href="#vales"><i aria-hidden="true">◇</i>Vales</a><hr><a href="#categorias"><i aria-hidden="true">▤</i>Categorias</a><a href="#regras"><i aria-hidden="true">≛</i>Regras</a><hr><a href="#conexoes"><i aria-hidden="true">⌁</i>Conexões</a><a href="#configuracao"><i aria-hidden="true">⚙</i>Configuração</a><a href="#guia" data-title="Guia de conexão"><i aria-hidden="true">?</i>Guia</a></nav><div id="fresh" role="status">Carregando dados…</div></aside><main>
 <header class="topbar"><h1 id="page-title">Visão geral</h1><div class="toolbar"><div id="period" role="group" aria-label="Período do relatório">
 <button type="button" data-month-step="-12" aria-label="Ano anterior" title="Ano anterior">«</button>
@@ -90,4 +90,8 @@
 <button>Validar e salvar</button></form>
 <h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button> <button id="shutdown" type="button" hidden>Encerrar o Moneta</button></section>
 <section id="guia" hidden><article id="guide" class="guide"></article></section>
-<p id="message" role="status"></p></main><script type="module" src="/app.js"></script></body></html>
+<p id="message" role="status"></p></main>
+<div id="locked" hidden><div class="locked-card" role="alertdialog" aria-labelledby="locked-title" aria-describedby="locked-text">
+<img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso ao Moneta</h2>
+<p id="locked-text">Abra o Moneta pelo menu de aplicativos, ou rode <code>moneta</code> no terminal. Ele abre o navegador já com o acesso liberado, e depois disso este endereço passa a funcionar direto.</p>
+<p class="locked-hint">Usa o Moneta pelo Docker? O endereço de entrada aparece no log: <code>docker compose logs moneta</code>.</p></div></div><script type="module" src="/app.js"></script></body></html>

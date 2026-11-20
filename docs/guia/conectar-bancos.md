@@ -70,7 +70,7 @@ A aplicação representa o Moneta dentro da Pluggy. É ela que recebe o Client I
 
 ![Página Configuração do Moneta com os campos Client ID e Client Secret e o botão Validar e salvar](moneta-configuracao.png)
 
-> As chaves ficam guardadas só no seu computador, no arquivo `pluggy.json` da pasta de dados do Moneta (`~/.local/share/moneta` no Linux, `%LOCALAPPDATA%\Moneta` no Windows ou `data/` no Docker).
+> As chaves ficam guardadas só no seu computador, lacradas pelo sistema: no Linux com o `systemd-creds` (preso ao seu usuário e, com TPM, a este computador) e no Windows com o cofre do usuário. A página Configuração mostra qual proteção está em uso.
 
 ## Etapa 6: conecte o Meu Pluggy no Moneta
 

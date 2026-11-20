@@ -1,10 +1,11 @@
 import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
+import { randomUUID, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, chmodSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { readJsonObject } from './request-body.mjs';
+import { createSecretStore } from './secret-store.mjs';
 import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, ruleChanges, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
@@ -12,29 +13,63 @@ const instance = randomUUID();
 // Na instalação de desktop os dados ficam na pasta do usuário; no Docker e no Node direto, em ./data.
 const dataDir = process.env.MONETA_DATA_DIR || 'data';
 const desktop = process.env.MONETA_DESKTOP === '1';
-const settingsFile = join(dataDir, 'pluggy.json');
 mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-let credentials;
-try {
-  credentials = JSON.parse(readFileSync(settingsFile, 'utf8'));
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error;
-  credentials = { clientId: process.env.PLUGGY_CLIENT_ID, clientSecret: process.env.PLUGGY_CLIENT_SECRET };
+// Dados financeiros e credenciais só para o dono: pasta 0700 e arquivos 0600, inclusive os que
+// versões antigas ou backups manuais criaram com permissões abertas.
+function restrictPermissions() {
+  if (process.platform === 'win32') return;
+  chmodSync(dataDir, 0o700);
+  for (const file of readdirSync(dataDir)) {
+    const path = join(dataDir, file);
+    if (lstatSync(path).isFile()) chmodSync(path, 0o600);
+  }
 }
+restrictPermissions();
+
+// Credenciais da Pluggy: lacradas pelo sistema quando possível (veja secret-store.mjs).
+const secrets = createSecretStore(dataDir);
+let credentials;
+let credentialsError = null;
+try {
+  credentials = secrets.load();
+} catch (error) {
+  credentialsError = error.message;
+  console.warn(error.message);
+}
+credentials ??= { clientId: process.env.PLUGGY_CLIENT_ID, clientSecret: process.env.PLUGGY_CLIENT_SECRET };
 function configured() {
   return Boolean(credentials.clientId && credentials.clientSecret);
 }
 function saveCredentials(pair) {
-  const tmp = settingsFile + '.' + randomUUID();
-  try {
-    writeFileSync(tmp, JSON.stringify(pair), { mode: 0o600, flag: 'wx' });
-    renameSync(tmp, settingsFile);
-    credentials = pair;
-  } finally {
-    rmSync(tmp, { force: true });
-  }
+  try { secrets.save(pair); } catch (error) { fail(500, error.message); }
+  credentials = pair;
+  credentialsError = null;
 }
+
+// Chave de acesso da instalação. Quem abre o Moneta pelo atalho recebe um cookie com ela; sem o
+// cookie, a API não responde. Isso fecha a porta para outros usuários do computador e para
+// processos que não conseguem ler a pasta de dados.
+const accessFile = join(dataDir, 'acesso.key');
+let accessKey;
+try { accessKey = readFileSync(accessFile, 'utf8').trim(); } catch {}
+if (!/^[A-Za-z0-9_-]{43}$/.test(accessKey ?? '')) {
+  accessKey = randomBytes(32).toString('base64url');
+  writeFileSync(accessFile, accessKey, { mode: 0o600 });
+}
+const digest = value => createHash('sha256').update(String(value)).digest();
+const sameKey = value => timingSafeEqual(digest(value), digest(accessKey));
+const cookieName = 'moneta_acesso';
+function authorized(req) {
+  const cookie = (req.headers.cookie || '').split(';').map(part => part.trim().split('='))
+    .find(([key]) => key === cookieName)?.[1];
+  return Boolean(cookie) && sameKey(cookie);
+}
+
 const db = new DatabaseSync(join(dataDir, 'moneta.sqlite'));
+// Apaga de fato o conteúdo removido, mantém tabelas temporárias na memória e não confia em
+// funções ou gatilhos embutidos no arquivo do banco.
+db.exec('PRAGMA secure_delete = ON; PRAGMA temp_store = MEMORY; PRAGMA trusted_schema = OFF;');
+restrictPermissions();
 db.exec('CREATE TABLE IF NOT EXISTS profile (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL); CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, institution TEXT NOT NULL, status TEXT NOT NULL)');
 db.prepare('INSERT OR IGNORE INTO profile VALUES (1, ?)').run(randomUUID());
 const clientUserId = db.prepare('SELECT uuid FROM profile WHERE id=1').get().uuid;
@@ -46,6 +81,7 @@ const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/a
 const assets = new Map([
   ['/', ['text/html', 'index.html']],
   ['/app.js', ['text/javascript', 'app.js']],
+  ['/theme.js', ['text/javascript', 'theme.js']],
   ['/movement.mjs', ['text/javascript','movement.mjs']],
   ['/card-periods.mjs', ['text/javascript','card-periods.mjs']],
   ['/portfolio.js', ['text/javascript', 'portfolio.js']],
@@ -100,7 +136,23 @@ const syncTimer = setInterval(() => {
 },60_000);
 syncTimer.unref();
 
+// O app só carrega scripts próprios e o widget da Pluggy, não pode ser embutido em outro site e
+// não vaza o endereço em links externos.
+const securityHeaders = {
+  'Content-Security-Policy': [
+    "default-src 'none'", "script-src 'self' https://cdn.pluggy.ai", "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https://*.pluggy.ai", "font-src 'self'", "connect-src 'self' https://*.pluggy.ai",
+    "frame-src https://*.pluggy.ai", "manifest-src 'self'", "base-uri 'none'", "form-action 'self'", "frame-ancestors 'none'",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+};
+
 const server = http.createServer(async (req, res) => {
+  for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
   const json = (status, value) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(value));
@@ -108,9 +160,22 @@ const server = http.createServer(async (req, res) => {
   try {
     const host = req.headers.host;
     if (!['localhost:' + port, '127.0.0.1:' + port].includes(host)) fail(403, 'Host inválido.');
+    const allowed = authorized(req);
     if (req.method === 'GET' && req.url === '/api/status') {
+      // Público só o necessário para o atalho saber se o Moneta já está aberto.
+      if (!allowed) return json(200, {instance,desktop});
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
-      return json(200, {instance,updated,desktop});
+      return json(200, {instance,updated,desktop,authorized:true});
+    }
+    // Entrada pelo atalho: troca a chave da URL por um cookie e tira a chave do endereço.
+    const entry = req.method === 'GET' && /^\/entrar\?chave=([A-Za-z0-9_-]{1,100})$/.exec(req.url);
+    if (entry) {
+      if (!sameKey(entry[1])) fail(403, 'Chave de acesso inválida. Abra o Moneta pelo atalho.');
+      res.writeHead(303, {
+        'Set-Cookie': `${cookieName}=${accessKey}; Path=/; HttpOnly; SameSite=Strict; Max-Age=34560000`,
+        'Location': '/', 'Cache-Control': 'no-store',
+      });
+      return res.end();
     }
     // Guia de conexão: o Markdown e as imagens ficam em docs/guia, lidos também pelo GitHub.
     const guide = req.method === 'GET' && /^\/guia\/([a-z0-9-]+\.(md|svg|png))$/.exec(req.url);
@@ -129,8 +194,9 @@ const server = http.createServer(async (req, res) => {
       res.end(readFileSync(new URL('public/' + file, import.meta.url)));
       return;
     }
+    if (req.url.startsWith('/api/') && !allowed) fail(401, 'Acesso não autorizado. Abra o Moneta pelo atalho do menu ou pelo comando moneta.');
     if (req.method === 'GET' && req.url === '/api/connections') {
-      return json(200, { configured: configured(), connections: db.prepare('SELECT * FROM connections ORDER BY institution, id').all() });
+      return json(200, { configured: configured(), protection: secrets.protection, credentialsError, connections: db.prepare('SELECT * FROM connections ORDER BY institution, id').all() });
     }
     if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
@@ -203,5 +269,8 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(port, process.env.MONETA_BIND_ADDRESS || '127.0.0.1', () => {
   console.log('Moneta em http://127.0.0.1:' + port);
+  // No Docker e no Node direto não há atalho: o endereço de entrada sai no log, visível só a quem
+  // já pode ler os logs ou a pasta de dados. O app instalado abre o navegador já com ele.
+  if (!desktop) console.log('Para entrar neste navegador: http://127.0.0.1:' + port + '/entrar?chave=' + accessKey);
   process.send?.('ready');
 });

@@ -111,6 +111,7 @@ Todas são opcionais.
 | Variável | Padrão | Uso |
 | --- | --- | --- |
 | `PORT` | `4173` | Porta do servidor. |
+| `MONETA_SECRET_STORE` | automático | Use `arquivo` para guardar as credenciais em JSON `0600` em vez de lacrá-las pelo sistema. |
 | `MONETA_DATA_DIR` | `./data` | Pasta do banco e das credenciais. O app instalado usa a pasta de dados do usuário. |
 | `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` | vazio | Credenciais da Pluggy. Valem até que outro par seja salvo pela interface. |
 | `MONETA_UID` e `MONETA_GID` | `1000` | Usuário e grupo do container (somente Docker). |
@@ -224,9 +225,10 @@ Para importar um arquivo nesse formato, vá em **Regras**, selecione o arquivo e
 Tudo fica na pasta de dados: `data/` no Docker e no Node.js (ela está no `.gitignore`), `~/.local/share/moneta` no app instalado no Linux e `%LOCALAPPDATA%\Moneta` no Windows:
 
 - `moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio;
-- `pluggy.json`: credenciais salvas pela interface, acessível apenas pelo dono do arquivo. **O segredo fica em texto simples**, então proteja backups e cópias dessa pasta.
+- `pluggy.cred` (Linux) ou `pluggy.dpapi` (Windows): credenciais da Pluggy lacradas pelo sistema. Sem esse recurso, como no Docker, ficam em `pluggy.json` com permissão `0600`;
+- `acesso.key`: chave que libera o navegador, trocada por um cookie quando você abre o Moneta pelo atalho.
 
-O servidor recusa requisições cujo cabeçalho `Host` não seja `localhost` ou `127.0.0.1`, e recusa escritas vindas de outra origem. Os únicos dados que saem da máquina são as chamadas à API da Pluggy.
+A API só responde a navegadores autorizados pela chave de acesso. O servidor também recusa cabeçalhos `Host` diferentes de `localhost` e `127.0.0.1` e escritas vindas de outra origem, e envia uma política de segurança de conteúdo restrita. Os únicos dados que saem da máquina são as chamadas à API da Pluggy. O documento [Segurança](docs/seguranca.md) detalha o modelo de ameaças, as proteções e os riscos que ainda ficam.
 
 Outras aplicações locais podem ler a lista de conexões em JSON por `GET /api/connections`.
 
@@ -256,10 +258,12 @@ Estrutura do projeto:
 | `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
+| `secret-store.mjs` | Lacre das credenciais da Pluggy pelo sistema (systemd-creds no Linux, DPAPI no Windows). |
 | `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio, campos de data), ícones e fontes. |
 | `packaging/` | Scripts que geram o AppImage, o instalador do Windows e o comando de instalação para Linux. |
 | `.github/workflows/` | Publicação automática da release ao enviar uma tag de versão. |
 | `docs/guia/` | Guia de conexão (Markdown e imagens), exibido no app e no GitHub. |
+| `docs/seguranca.md` | Modelo de ameaças, proteções, riscos aceitos e próximos passos de segurança. |
 | `test/` | Testes automatizados. |
 
 ### Fontes

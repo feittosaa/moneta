@@ -4,13 +4,21 @@ const message = text => { $('#message').textContent = text; };
 async function request(path, body) {
   const options = body && { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
   const response = await fetch('/api/' + path, options);
+  // Sem o cookie de acesso, mostra como entrar em vez de uma tela vazia.
+  if (response.status === 401) $('#locked').hidden = false;
   const data = await response.json();
   if (!response.ok) throw new Error(data.error);
   return data;
 }
 async function refresh() {
-  const { configured, connections } = await request('connections');
-  $('#config').textContent = configured ? 'Credenciais presentes no servidor.' : 'Credenciais pendentes.';
+  const { configured, connections, protection, credentialsError } = await request('connections');
+  const protections = {
+    'systemd-creds': 'lacradas pelo sistema (systemd-creds, presas a este usuário e, com TPM, a este computador)',
+    dpapi: 'protegidas pelo cofre do Windows (DPAPI) do seu usuário',
+  };
+  $('#config').textContent = credentialsError || (configured
+    ? 'Credenciais salvas, ' + (protections[protection] || 'em arquivo que só o seu usuário consegue ler') + '.'
+    : 'Credenciais pendentes.');
   $('#hint').textContent = !configured ? 'Abra Configuração para habilitar a conexão via Pluggy. O Guia, no menu, mostra o passo a passo.' : connections.length ? '' : 'Nenhuma instituição vinculada ao Moneta. A sincronização começa após o vínculo.';
   $('#connect').disabled = !configured;
   $('#sync').disabled = !configured || !connections.length;
