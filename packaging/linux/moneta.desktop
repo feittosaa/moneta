@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Moneta
+GenericName=Finanças pessoais
+Comment=Painel de finanças pessoais que roda no seu computador
+Exec=moneta
+Icon=moneta
+Terminal=false
+Categories=Office;Finance;
+X-AppImage-Version=@VERSION@

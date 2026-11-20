@@ -1,13 +1,52 @@
-import { fork } from 'node:child_process';
+import { fork, spawn } from 'node:child_process';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
+// --desktop: modo dos instaladores (AppImage e Windows). Guarda os dados na pasta do usuário,
+// abre o navegador ao iniciar e, se o Moneta já estiver aberto, só abre o navegador.
+const desktop = process.argv.includes('--desktop');
+const port = Number(process.env.PORT || 4173);
+const url = 'http://127.0.0.1:' + port;
+if (desktop) {
+  process.title = 'Moneta';
+  process.env.MONETA_DESKTOP = '1';
+  process.env.MONETA_DATA_DIR ||= process.platform === 'win32'
+    ? join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'Moneta')
+    : join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'moneta');
+}
+
+function openBrowser() {
+  const [command, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+    : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+  try {
+    const opener = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true });
+    opener.on('error', () => console.log('Abra ' + url + ' no navegador.'));
+    opener.unref();
+  } catch { console.log('Abra ' + url + ' no navegador.'); }
+}
+
+async function running() {
+  try {
+    const response = await fetch(url + '/api/status', { signal: AbortSignal.timeout(1500) });
+    return response.ok && Boolean((await response.json()).instance);
+  } catch { return false; }
+}
 
 let child;
 let stopping = false;
+let opened = false;
 
 function start() {
   child = fork(new URL('./backend.mjs', import.meta.url), [], { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
   let restarting = false;
   child.on('message', message => {
     if (message === 'restart') restarting = true;
+    if (message === 'shutdown') stopping = true;
+    if (message === 'ready' && desktop && !opened) {
+      opened = true;
+      console.log('Para encerrar, feche esta janela ou use Configuração → Encerrar o Moneta.');
+      openBrowser();
+    }
   });
   child.once('exit', (code, signal) => {
     if (restarting && !stopping && code === 0) start();
@@ -18,7 +57,10 @@ function start() {
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     stopping = true;
-    child.kill(signal);
+    child?.kill(signal);
   });
 }
-start();
+if (desktop && await running()) {
+  console.log('O Moneta já está aberto em ' + url + '.');
+  openBrowser();
+} else start();

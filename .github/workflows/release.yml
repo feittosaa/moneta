@@ -1,0 +1,39 @@
+# Ao enviar uma tag de versão (por exemplo 1.0.0), roda os testes, gera o AppImage e o
+# instalador do Windows e publica tudo numa release do GitHub.
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Testes
+        run: node --test test/*.test.mjs
+
+      - name: Ferramentas de empacotamento
+        run: sudo apt-get update && sudo apt-get install -y nsis
+
+      - name: Instaladores
+        run: packaging/build.sh "$GITHUB_REF_NAME"
+
+      - name: Publicar a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="packaging/notas/${GITHUB_REF_NAME#v}.md"
+          if [ -f "$notes" ]; then set -- --notes-file "$notes"; else set -- --generate-notes; fi
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Moneta ${GITHUB_REF_NAME#v}" "$@"

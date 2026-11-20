@@ -1,0 +1,4 @@
+#!/bin/sh
+# Inicia o Moneta com o Node.js que vem dentro do AppImage.
+here="$(dirname "$(readlink -f "$0")")"
+exec "$here/usr/bin/node" --disable-warning=ExperimentalWarning "$here/usr/lib/moneta/server.mjs" --desktop "$@"
