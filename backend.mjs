@@ -50,7 +50,7 @@ function saveCredentials(pair) {
   credentialsFromEnv = false;
 }
 
-// Chave de acesso da instalação. Quem abre o Moneta pelo atalho recebe um cookie com ela; sem o
+// Chave de acesso da instalação. Quem abre a Moneta pelo atalho recebe um cookie com ela; sem o
 // cookie, a API não responde. Isso fecha a porta para outros usuários do computador e para
 // processos que não conseguem ler a pasta de dados.
 const accessFile = join(dataDir, 'acesso.key');
@@ -63,7 +63,7 @@ if (!/^[A-Za-z0-9_-]{43}$/.test(accessKey ?? '')) {
 const digest = value => createHash('sha256').update(String(value)).digest();
 const sameKey = value => timingSafeEqual(digest(value), digest(accessKey));
 const cookieName = 'moneta_acesso';
-// Programas locais (a janela nativa do Moneta, a Ayla) mandam a mesma chave em
+// Programas locais (a janela nativa da Moneta, a Ayla) mandam a mesma chave em
 // Authorization: Bearer. Um site não consegue enviar esse cabeçalho para cá sem CORS, que o
 // Moneta não libera, então isso não abre caminho para CSRF.
 function authorized(req) {
@@ -76,8 +76,8 @@ function authorized(req) {
 
 // Cofre do banco (vault.mjs): o SQLite roda na memória e o disco só guarda moneta.cofre, cifrado com
 // AES-256-GCM. A chave fica lacrada pelo sistema, como as credenciais. Sem a chave (TPM resetado,
-// outro computador), o Moneta sobe trancado e pede a chave de recuperação.
-// No modo cofre, a chave também depende de uma senha: o Moneta sobe trancado, pede a senha e
+// outro computador), a Moneta sobe trancada e pede a chave de recuperação.
+// No modo cofre, a chave também depende de uma senha: a Moneta sobe trancada, pede a senha e
 // tranca de novo depois de um tempo sem uso.
 const vaultSecret = createSecret(dataDir, { name: 'moneta-banco', base: 'banco' });
 const passwordStore = createSecret(dataDir, { name: 'moneta-banco-senha', base: 'banco-senha' });
@@ -105,7 +105,7 @@ function persist() {
   if (vault) vault.persist();
 }
 if (passwordStore.exists()) {
-  locked = 'O Moneta está trancado. Digite a senha.';
+  locked = 'A Moneta está trancada. Digite a senha.';
   lockReason = 'senha';
   openDatabase(null);
 } else {
@@ -205,7 +205,7 @@ backupTimer.unref();
 // senha; assim nada do banco aberto fica na memória.
 const idleTimer = setInterval(() => {
   if (!unlockedWith || locked || restarting || Date.now() - lastActivity < idleMinutes() * 60_000) return;
-  console.log('Moneta trancado depois de ' + idleMinutes() + ' minutos sem uso.');
+  console.log('Moneta trancada depois de ' + idleMinutes() + ' minutos sem uso.');
   stop('restart');
 }, 30_000);
 idleTimer.unref();
@@ -275,7 +275,7 @@ const server = http.createServer(async (req, res) => {
     if (!['localhost:' + port, '127.0.0.1:' + port].includes(host)) fail(403, 'Host inválido.');
     const allowed = authorized(req);
     if (req.method === 'GET' && req.url === '/api/status') {
-      // Público só o necessário para o atalho saber se o Moneta já está aberto.
+      // Público só o necessário para o atalho saber se a Moneta já está aberta.
       // api: versão do contrato com programas locais (docs/integracao.md).
       if (!allowed) return json(200, {api:1,instance,desktop,locked:Boolean(locked),lock:lockReason});
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
@@ -284,7 +284,7 @@ const server = http.createServer(async (req, res) => {
     // Entrada pelo atalho: troca a chave da URL por um cookie e tira a chave do endereço.
     const entry = req.method === 'GET' && /^\/entrar\?chave=([A-Za-z0-9_-]{1,100})$/.exec(req.url);
     if (entry) {
-      if (!sameKey(entry[1])) fail(403, 'Chave de acesso inválida. Abra o Moneta pelo atalho.');
+      if (!sameKey(entry[1])) fail(403, 'Chave de acesso inválida. Abra a Moneta pelo atalho.');
       res.writeHead(303, {
         'Set-Cookie': `${cookieName}=${accessKey}; Path=/; HttpOnly; SameSite=Strict; Max-Age=34560000`,
         'Location': '/', 'Cache-Control': 'no-store',
@@ -308,9 +308,9 @@ const server = http.createServer(async (req, res) => {
       res.end(readFileSync(new URL('public/' + file, import.meta.url)));
       return;
     }
-    if (req.url.startsWith('/api/') && !allowed) fail(401, 'Acesso não autorizado. Abra o Moneta pelo atalho do menu ou pelo comando moneta.');
+    if (req.url.startsWith('/api/') && !allowed) fail(401, 'Acesso não autorizado. Abra a Moneta pelo atalho do menu ou pelo comando moneta.');
     if (locked && req.url.startsWith('/api/') && !['/api/recovery', '/api/restart', '/api/shutdown', '/api/unlock'].includes(req.url)) {
-      fail(423, lockReason === 'senha' ? 'O Moneta está trancado. Digite a senha.' : 'O cofre do banco está trancado. Informe a chave de recuperação.');
+      fail(423, lockReason === 'senha' ? 'A Moneta está trancada. Digite a senha.' : 'O cofre do banco está trancado. Informe a chave de recuperação.');
     }
     lastActivity = Date.now();
     if (req.method === 'GET' && req.url === '/api/vault') {
@@ -402,7 +402,7 @@ const server = http.createServer(async (req, res) => {
       return json(200, { ok: true });
     }
     if (req.url === '/api/unlock') {
-      if (lockReason !== 'senha') fail(409, 'O Moneta não está trancado por senha.');
+      if (lockReason !== 'senha') fail(409, 'A Moneta não está trancada por senha.');
       if (Date.now() < retryAt) fail(429, 'Muitas tentativas. Espere ' + Math.ceil((retryAt - Date.now()) / 1000) + ' segundos.');
       const secret = passwordSecret(passwordStore, password);
       let opened;
@@ -448,7 +448,7 @@ const server = http.createServer(async (req, res) => {
       req.url = '/api/restart';
     }
     if (req.url === '/api/recovery') {
-      if (!locked) fail(409, 'O cofre já está aberto.');
+      if (!locked) fail(409, 'O cofre já está aberta.');
       try { recoverVault(dataDir, vaultSecret, body.code); }
       catch (error) { fail(400, error.code === 'BAD_KEY' ? 'Essa chave de recuperação não abre este cofre.' : error.message); }
       // A chave de recuperação substitui a senha: o modo cofre desliga e pode ser ligado de novo.

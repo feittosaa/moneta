@@ -1,5 +1,5 @@
 #!/bin/sh
-# Inicia o Moneta com o Node.js que vem dentro do AppImage.
+# Inicia a Moneta com o Node.js que vem dentro do AppImage.
 # Sem argumentos (menu, barra de tarefas, comando moneta): abre a janela nativa, que usa o servidor
 # já ligado (por exemplo, o serviço do systemd) ou sobe um. Se o sistema não tiver o WebKitGTK que a
 # janela usa, abre no navegador, como antes. Com argumentos (--background do serviço), só o servidor.

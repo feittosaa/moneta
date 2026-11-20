@@ -1,10 +1,10 @@
-# Guia de conexão: seus bancos no Moneta
+# Guia de conexão: seus bancos na Moneta
 
-Este guia leva você do zero até ver suas contas no Moneta, sem precisar saber programar. Reserve uns 15 minutos e siga as etapas na ordem.
+Este guia leva você do zero até ver suas contas na Moneta, sem precisar saber programar. Reserve uns 15 minutos e siga as etapas na ordem.
 
-O Moneta não entra no seu banco. Quem faz essa ponte é a **Pluggy**, uma empresa de Open Finance, o sistema oficial do Banco Central para compartilhar dados bancários com a sua autorização. O caminho tem três partes:
+A Moneta não entra no seu banco. Quem faz essa ponte é a **Pluggy**, uma empresa de Open Finance, o sistema oficial do Banco Central para compartilhar dados bancários com a sua autorização. O caminho tem três partes:
 
-![Seus bancos se conectam ao Meu Pluggy, o painel da Pluggy cria as chaves e o Moneta usa as chaves para ler os dados](fluxo.svg)
+![Seus bancos se conectam ao Meu Pluggy, o painel da Pluggy cria as chaves e a Moneta usa as chaves para ler os dados](fluxo.svg)
 
 1. **Meu Pluggy**: onde você conecta seus bancos.
 2. **Painel da Pluggy**: onde você cria duas chaves de acesso, o **Client ID** e o **Client Secret**.
@@ -14,7 +14,7 @@ O Moneta não entra no seu banco. Quem faz essa ponte é a **Pluggy**, uma empre
 
 - Um e-mail que você consiga abrir. Use **o mesmo e-mail** no Meu Pluggy e no painel da Pluggy.
 - Seu CPF e o aplicativo de cada banco no celular, para aprovar o compartilhamento.
-- O Moneta instalado e aberto. Se ainda não instalou, siga a seção [Instalação do README](https://github.com/feittosaa/moneta#instalação): no Linux é um comando e no Windows, um instalador.
+- A Moneta instalada e aberta. Se ainda não instalou, siga a seção [Instalação do README](https://github.com/feittosaa/moneta#instalação): no Linux é um comando e no Windows, um instalador.
 
 > **Custa alguma coisa?** Não. Para ler os seus próprios dados pelo Meu Pluggy, a Pluggy não cobra e não pede análise de empresa. O limite é de 5 conexões, só para uso pessoal, sem uso comercial.
 
@@ -24,11 +24,11 @@ O Moneta não entra no seu banco. Quem faz essa ponte é a **Pluggy**, uma empre
 2. Confirme o e-mail, se for pedido, e entre na sua conta.
 3. Clique no botão principal para conectar uma conta e busque o seu banco pelo nome.
 4. Informe o CPF quando for pedido. Você vai para o aplicativo ou site do banco, que mostra quais dados serão compartilhados. Confira e aprove.
-5. Ao voltar para o Meu Pluggy, o banco aparece na lista. Repita os passos 3 e 4 para cada banco que quiser ver no Moneta.
+5. Ao voltar para o Meu Pluggy, o banco aparece na lista. Repita os passos 3 e 4 para cada banco que quiser ver na Moneta.
 
 ![Tela do Meu Pluggy com o botão para conectar uma conta e a lista de bancos conectados](meu-pluggy.svg)
 
-> O Meu Pluggy atualiza os dados de cada banco uma vez por dia. Por isso uma compra de hoje pode aparecer no Moneta só amanhã.
+> O Meu Pluggy atualiza os dados de cada banco uma vez por dia. Por isso uma compra de hoje pode aparecer na Moneta só amanhã.
 
 ## Etapa 2: crie sua conta no painel da Pluggy
 
@@ -50,7 +50,7 @@ O conector é a opção que aparece na janela de conexão. Esta etapa garante qu
 
 ## Etapa 4: crie uma aplicação e copie as chaves
 
-A aplicação representa o Moneta dentro da Pluggy. É ela que recebe o Client ID e o Client Secret.
+A aplicação representa a Moneta dentro da Pluggy. É ela que recebe o Client ID e o Client Secret.
 
 1. No menu à esquerda, abra **Applications** e crie uma aplicação. Dê o nome que quiser, por exemplo `Moneta`. Se o painel perguntar o tipo, escolha a de desenvolvimento (**Development**).
 2. Logo depois de criar, o painel mostra o **Client Secret**. **Ele aparece uma única vez.** Copie e guarde num lugar seguro, como um gerenciador de senhas, antes de fechar a janela.
@@ -58,41 +58,41 @@ A aplicação representa o Moneta dentro da Pluggy. É ela que recebe o Client I
 
 ![Tela de aplicações com o Client ID na linha da aplicação e o Client Secret exibido uma única vez](credenciais.svg)
 
-> **Perdeu o Client Secret?** Abra a página da aplicação e clique em **Generate new secret**. O segredo anterior para de funcionar na mesma hora, então cole o novo no Moneta (Etapa 5).
+> **Perdeu o Client Secret?** Abra a página da aplicação e clique em **Generate new secret**. O segredo anterior para de funcionar na mesma hora, então cole o novo na Moneta (Etapa 5).
 
 > Trate o Client Secret como uma senha. Com ele e o Client ID, alguém pode ler os dados que você conectou. Não mande por mensagem nem publique em lugar nenhum.
 
-## Etapa 5: cole as chaves no Moneta
+## Etapa 5: cole as chaves na Moneta
 
-1. Cole o **Client ID** e o **Client Secret** nos campos com esses nomes. Lendo este guia dentro do Moneta, os campos estão logo abaixo, sem sair daqui. Eles também ficam em **Configuração**, na seção **Credenciais Pluggy**.
-2. Clique em **Validar e salvar**. O Moneta confere as chaves com a Pluggy e mostra a mensagem "Credenciais salvas. Você já pode conectar uma instituição."
+1. Cole o **Client ID** e o **Client Secret** nos campos com esses nomes. Lendo este guia dentro da Moneta, os campos estão logo abaixo, sem sair daqui. Eles também ficam em **Configuração**, na seção **Credenciais Pluggy**.
+2. Clique em **Validar e salvar**. A Moneta confere as chaves com a Pluggy e mostra a mensagem "Credenciais salvas. Você já pode conectar uma instituição."
 3. Depois de salvar, clique em **Ir para Conexões** e siga a Etapa 6.
 
 <!-- moneta:credenciais -->
 
-![Página Configuração do Moneta com os campos Client ID e Client Secret e o botão Validar e salvar](moneta-configuracao.png)
+![Página Configuração da Moneta com os campos Client ID e Client Secret e o botão Validar e salvar](moneta-configuracao.png)
 
 > As chaves ficam guardadas só no seu computador, lacradas pelo sistema: no Linux com o `systemd-creds` (preso ao seu usuário e, com TPM, a este computador) e no Windows com o cofre do usuário. A página Configuração mostra qual proteção está em uso.
 
-## Etapa 6: conecte o Meu Pluggy no Moneta
+## Etapa 6: conecte o Meu Pluggy na Moneta
 
 1. Abra **Conexões** e clique em **Conectar instituição**. Abre a janela de conexão da Pluggy.
 2. Na busca, digite `MeuPluggy` e escolha **MeuPluggy**. Não escolha o seu banco diretamente: os bancos já estão conectados no Meu Pluggy.
 3. Entre com a sua conta do Meu Pluggy e autorize o acesso.
-4. A janela fecha sozinha. O Moneta salva a conexão e faz a primeira sincronização.
+4. A janela fecha sozinha. A Moneta salva a conexão e faz a primeira sincronização.
 5. A autorização é feita banco por banco. Se algum banco do Meu Pluggy não aparecer, clique em **Conectar instituição** de novo e repita, escolhendo o banco que faltou.
 
-![Janela de conexão aberta pelo Moneta, com MeuPluggy escolhido em vez do banco direto](widget.svg)
+![Janela de conexão aberta pela Moneta, com MeuPluggy escolhido em vez do banco direto](widget.svg)
 
-> **Na primeira conexão, tenha paciência.** A Pluggy leva um tempo para buscar todo o histórico: pode demorar de alguns minutos a algumas horas até todas as transações chegarem. O Moneta sincroniza sozinho a cada 6 horas, e você pode clicar em **Sincronizar** mais tarde para trazer o que faltou.
+> **Na primeira conexão, tenha paciência.** A Pluggy leva um tempo para buscar todo o histórico: pode demorar de alguns minutos a algumas horas até todas as transações chegarem. A Moneta sincroniza sozinha a cada 6 horas, e você pode clicar em **Sincronizar** mais tarde para trazer o que faltou.
 
 Quando der certo, a instituição aparece na lista de **Conexões** e os saldos e lançamentos aparecem na **Visão geral**.
 
-![Página Conexões do Moneta com o botão Conectar instituição e as instituições conectadas](moneta-conexoes.png)
+![Página Conexões da Moneta com o botão Conectar instituição e as instituições conectadas](moneta-conexoes.png)
 
 ## Pronto: como os dados se atualizam
 
-- Com o Moneta ligado, ele busca os dados novos sozinho a cada 6 horas.
+- Com a Moneta ligada, ela busca os dados novos sozinha a cada 6 horas.
 - Para buscar na hora, clique em **Sincronizar**, no canto superior direito.
 - O Meu Pluggy atualiza cada banco uma vez por dia. Clicar em **Sincronizar** traz o que o Meu Pluggy já tem, mas não força o banco a atualizar.
 
@@ -100,7 +100,7 @@ Quando der certo, a instituição aparece na lista de **Conexões** e os saldos 
 
 ### "A Pluggy recusou a solicitação. Verifique suas credenciais"
 
-O Client ID ou o Client Secret não confere. Copie de novo os dois, sem espaços no começo ou no fim. Se não tiver mais o Client Secret, gere um novo (Etapa 4) e cole no Moneta.
+O Client ID ou o Client Secret não confere. Copie de novo os dois, sem espaços no começo ou no fim. Se não tiver mais o Client Secret, gere um novo (Etapa 4) e cole na Moneta.
 
 ### O botão "Conectar instituição" está desativado
 
@@ -116,18 +116,18 @@ Você escolheu o banco diretamente, e não o MeuPluggy. Feche a janela, clique e
 
 ### A janela de conexão não abre
 
-A janela vem da internet, do site da Pluggy. Confira a conexão e desative bloqueadores de anúncios ou de scripts para o endereço do Moneta.
+A janela vem da internet, do site da Pluggy. Confira a conexão e desative bloqueadores de anúncios ou de scripts para o endereço da Moneta.
 
 ### Os dados pararam de atualizar
 
 - Confira no [Meu Pluggy](https://meu.pluggy.ai) se o banco continua conectado. A autorização do Open Finance com o banco tem prazo e às vezes precisa ser renovada por lá.
-- A autorização que o Moneta recebe do Meu Pluggy vale por um ano. Quando vencer, repita a Etapa 6.
+- A autorização que a Moneta recebe do Meu Pluggy vale por um ano. Quando vencer, repita a Etapa 6.
 
 ## Privacidade
 
-- O Moneta guarda tudo no seu computador. A única saída de dados é a conversa com a Pluggy.
+- A Moneta guarda tudo no seu computador. A única saída de dados é a conversa com a Pluggy.
 - No Meu Pluggy você vê e pode cancelar, a qualquer momento, cada compartilhamento que autorizou.
-- Ao excluir a conta do Meu Pluggy, o acesso do Moneta acaba na hora.
+- Ao excluir a conta do Meu Pluggy, o acesso da Moneta acaba na hora.
 
 ## Referências oficiais
 

@@ -118,7 +118,7 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
   const again = await (await fetch(base + '/api/finance', { headers: { Cookie: session } })).json();
   assert.equal(again.currency, 'USD', 'moeda gravada antes do reinício');
 
-  // Sem a chave do cofre, o Moneta sobe trancado e só a chave de recuperação abre.
+  // Sem a chave do cofre, a Moneta sobe trancada e só a chave de recuperação abre.
   server.kill('SIGTERM');
   await new Promise(resolve => server.once('exit', resolve));
   rmSync(join(dir, 'banco.key'));

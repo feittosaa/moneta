@@ -89,7 +89,7 @@ export function seal(dump, key) {
 }
 
 export function unseal(data, key) {
-  if (data.length < HEADER + NONCE + TAG || !data.subarray(0, MAGIC.length).equals(MAGIC)) throw new Error('O arquivo não é um cofre do Moneta.');
+  if (data.length < HEADER + NONCE + TAG || !data.subarray(0, MAGIC.length).equals(MAGIC)) throw new Error('O arquivo não é um cofre da Moneta.');
   if (data[MAGIC.length] !== VERSION) throw new Error('Versão de cofre desconhecida.');
   const decipher = createDecipheriv('aes-256-gcm', key, data.subarray(HEADER, HEADER + NONCE));
   decipher.setAAD(data.subarray(0, HEADER));
@@ -147,7 +147,7 @@ export function sealBackup({ manifest, dump }, key) {
 }
 export function backupHeader(data) {
   if (!Buffer.isBuffer(data) || data.length < BACKUP_MAGIC.length + 3 || !data.subarray(0, BACKUP_MAGIC.length).equals(BACKUP_MAGIC)) {
-    throw new Error('O arquivo não é um backup do Moneta.');
+    throw new Error('O arquivo não é um backup da Moneta.');
   }
   if (data[BACKUP_MAGIC.length] !== VERSION) throw new Error('Versão de backup desconhecida.');
   const size = data.readUInt16BE(BACKUP_MAGIC.length + 1);

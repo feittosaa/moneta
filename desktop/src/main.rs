@@ -1,9 +1,9 @@
-// Moneta desktop: janela nativa (Tauri) sobre o servidor local do Moneta.
+// Moneta desktop: janela nativa (Tauri) sobre o servidor local da Moneta.
 //
 // - Sobe o servidor Node.js escondido (no Windows, sem janela de terminal) ou usa o que já estiver
 //   rodando, por exemplo o serviço do systemd no Linux.
 // - Abre o painel já autorizado pela chave de acesso, numa janela própria em vez do navegador.
-// - No Windows, fechar a janela deixa o Moneta na bandeja, sincronizando; "Encerrar" grava o cofre
+// - No Windows, fechar a janela deixa a Moneta na bandeja, sincronizando; "Encerrar" grava o cofre
 //   e desliga o servidor.
 // - Só uma instância: abrir de novo (pelo menu, por atalho ou pela Ayla) mostra a janela existente.
 //
@@ -110,8 +110,8 @@ fn start_server(app: &AppHandle) -> Result<(), String> {
     if running() {
         return Ok(());
     }
-    let mut command = server_command().ok_or("Não encontrei o servidor do Moneta.")?;
-    let child = command.spawn().map_err(|error| format!("Não foi possível iniciar o servidor do Moneta: {error}"))?;
+    let mut command = server_command().ok_or("Não encontrei o servidor da Moneta.")?;
+    let child = command.spawn().map_err(|error| format!("Não foi possível iniciar o servidor da Moneta: {error}"))?;
     app.state::<Server>().0.lock().unwrap().replace(child);
     let started = Instant::now();
     while started.elapsed() < Duration::from_secs(60) {
@@ -119,14 +119,14 @@ fn start_server(app: &AppHandle) -> Result<(), String> {
             return Ok(());
         }
         if let Some(status) = app.state::<Server>().0.lock().unwrap().as_mut().and_then(|c| c.try_wait().ok().flatten()) {
-            return Err(format!("O servidor do Moneta parou ao iniciar ({status})."));
+            return Err(format!("O servidor da Moneta parou ao iniciar ({status})."));
         }
         std::thread::sleep(Duration::from_millis(200));
     }
-    Err("O servidor do Moneta não respondeu a tempo.".into())
+    Err("O servidor da Moneta não respondeu a tempo.".into())
 }
 
-// Servidor iniciado por esta janela: quando ele termina (por "Encerrar o Moneta" na página ou pela
+// Servidor iniciado por esta janela: quando ele termina (por "Encerrar a Moneta" na página ou pela
 // bandeja), a janela também fecha. Com o serviço do systemd, a janela espera um pouco antes de fechar:
 // numa atualização pelo app o serviço reinicia, e a página recarrega sozinha na versão nova.
 fn watch_server(app: AppHandle) {
@@ -248,8 +248,8 @@ fn shutdown(app: &AppHandle) {
 fn tray(app: &AppHandle) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-    let open = MenuItem::with_id(app, "abrir", "Abrir o Moneta", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "encerrar", "Encerrar o Moneta", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "abrir", "Abrir a Moneta", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "encerrar", "Encerrar a Moneta", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &quit])?;
     TrayIconBuilder::with_id("moneta")
         .icon(app.default_window_icon().cloned().expect("ícone do app"))
@@ -300,7 +300,7 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // No Windows, fechar só esconde: o Moneta continua na bandeja, sincronizando.
+            // No Windows, fechar só esconde: a Moneta continua na bandeja, sincronizando.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if cfg!(windows) {
                     api.prevent_close();
@@ -309,7 +309,7 @@ fn main() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("erro ao iniciar o Moneta")
+        .expect("erro ao iniciar a Moneta")
         .run(|_, _| {});
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gera os instaladores do Moneta em dist/: AppImage para Linux e instalador .exe para Windows.
+# Gera os instaladores da Moneta em dist/: AppImage para Linux e instalador .exe para Windows.
 # Os dois levam o Node.js junto, então quem instala não precisa de nada além do navegador.
 # Uso: packaging/build.sh 1.0.0   (precisa de curl, xz, unzip, makensis e sha256sum)
 set -euo pipefail

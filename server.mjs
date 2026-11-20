@@ -3,11 +3,11 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 
-// Tudo o que o Moneta cria (banco, credenciais, chave de acesso) nasce visível só para o dono.
+// Tudo o que a Moneta cria (banco, credenciais, chave de acesso) nasce visível só para o dono.
 process.umask(0o077);
 
 // --desktop: modo dos instaladores (AppImage e Windows). Guarda os dados na pasta do usuário,
-// abre o navegador ao iniciar e, se o Moneta já estiver aberto, só abre o navegador.
+// abre o navegador ao iniciar e, se a Moneta já estiver aberta, só abre o navegador.
 // --background: igual, mas sem abrir o navegador; é o modo do serviço que inicia com o sistema.
 const background = process.argv.includes('--background');
 const desktop = background || process.argv.includes('--desktop');
@@ -53,7 +53,7 @@ function start() {
     if (message === 'shutdown') stopping = true;
     if (message === 'ready' && desktop && !background && !opened) {
       opened = true;
-      console.log('Para encerrar, feche esta janela ou use Configuração → Encerrar o Moneta.');
+      console.log('Para encerrar, feche esta janela ou use Configuração → Encerrar a Moneta.');
       openBrowser();
     }
   });
@@ -70,6 +70,6 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   });
 }
 if (desktop && await running()) {
-  console.log('O Moneta já está aberto em ' + url + '.');
+  console.log('A Moneta já está aberta em ' + url + '.');
   if (!background) openBrowser();
 } else start();

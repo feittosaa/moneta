@@ -92,15 +92,15 @@
 <div id="vault-pending" class="vault-alert" hidden><p><strong>Anote a chave de recuperação.</strong> Sem ela, se o TPM do computador for apagado (numa atualização de BIOS, por exemplo) ou se você trocar de computador, não há como abrir o banco. Guarde num gerenciador de senhas ou no papel, longe do computador.</p><button type="button" id="vault-show">Mostrar chave de recuperação</button></div>
 <div id="vault-code" class="vault-alert" hidden><p>Chave de recuperação:</p><code id="vault-code-text"></code><div class="dialog-actions"><button type="button" id="vault-copy">Copiar</button><button type="button" id="vault-confirm">Já guardei num lugar seguro</button></div></div>
 <button type="button" id="vault-rotate">Gerar nova chave de recuperação</button>
-<h2>Backups</h2><p>O Moneta guarda sozinho um backup por dia dos últimos 7 dias, cifrado e testado logo depois de criado. Para não perder nada se o computador quebrar, baixe um backup de vez em quando e guarde fora dele (num pen drive ou na nuvem). Ele abre com a chave de recuperação que valia no dia em que foi feito.</p>
+<h2>Backups</h2><p>A Moneta guarda sozinha um backup por dia dos últimos 7 dias, cifrado e testado logo depois de criado. Para não perder nada se o computador quebrar, baixe um backup de vez em quando e guarde fora dele (num pen drive ou na nuvem). Ele abre com a chave de recuperação que valia no dia em que foi feito.</p>
 <button type="button" id="backup-download">Baixar backup agora</button>
 <ul id="backup-list" class="backup-list"></ul>
 <form id="backup-restore" class="backup-restore"><label>Restaurar de um arquivo<input type="file" name="file" accept=".monetabackup" required></label><label id="backup-code" hidden>Chave de recuperação da época do backup<input name="code" autocomplete="off" spellcheck="false" placeholder="MONETA-XXXXX-XXXXX-…"></label><button>Restaurar</button></form>
 <h2>Modo cofre</h2><p id="password-status"></p>
-<form id="password-on" class="password-form"><label>Senha do Moneta<input type="password" name="password" required minlength="8" autocomplete="new-password"></label><label>Repita a senha<input type="password" name="repeat" required minlength="8" autocomplete="new-password"></label><label>Trancar depois de<select name="idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button>Ligar modo cofre</button></form>
+<form id="password-on" class="password-form"><label>Senha da Moneta<input type="password" name="password" required minlength="8" autocomplete="new-password"></label><label>Repita a senha<input type="password" name="repeat" required minlength="8" autocomplete="new-password"></label><label>Trancar depois de<select name="idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button>Ligar modo cofre</button></form>
 <div id="password-settings" hidden><div class="password-form"><label>Trancar depois de<select id="password-idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button type="button" id="password-lock">Trancar agora</button></div>
 <form id="password-off" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button>Desligar modo cofre</button></form></div>
-<h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button> <button id="shutdown" type="button" hidden>Encerrar o Moneta</button></section>
+<h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button> <button id="shutdown" type="button" hidden>Encerrar a Moneta</button></section>
 <section id="guia" hidden><article id="guide" class="guide"></article></section>
 <p id="message" role="status"></p></main>
 <div id="recovery" hidden><form class="locked-card" id="recovery-form" aria-labelledby="recovery-title">
@@ -109,12 +109,12 @@
 <label>Chave de recuperação<input name="code" required autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="MONETA-XXXXX-XXXXX-…"></label>
 <p id="recovery-error" role="alert"></p><button>Abrir o cofre</button></form></div>
 <div id="unlock" hidden><form class="locked-card" id="unlock-form" aria-labelledby="unlock-title">
-<img src="/logo.png" alt="" width="56" height="56"><h2 id="unlock-title">O Moneta está trancado</h2>
-<p>O modo cofre está ligado. Digite a senha do Moneta para abrir o banco.</p>
+<img src="/logo.png" alt="" width="56" height="56"><h2 id="unlock-title">A Moneta está trancada</h2>
+<p>O modo cofre está ligado. Digite a senha da Moneta para abrir o banco.</p>
 <label>Senha<input type="password" name="password" required autocomplete="current-password"></label>
 <p id="unlock-error" role="alert"></p><button>Destrancar</button>
 <button type="button" id="unlock-forgot" class="link-button">Esqueci a senha</button></form></div>
 <div id="locked" hidden><div class="locked-card" role="alertdialog" aria-labelledby="locked-title" aria-describedby="locked-text">
-<img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso ao Moneta</h2>
-<p id="locked-text">Abra o Moneta pelo menu de aplicativos, ou rode <code>moneta</code> no terminal. Ele abre o navegador já com o acesso liberado, e depois disso este endereço passa a funcionar direto.</p>
-<p class="locked-hint">Usa o Moneta pelo Docker? O endereço de entrada aparece no log: <code>docker compose logs moneta</code>.</p></div></div><script type="module" src="/app.js"></script></body></html>
+<img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso à Moneta</h2>
+<p id="locked-text">Abra a Moneta pelo menu de aplicativos, ou rode <code>moneta</code> no terminal. Ela abre o navegador já com o acesso liberado, e depois disso este endereço passa a funcionar direto.</p>
+<p class="locked-hint">Usa a Moneta pelo Docker? O endereço de entrada aparece no log: <code>docker compose logs moneta</code>.</p></div></div><script type="module" src="/app.js"></script></body></html>
