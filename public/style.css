@@ -146,7 +146,11 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 .rule-actions { display:flex; gap:6px }
 
 #period #current-month { font-size:14px; padding-inline:12px }
-#month-metrics article:last-child span::before { background:var(--muted) }
+#month-metrics article:nth-child(3) span::before { background:var(--muted) }
+#month-metrics .metrics.with-invoice { grid-template-columns:repeat(4,minmax(0,1fr)) }
+#month-metrics .invoice-metric span::before { background:var(--invoice) }
+#month-metrics .invoice-metric strong { color:var(--invoice-ink) }
+@media(max-width:900px) { #month-metrics .metrics.with-invoice { grid-template-columns:repeat(2,minmax(0,1fr)) } }
 .expense-detail { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 5px; margin-top:6px; font-size:12px; color:var(--muted) }
 .expense-detail b { font-weight:500; color:var(--expense-ink); overflow-wrap:anywhere }
 .expense-detail em { font-style:normal; display:inline-flex; align-items:baseline; gap:5px; white-space:nowrap }
