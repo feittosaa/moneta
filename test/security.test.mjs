@@ -55,7 +55,7 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
 
   // Sem cookie: status mínimo e API fechada.
   const status = await (await fetch(base + '/api/status')).json();
-  assert.deepEqual(Object.keys(status).sort(), ['desktop', 'instance', 'locked']);
+  assert.deepEqual(Object.keys(status).sort(), ['desktop', 'instance', 'lock', 'locked']);
   assert.equal((await fetch(base + '/api/finance')).status, 401);
   assert.equal((await fetch(base + '/api/connections')).status, 401);
   const anonymousPost = await fetch(base + '/api/settings/currency', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: '{"currency":"USD"}' });
@@ -86,7 +86,7 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
   const finance = await (await fetch(base + '/api/finance', { headers: { Cookie: session } })).json();
   assert.ok(finance.categories.some(c => c.name === 'Categoria Secreta'), 'dados migrados aparecem no app');
   const vaultInfo = await (await fetch(base + '/api/vault', { headers: { Cookie: session } })).json();
-  assert.deepEqual(vaultInfo, { protection: 'arquivo 0600', pending: true });
+  assert.deepEqual({ ...vaultInfo, backups: vaultInfo.backups.length }, { protection: 'arquivo 0600', pending: true, password: false, idle: 15, backups: 1 });
   const post = (path, body = {}) => fetch(base + '/api/' + path, { method: 'POST', headers: { Cookie: session, 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(body) });
   const { code } = await (await post('vault/code')).json();
   assert.match(code, /^MONETA(-[A-Z2-7]{5}){11}$/);
@@ -128,4 +128,79 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
   assert.equal(wrong.status, 400);
   assert.equal((await post('recovery', { code })).status, 202);
   assert.ok(existsSync(join(dir, 'banco.key')), 'chave lacrada de novo depois da recuperação');
+});
+
+test('backup baixado e restaurado; modo cofre tranca e só abre com a senha', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'moneta-cofre-senha-'));
+  const output = { text: '' };
+  const server = start(dir, output);
+  t.after(() => { server.kill(); rmSync(dir, { recursive: true, force: true }); });
+  await ready(output);
+  const key = readFileSync(join(dir, 'acesso.key'), 'utf8');
+  const session = (await fetch(base + '/entrar?chave=' + key, { redirect: 'manual' })).headers.get('set-cookie').split(';')[0];
+  const get = path => fetch(base + '/api/' + path, { headers: { Cookie: session } });
+  const post = (path, body = {}) => fetch(base + '/api/' + path, { method: 'POST', headers: { Cookie: session, 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(body) });
+  const status = async () => (await (await fetch(base + '/api/status')).json());
+  async function restarted(previous) {
+    for (let i = 0; i < 100; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      try { const s = await status(); if (s.instance !== previous) return s; } catch {}
+    }
+    throw new Error('o servidor não voltou');
+  }
+
+  // Backup automático do primeiro início e download.
+  assert.equal((await fetch(base + '/api/backup')).status, 401);
+  const info = await (await get('vault')).json();
+  assert.equal(info.backups.length, 1);
+  assert.equal(info.password, false);
+  await post('categories', { name: 'Antes do backup', color: '#123456', internal: false });
+  const download = await get('backup');
+  assert.equal(download.status, 200);
+  assert.match(download.headers.get('content-disposition'), /attachment; filename="moneta-\d{4}-\d{2}-\d{2}\.monetabackup"/);
+  const file = Buffer.from(await download.arrayBuffer());
+  assert.ok(!file.includes('Antes do backup'));
+
+  // Restauração: primeiro só confere, depois troca e reinicia.
+  await post('categories', { name: 'Depois do backup', color: '#654321', internal: false });
+  const preview = await (await post('backup/restore', { data: file.toString('base64') })).json();
+  assert.ok(preview.manifest.summary.categories > 0);
+  const tampered = Buffer.from(file); tampered[tampered.length - 5] ^= 1;
+  assert.equal((await post('backup/restore', { data: tampered.toString('base64') })).status, 400);
+  const { instance } = await (await post('backup/restore', { data: file.toString('base64'), confirm: true })).json();
+  await restarted(instance);
+  let names = (await (await get('finance')).json()).categories.map(c => c.name);
+  assert.ok(names.includes('Antes do backup') && !names.includes('Depois do backup'));
+  assert.equal((await (await get('vault')).json()).backups.length, 2, 'estado anterior guardado antes de restaurar');
+
+  // Modo cofre: ligar troca a chave e mostra a nova chave de recuperação.
+  assert.equal((await post('vault/password', { password: 'curta', idle: 15 })).status, 400);
+  const { code } = await (await post('vault/password', { password: 'senha do moneta', idle: 15 })).json();
+  assert.match(code, /^MONETA-/);
+  assert.ok(existsSync(join(dir, 'banco-senha.key')) && !existsSync(join(dir, 'banco.key')));
+  const downloaded = await (await post('backup/restore', { data: file.toString('base64') })).json();
+  assert.equal(downloaded.needsCode, true, 'backup antigo pede a chave antiga');
+
+  // Trancar: reinicia pedindo a senha, sem dados.
+  const locking = await (await post('vault/lock')).json();
+  const locked = await restarted(locking.instance);
+  assert.equal(locked.locked, true);
+  assert.equal(locked.lock, 'senha');
+  assert.equal((await get('finance')).status, 423);
+  for (let i = 0; i < 3; i++) assert.equal((await post('unlock', { password: 'errada' })).status, 403);
+  assert.equal((await post('unlock', { password: 'senha do moneta' })).status, 429, 'espera depois de 3 erros');
+  await new Promise(r => setTimeout(r, 2100));
+  assert.equal((await post('unlock', { password: 'senha do moneta' })).status, 200);
+  names = (await (await get('finance')).json()).categories.map(c => c.name);
+  assert.ok(names.includes('Antes do backup'));
+  assert.equal((await status()).locked, false);
+
+  // Esqueci a senha: a chave de recuperação abre e desliga o modo cofre.
+  const again = await (await post('vault/lock')).json();
+  await restarted(again.instance);
+  const recovering = await (await post('recovery', { code })).json();
+  await restarted(recovering.instance);
+  assert.equal((await status()).locked, false);
+  assert.equal((await (await get('vault')).json()).password, false);
+  assert.ok(!existsSync(join(dir, 'banco-senha.key')) && existsSync(join(dir, 'banco.key')));
 });

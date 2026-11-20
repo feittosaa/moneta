@@ -18,6 +18,9 @@ O Moneta guarda dados financeiros e a chave de acesso à Pluggy. Este documento 
 | Arquivo de banco adulterado executando funções ou gatilhos | `PRAGMA trusted_schema = OFF` |
 | Tabelas temporárias de consultas indo parar no disco | Banco só na memória e `PRAGMA temp_store = MEMORY` |
 | Memória do Moneta, com os dados abertos, gravada em disco numa queda | Serviço do systemd com `LimitCORE=0` |
+| Falha no Moneta (ou numa dependência futura) usada para mexer no resto do sistema | Serviço do systemd em sandbox: só escreve na pasta de dados, sem novos privilégios, sem dispositivos, `/tmp` próprio, chamadas de sistema filtradas |
+| Perda do computador, do disco ou um erro que estrague os dados | Backups diários cifrados e testados, e backup para baixar e guardar fora |
+| Programa malicioso rodando com o seu usuário (com o modo cofre ligado e o Moneta trancado) | Chave do cofre cifrada com uma senha (scrypt) além do lacre do sistema; trancamento automático por inatividade |
 
 ## Como funciona o acesso
 
@@ -46,6 +49,37 @@ A chave do cofre em Base32, com 2 bytes de SHA-256 para pegar erros de digitaç�
 
 Se a chave lacrada não abrir (TPM apagado numa atualização de BIOS, dados levados para outro computador), o Moneta sobe trancado e pede a chave de recuperação. Ela abre o cofre e é lacrada de novo no computador atual.
 
+## Backups
+
+O Moneta faz um backup por dia em `backups/`, dentro da pasta de dados, e guarda os 7 mais recentes. Em **Configuração → Backups** dá para baixar um backup na hora e restaurar de um arquivo ou de um dos automáticos.
+
+- **Formato** (`.monetabackup`): `MONETA-BACKUP\0` + versão + cabeçalho JSON legível (só a data e um identificador da chave) + nonce + conteúdo cifrado com AES-256-GCM + tag. Dentro vão o manifesto (data, resumo com contagens e a impressão digital SHA-256 do banco) e o banco inteiro.
+- **Integridade:** o cabeçalho entra como dado autenticado, então a tag do AES-GCM cobre o arquivo inteiro. Ela faz o papel do HMAC do `.mbbackup` do artigo: qualquer byte trocado impede a abertura.
+- **Teste de restauração:** todo backup é aberto e remontado na memória logo depois de criado, e a impressão digital do resultado tem que bater com a do manifesto. Os automáticos são testados de novo depois de gravados, relendo do disco; um arquivo que não passa é apagado.
+- **Chave:** o backup usa a chave do cofre do dia em que foi feito, ou seja, abre com a chave de recuperação que valia naquele dia. Ao gerar uma nova chave de recuperação, os backups automáticos são cifrados de novo com a nova; os baixados continuam abrindo com a antiga, e o Moneta pede essa chave ao restaurar.
+- **Restauração:** o Moneta abre e testa o arquivo, mostra a data e o resumo para você conferir e, só depois da confirmação, guarda um backup automático do estado atual e troca o banco.
+
+## Modo cofre
+
+Opcional, em **Configuração → Modo cofre**. Com ele ligado:
+
+- A chave do cofre é cifrada com uma chave derivada da sua senha (scrypt, N = 2¹⁷, r = 8, 128 MiB por tentativa) e o resultado ainda é lacrado pelo sistema em `banco-senha.cred`. Abrir exige este computador **e** a senha.
+- Ligar troca a chave do cofre. Assim, uma cópia de `banco.cred` feita antes deixa de abrir o banco. A nova chave de recuperação aparece na hora.
+- O Moneta sobe trancado (inclusive o serviço que liga com o sistema) e tranca de novo depois de 5 minutos a 4 horas sem uso. Trancar reinicia o processo, então nada do banco aberto fica na memória. A página recarrega e some com os dados da tela.
+- Depois de 3 senhas erradas, cada nova tentativa espera mais (até 5 minutos).
+- Esqueceu a senha? A chave de recuperação abre o cofre e desliga o modo cofre, que pode ser ligado de novo com outra senha.
+- Enquanto estiver trancado, a sincronização automática fica parada.
+
+A senha é do próprio Moneta, não a do sistema. O artigo usa o Polkit para pedir a senha do sistema, mas o Polkit só autoriza: não gera uma chave, então o banco continuaria abrindo sem a senha para quem conseguisse falar com o lacre. A senha do Moneta participa da cifra, funciona igual no Linux e no Windows e não depende de um agente do Polkit na sessão.
+
+## Serviço do systemd
+
+O comando de instalação extrai o AppImage em `~/.local/lib/moneta`, o que dispensa o FUSE, e o serviço `moneta.service` roda em sandbox:
+
+`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só em `~/.local/share/moneta`, `PrivateTmp`, `PrivateDevices`, `ProtectKernelTunables`, `ProtectKernelModules`, `ProtectKernelLogs`, `ProtectControlGroups`, `ProtectClock`, `ProtectHostname`, `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6`, `RestrictNamespaces`, `RestrictRealtime`, `RestrictSUIDSGID`, `LockPersonality`, `SystemCallArchitectures=native`, `SystemCallFilter=@system-service`, `LimitCORE=0` e `UMask=0077`.
+
+O `systemd-creds` continua funcionando de dentro do sandbox, porque fala com o serviço de credenciais do systemd por um socket local. A nota do `systemd-analyze --user security moneta` é 4,1 (OK). `MemoryDenyWriteExecute` fica de fora porque o JIT do Node.js precisa dele.
+
 ## Credenciais da Pluggy
 
 - **Linux:** `systemd-creds --user encrypt --name=moneta-pluggy` grava `pluggy.cred`. O arquivo só abre para o mesmo usuário, no mesmo computador quando há TPM, e com o mesmo nome de credencial. Não é preciso senha de administrador.
@@ -60,17 +94,17 @@ Para forçar o arquivo comum (por exemplo, para testes), use `MONETA_SECRET_STOR
 
 Estes riscos são conhecidos e aceitos por enquanto:
 
-- **Processos do mesmo usuário.** Um programa malicioso rodando com o seu usuário consegue ler `acesso.key`, abrir o lacre das credenciais (o `systemd-creds --user` abre para qualquer processo do usuário) e ler o banco. O artigo resolve isso pedindo a senha do sistema a cada abertura (Polkit) e fechando o cofre após 15 minutos parado. Isso é incompatível com o Moneta ligado em segundo plano sincronizando sozinho, e fica como opção futura.
-- **Docker:** sem `systemd-creds` dentro do container, a chave do cofre fica em `banco.key`, ao lado do cofre. Uma cópia da pasta `data/` leva os dois. No Docker, a proteção do banco depende das permissões do volume.
+- **Processos do mesmo usuário.** Sem o modo cofre, um programa malicioso rodando com o seu usuário consegue ler `acesso.key`, abrir o lacre das credenciais (o `systemd-creds --user` abre para qualquer processo do usuário) e ler o banco. Com o modo cofre, isso só vale enquanto o Moneta estiver destrancado; trancado, falta a senha. Um programa assim ainda pode capturar a senha pelo teclado. As credenciais da Pluggy continuam só com o lacre do sistema, porque a sincronização precisa delas.
+- **Docker:** sem `systemd-creds` dentro do container, a chave do cofre fica em `banco.key`, ao lado do cofre. Uma cópia da pasta `data/` leva os dois. No Docker, a proteção do banco depende das permissões do volume, a menos que o modo cofre esteja ligado: aí a chave depende também da senha.
 - **Banco na memória** enquanto o Moneta está ligado: um processo com acesso à memória do Moneta (o mesmo usuário com ptrace, ou root) consegue ler os dados.
 - **Backups antigos em texto puro**, feitos antes do cofre, continuam legíveis até serem apagados.
+- **Backups baixados** saem da proteção do sistema: abrem com a chave de recuperação, que é o que precisa ser guardado com cuidado.
+- **App aberto pelo menu** (fora do serviço) roda sem o sandbox do systemd.
 - **Root ou o kernel comprometido** quebram qualquer proteção enquanto o Moneta está ligado.
 - **SSD e sistemas copy-on-write** (Btrfs) podem guardar blocos antigos depois que um arquivo é apagado ou sobrescrito, inclusive do `pluggy.json` migrado.
 - **Windows:** a proteção por DPAPI foi escrita, mas ainda não foi testada num Windows real. Se o lacre falhar, o Moneta volta ao arquivo `0600`.
 
 ## Próximos passos
 
-1. **Serviço do systemd endurecido.** Extrair o AppImage na instalação para dispensar o FUSE e então ligar `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só na pasta de dados, `PrivateTmp`, `RestrictAddressFamilies`. (`LimitCORE=0` e `UMask=0077` já estão no serviço.)
-2. **Backups verificados.** Exportação com manifesto, HMAC e teste de restauração logo após criar, como o `.mbbackup` do artigo.
-3. **Modo cofre (opcional).** Pedir a senha do sistema para abrir o Moneta e fechar após um tempo parado, para quem abrir mão da sincronização em segundo plano.
-4. **Teste no Windows** do lacre por DPAPI.
+1. **Teste no Windows** do lacre por DPAPI e do modo cofre.
+2. **Credenciais da Pluggy sob a senha** no modo cofre, para quem não precisa da sincronização com o Moneta trancado.

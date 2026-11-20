@@ -296,3 +296,15 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 #recovery-form h2,#recovery-form img { text-align:center }
 #recovery-form input { font-family:monospace; letter-spacing:.04em }
 #recovery-error:empty { display:none }
+#unlock { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:24px; background:var(--canvas) }
+#unlock-form { display:grid; gap:12px; text-align:left }
+#unlock-form h2,#unlock-form img { text-align:center }
+#unlock-error:empty { display:none }
+.link-button { background:none; color:var(--accent-ink); font-weight:500; text-decoration:underline; padding:4px; justify-self:center }
+.backup-list { list-style:none; padding:0; margin:12px 0; max-width:48rem }
+.backup-list li { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--line) }
+.backup-list li span { flex:1 1 14rem }
+.backup-list li small { color:var(--muted) }
+.backup-list button { padding:4px 10px; font-size:13px; background:var(--panel); color:var(--accent-ink); border:1px solid var(--line) }
+.backup-restore,.password-form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin:12px 0 }
+.backup-restore label,.password-form label { display:grid; gap:4px }

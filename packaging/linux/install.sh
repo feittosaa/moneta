@@ -24,6 +24,8 @@ for option in "$@"; do
   esac
 done
 has_systemd() { command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; }
+# Quem já usa o início automático recebe o serviço atualizado (com o sandbox mais recente).
+if [ "${1:-}" != "--remover" ] && has_systemd && systemctl --user is-enabled --quiet moneta.service 2>/dev/null; then autostart=true; fi
 
 if [ "${1:-}" = "--remover" ]; then
   if [ -f "$unit" ]; then

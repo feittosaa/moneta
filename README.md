@@ -41,7 +41,7 @@ No terminal:
 curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh
 ```
 
-O comando baixa a versão mais recente, confere o arquivo e cria o atalho **Moneta** no menu de aplicativos, sem pedir senha de administrador. Depois, abra pelo menu ou rode `moneta`.
+O comando baixa a versão mais recente, confere o arquivo, instala o app em `~/.local/lib/moneta` e cria o atalho **Moneta** no menu de aplicativos, sem pedir senha de administrador. Depois, abra pelo menu ou rode `moneta`.
 
 Para que o Moneta ligue sozinho, em segundo plano, sempre que você entrar no computador (na porta 4173, sem abrir o navegador):
 
@@ -49,7 +49,7 @@ Para que o Moneta ligue sozinho, em segundo plano, sempre que você entrar no co
 curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --iniciar-com-o-sistema
 ```
 
-Isso cria um serviço de usuário do systemd. Para desligar o início automático, rode `systemctl --user disable --now moneta`.
+Isso cria um serviço de usuário do systemd, em sandbox: o Moneta só consegue escrever na própria pasta de dados. Para desligar o início automático, rode `systemctl --user disable --now moneta`.
 
 Prefere não usar o terminal? Baixe o [Moneta-x86_64.AppImage](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-x86_64.AppImage), marque como executável (nas propriedades do arquivo, **Permitir executar como programa**) e abra com dois cliques.
 
@@ -227,11 +227,15 @@ Tudo fica na pasta de dados: `data/` no Docker e no Node.js (ela está no `.giti
 - `moneta.cofre`: o banco inteiro (conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio), cifrado com AES-256-GCM. Enquanto o Moneta roda, o banco fica só na memória. `moneta.cofre.anterior` é a gravação anterior, usada se a última for interrompida;
 - `banco.cred` (Linux) ou `banco.dpapi` (Windows): a chave do cofre, lacrada pelo sistema. Sem esse recurso, como no Docker, fica em `banco.key` com permissão `0600`, ao lado do cofre;
 - `pluggy.cred` (Linux) ou `pluggy.dpapi` (Windows): credenciais da Pluggy lacradas pelo sistema. Sem esse recurso, como no Docker, ficam em `pluggy.json` com permissão `0600`;
+- `banco-senha.cred` no lugar de `banco.cred`, com o **modo cofre** ligado: a chave do cofre cifrada com a sua senha e, por cima, lacrada pelo sistema;
+- `backups/`: um backup automático por dia, dos últimos 7 dias, cifrado e testado depois de criado. Em **Configuração → Backups** dá para baixar um backup para guardar fora do computador e restaurar de um arquivo;
 - `acesso.key`: chave que libera o navegador, trocada por um cookie quando você abre o Moneta pelo atalho.
+
+Com o **modo cofre** (em Configuração), o Moneta pede uma senha para abrir e tranca sozinho depois de um tempo sem uso. Trancado, nem um programa rodando com o seu usuário consegue abrir o banco; em troca, a sincronização automática só acontece com ele aberto.
 
 A API só responde a navegadores autorizados pela chave de acesso. O servidor também recusa cabeçalhos `Host` diferentes de `localhost` e `127.0.0.1` e escritas vindas de outra origem, e envia uma política de segurança de conteúdo restrita. Os únicos dados que saem da máquina são as chamadas à API da Pluggy. O documento [Segurança](docs/seguranca.md) detalha o modelo de ameaças, as proteções e os riscos que ainda ficam.
 
-Outras aplicações locais podem ler a lista de conexões em JSON por `GET /api/connections`.
+Outras aplicações locais podem ler a lista de conexões em JSON por `GET /api/connections`, enviando o cookie `moneta_acesso` com o conteúdo de `acesso.key`.
 
 ## Desenvolvimento
 

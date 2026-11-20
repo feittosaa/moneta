@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import { readJsonObject } from './request-body.mjs';
 import { createSecretStore, createSecret, protectionLabel } from './secret-store.mjs';
-import { openVault, recoverVault } from './vault.mjs';
+import { openVault, recoverVault, passwordSecret } from './vault.mjs';
 import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, ruleChanges, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
@@ -71,31 +71,68 @@ function authorized(req) {
 // Cofre do banco (vault.mjs): o SQLite roda na memória e o disco só guarda moneta.cofre, cifrado com
 // AES-256-GCM. A chave fica lacrada pelo sistema, como as credenciais. Sem a chave (TPM resetado,
 // outro computador), o Moneta sobe trancado e pede a chave de recuperação.
+// No modo cofre, a chave também depende de uma senha: o Moneta sobe trancado, pede a senha e
+// tranca de novo depois de um tempo sem uso.
 const vaultSecret = createSecret(dataDir, { name: 'moneta-banco', base: 'banco' });
+const passwordStore = createSecret(dataDir, { name: 'moneta-banco-senha', base: 'banco-senha' });
 const pendingRecovery = join(dataDir, 'cofre.pendente');
 let vault = null;
 let locked = null;
-try {
-  vault = openVault(dataDir, vaultSecret);
-  if (vault.created) writeFileSync(pendingRecovery, '', { mode: 0o600 });
-} catch (error) {
-  if (!['NO_KEY', 'BAD_KEY', 'UNSEAL_FAILED'].includes(error.code)) throw error;
-  locked = error.message;
-  console.warn('Cofre trancado: ' + error.message + ' Use a chave de recuperação.');
-}
+let lockReason = null;
+let unlockedWith = null;
+let db;
+let clientUserId;
 // Trancado, o app usa um banco vazio só para subir; nada dele é gravado.
-const db = vault?.db ?? new DatabaseSync(':memory:');
-db.exec('PRAGMA trusted_schema = OFF; PRAGMA temp_store = MEMORY;');
+function openDatabase(opened) {
+  vault = opened;
+  db = opened?.db ?? new DatabaseSync(':memory:');
+  db.exec('PRAGMA trusted_schema = OFF; PRAGMA temp_store = MEMORY;');
+  db.exec('CREATE TABLE IF NOT EXISTS profile (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL); CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, institution TEXT NOT NULL, status TEXT NOT NULL)');
+  db.prepare('INSERT OR IGNORE INTO profile VALUES (1, ?)').run(randomUUID());
+  clientUserId = db.prepare('SELECT uuid FROM profile WHERE id=1').get().uuid;
+  initFinance(db);
+  restoreBankNames(db);
+  persist();
+  restrictPermissions();
+}
 function persist() {
   if (vault) vault.persist();
 }
-restrictPermissions();
-db.exec('CREATE TABLE IF NOT EXISTS profile (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL); CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, institution TEXT NOT NULL, status TEXT NOT NULL)');
-db.prepare('INSERT OR IGNORE INTO profile VALUES (1, ?)').run(randomUUID());
-const clientUserId = db.prepare('SELECT uuid FROM profile WHERE id=1').get().uuid;
-initFinance(db);
-restoreBankNames(db);
-persist();
+if (passwordStore.exists()) {
+  locked = 'O Moneta está trancado. Digite a senha.';
+  lockReason = 'senha';
+  openDatabase(null);
+} else {
+  try {
+    const opened = openVault(dataDir, vaultSecret);
+    if (opened.created) writeFileSync(pendingRecovery, '', { mode: 0o600 });
+    openDatabase(opened);
+  } catch (error) {
+    if (!['NO_KEY', 'BAD_KEY', 'UNSEAL_FAILED'].includes(error.code)) throw error;
+    locked = error.message;
+    lockReason = 'chave';
+    console.warn('Cofre trancado: ' + error.message + ' Use a chave de recuperação.');
+    openDatabase(null);
+  }
+}
+// Tentativas de senha: depois da terceira errada, espera crescente (até 5 minutos).
+let failures = 0;
+let retryAt = 0;
+let lastActivity = Date.now();
+const idleMinutes = () => Number(unlockedWith?.settings.idle) || 15;
+const summary = () => {
+  const { transactions, accounts, categories } = overview(db);
+  return { transactions: transactions.length, accounts: accounts.length, categories: categories.length,
+    connections: db.prepare('SELECT count(*) AS n FROM connections').get().n };
+};
+function autoBackup() {
+  if (!vault || locked) return;
+  try {
+    const name = vault.autoBackup(summary());
+    if (name) console.log('Backup automático criado e testado: ' + name);
+  } catch (error) { console.error('Falha no backup automático: ' + error.message); }
+}
+autoBackup();
 let syncJob;
 let restarting = false;
 const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment','/api/vouchers','/api/vouchers/remove'];
@@ -156,6 +193,16 @@ const syncTimer = setInterval(() => {
   sync().catch(() => console.warn('Falha na sincronização automática da Pluggy. A cópia local foi preservada.'));
 },60_000);
 syncTimer.unref();
+const backupTimer = setInterval(autoBackup, 60 * 60 * 1000);
+backupTimer.unref();
+// Modo cofre: tranca depois de um tempo sem uso. Trancar reinicia o processo, que sobe pedindo a
+// senha; assim nada do banco aberto fica na memória.
+const idleTimer = setInterval(() => {
+  if (!unlockedWith || locked || restarting || Date.now() - lastActivity < idleMinutes() * 60_000) return;
+  console.log('Moneta trancado depois de ' + idleMinutes() + ' minutos sem uso.');
+  stop('restart');
+}, 30_000);
+idleTimer.unref();
 
 // O app só carrega scripts próprios e o widget da Pluggy, não pode ser embutido em outro site e
 // não vaza o endereço em links externos.
@@ -185,6 +232,23 @@ for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
   });
 }
 
+// Reinicia ou encerra o processo, gravando o cofre antes. Usado pelas rotas e ao trancar.
+function stop(kind) {
+  restarting = true;
+  server.close(() => {
+    clearInterval(syncTimer);
+    const close = () => {
+      try { persist(); } catch (error) { console.error('Falha ao gravar o cofre: ' + error.message); }
+      db.close();
+      if (process.send) process.send(kind, () => process.disconnect());
+      else process.exit(0);
+    };
+    if (syncJob) syncJob.then(close, close);
+    else close();
+  });
+  server.closeAllConnections?.();
+}
+
 const server = http.createServer(async (req, res) => {
   for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
   const json = (status, value) => {
@@ -204,9 +268,9 @@ const server = http.createServer(async (req, res) => {
     const allowed = authorized(req);
     if (req.method === 'GET' && req.url === '/api/status') {
       // Público só o necessário para o atalho saber se o Moneta já está aberto.
-      if (!allowed) return json(200, {instance,desktop,locked:Boolean(locked)});
+      if (!allowed) return json(200, {instance,desktop,locked:Boolean(locked),lock:lockReason});
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
-      return json(200, {instance,updated,desktop,locked:Boolean(locked),authorized:true});
+      return json(200, {instance,updated,desktop,locked:Boolean(locked),lock:lockReason,authorized:true});
     }
     // Entrada pelo atalho: troca a chave da URL por um cookie e tira a chave do endereço.
     const entry = req.method === 'GET' && /^\/entrar\?chave=([A-Za-z0-9_-]{1,100})$/.exec(req.url);
@@ -236,9 +300,27 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.url.startsWith('/api/') && !allowed) fail(401, 'Acesso não autorizado. Abra o Moneta pelo atalho do menu ou pelo comando moneta.');
-    if (locked && req.url.startsWith('/api/') && !['/api/recovery', '/api/restart', '/api/shutdown'].includes(req.url)) fail(423, 'O cofre do banco está trancado. Informe a chave de recuperação.');
+    if (locked && req.url.startsWith('/api/') && !['/api/recovery', '/api/restart', '/api/shutdown', '/api/unlock'].includes(req.url)) {
+      fail(423, lockReason === 'senha' ? 'O Moneta está trancado. Digite a senha.' : 'O cofre do banco está trancado. Informe a chave de recuperação.');
+    }
+    lastActivity = Date.now();
     if (req.method === 'GET' && req.url === '/api/vault') {
-      return json(200, { protection: protectionLabel(vaultSecret.sealer), pending: existsSync(pendingRecovery) });
+      return json(200, { protection: protectionLabel(vaultSecret.sealer), pending: existsSync(pendingRecovery),
+        password: Boolean(unlockedWith), idle: idleMinutes(), backups: vault.listBackups() });
+    }
+    // Backup cifrado e testado, para guardar fora do computador. Abre com a chave de recuperação atual.
+    const download = req.method === 'GET' && /^\/api\/backup(?:s\/(moneta-[\w-]+\.monetabackup))?$/.exec(req.url);
+    if (download) {
+      let data, name = download[1];
+      if (name) {
+        try { data = vault.readBackup(name); } catch { fail(404, 'Backup não encontrado.'); }
+      } else {
+        const made = vault.backup(summary());
+        data = made.data;
+        name = 'moneta-' + made.manifest.created.slice(0, 10) + '.monetabackup';
+      }
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store' });
+      return res.end(data);
     }
     if (req.method === 'GET' && req.url === '/api/connections') {
       return json(200, { configured: configured(), protection: credentialsFromEnv ? 'ambiente' : secrets.protection, credentialsError, connections: db.prepare('SELECT * FROM connections ORDER BY institution, id').all() });
@@ -246,11 +328,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
-    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
+    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
-    const body = await readJsonObject(req, req.url.startsWith('/api/rules') ? 2 * 1024 * 1024 : req.url === '/api/transaction' ? 16384 : undefined);
+    const body = await readJsonObject(req, req.url.startsWith('/api/rules') ? 2 * 1024 * 1024 : req.url === '/api/backup/restore' ? 64 * 1024 * 1024 : req.url === '/api/transaction' ? 16384 : undefined);
     if (restarting) fail(503, 'O servidor está reiniciando.');
     if (req.url === '/api/settings/pluggy') {
       const pair = {};
@@ -277,29 +359,99 @@ const server = http.createServer(async (req, res) => {
       rmSync(pendingRecovery, { force: true });
       return json(200, { ok: true });
     }
+    // Modo cofre. Ligar troca a chave do cofre (cópias da chave lacrada sem senha deixam de valer)
+    // e mostra a nova chave de recuperação.
+    const password = typeof body.password === 'string' ? body.password : '';
+    const idle = Number(body.idle);
+    if (req.url === '/api/vault/password' || req.url === '/api/vault/password/idle') {
+      if (![5, 15, 30, 60, 240].includes(idle)) fail(400, 'Escolha um tempo de inatividade válido.');
+    }
+    if (req.url === '/api/vault/password') {
+      if (unlockedWith) fail(409, 'O modo cofre já está ligado.');
+      if ([...password].length < 8) fail(400, 'Use uma senha com pelo menos 8 caracteres.');
+      const secret = passwordSecret(passwordStore, password, { idle });
+      vault.useSecret(secret);
+      vaultSecret.remove();
+      unlockedWith = secret;
+      vault.rotate();
+      writeFileSync(pendingRecovery, '', { mode: 0o600 });
+      autoBackup();
+      return json(200, { code: vault.recoveryCode() });
+    }
+    if (req.url === '/api/vault/password/idle') {
+      if (!unlockedWith) fail(409, 'O modo cofre está desligado.');
+      vault.reseal({ ...unlockedWith.settings, idle });
+      return json(200, { ok: true });
+    }
+    if (req.url === '/api/vault/password/remove') {
+      if (!unlockedWith) fail(409, 'O modo cofre está desligado.');
+      try { passwordSecret(passwordStore, password).load(); } catch (error) { fail(403, error.code === 'BAD_PASSWORD' ? 'Senha errada.' : error.message); }
+      vault.useSecret(vaultSecret);
+      passwordStore.remove();
+      unlockedWith = null;
+      return json(200, { ok: true });
+    }
+    if (req.url === '/api/unlock') {
+      if (lockReason !== 'senha') fail(409, 'O Moneta não está trancado por senha.');
+      if (Date.now() < retryAt) fail(429, 'Muitas tentativas. Espere ' + Math.ceil((retryAt - Date.now()) / 1000) + ' segundos.');
+      const secret = passwordSecret(passwordStore, password);
+      let opened;
+      try { opened = openVault(dataDir, secret); }
+      catch (error) {
+        if (error.code !== 'BAD_PASSWORD') fail(500, error.message);
+        failures++;
+        if (failures >= 3) retryAt = Date.now() + Math.min(2 ** (failures - 2), 300) * 1000;
+        fail(403, 'Senha errada.');
+      }
+      failures = 0;
+      db.close();
+      locked = lockReason = null;
+      unlockedWith = secret;
+      openDatabase(opened);
+      vaultSecret.remove();
+      lastActivity = Date.now();
+      autoBackup();
+      return json(200, { ok: true });
+    }
+    // Restauração: o arquivo é aberto e testado; sem confirm, só devolve o manifesto para conferir.
+    // Antes de trocar o banco, um backup do estado atual vai para backups/.
+    if (req.url === '/api/backup/restore') {
+      let data;
+      if (typeof body.name === 'string') {
+        try { data = vault.readBackup(body.name); } catch { fail(404, 'Backup não encontrado.'); }
+      } else if (typeof body.data === 'string') data = Buffer.from(body.data, 'base64');
+      else fail(400, 'Envie o arquivo de backup.');
+      let content;
+      try { content = vault.openBackup(data, body.code || null); }
+      catch (error) {
+        if (error.code === 'OTHER_KEY') return json(409, { error: 'Este backup foi feito com outra chave de recuperação. Digite a chave que valia quando ele foi criado.', needsCode: true });
+        fail(400, error.code === 'BAD_KEY' && body.code ? 'Essa chave de recuperação não abre este backup.' : error.message);
+      }
+      if (body.confirm !== true) return json(200, { manifest: content.manifest });
+      vault.autoBackup(summary(), { every: 0 });
+      vault.restore(content.dump);
+      console.log('Backup de ' + content.manifest.created + ' restaurado; reiniciando.');
+      req.url = '/api/restart';
+    }
+    if (req.url === '/api/vault/lock') {
+      if (!unlockedWith) fail(409, 'O modo cofre está desligado.');
+      req.url = '/api/restart';
+    }
     if (req.url === '/api/recovery') {
       if (!locked) fail(409, 'O cofre já está aberto.');
       try { recoverVault(dataDir, vaultSecret, body.code); }
       catch (error) { fail(400, error.code === 'BAD_KEY' ? 'Essa chave de recuperação não abre este cofre.' : error.message); }
+      // A chave de recuperação substitui a senha: o modo cofre desliga e pode ser ligado de novo.
+      passwordStore.remove();
       console.log('Cofre aberto com a chave de recuperação; reiniciando.');
       req.url = '/api/restart';
     }
     if (req.url === '/api/restart' || req.url === '/api/shutdown') {
       // Encerrar só existe na instalação de desktop; no Docker o container cuida do ciclo de vida.
       if (req.url === '/api/shutdown' && !desktop) fail(404, 'Rota desconhecida.');
+      const kind = req.url === '/api/restart' ? 'restart' : 'shutdown';
       restarting = true;
-      res.once('finish', () => {
-        server.close(() => {
-          clearInterval(syncTimer);
-          const close = () => {
-            try { persist(); } catch (error) { console.error('Falha ao gravar o cofre: ' + error.message); }
-            db.close();
-            process.send(req.url === '/api/restart' ? 'restart' : 'shutdown', () => process.disconnect());
-          };
-          if (syncJob) syncJob.then(close,close);
-          else close();
-        });
-      });
+      res.once('finish', () => stop(kind));
       return json(202, { instance });
     }
     if (edits.includes(req.url)) {
