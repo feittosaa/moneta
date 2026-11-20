@@ -4,6 +4,7 @@
 ; servidor escondido, sem janela de terminal, com um ícone na bandeja.
 Unicode true
 !include "MUI2.nsh"
+!include "FileFunc.nsh"
 
 Name "Moneta"
 OutFile "${OUTFILE}"
@@ -62,7 +63,7 @@ FunctionEnd
 
 !ifdef DESKTOP
 ; A janela nativa usa o WebView2, que já vem no Windows 11 e no Windows 10 atualizado.
-Function .onInit
+Function CheckWebView2
   ReadRegStr $0 HKLM "SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
   StrCmp $0 "" 0 found
   ReadRegStr $0 HKCU "Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
@@ -102,6 +103,29 @@ Section "Iniciar com o Windows, em segundo plano" SecStartup
   WriteRegStr HKCU "${RUN_KEY}" "Moneta" '"$INSTDIR\moneta.exe" --background'
 SectionEnd
 !endif
+
+; Atualização pelo próprio app: o Moneta roda este instalador com /S /abrir. Em silêncio, mantém a escolha
+; anterior de iniciar com o Windows e, ao terminar, abre o Moneta de novo.
+Function .onInit
+!ifdef DESKTOP
+  Call CheckWebView2
+  IfSilent 0 done
+  ReadRegStr $0 HKCU "${RUN_KEY}" "Moneta"
+  StrCmp $0 "" 0 done
+  SectionSetFlags ${SecStartup} 0
+  done:
+!endif
+FunctionEnd
+
+Function .onInstSuccess
+  IfSilent 0 done
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/abrir" $1
+  IfErrors done
+  Call OpenMoneta
+  done:
+FunctionEnd
 
 Section "Uninstall"
   !insertmacro StopMoneta

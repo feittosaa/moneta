@@ -127,17 +127,28 @@ fn start_server(app: &AppHandle) -> Result<(), String> {
 }
 
 // Servidor iniciado por esta janela: quando ele termina (por "Encerrar o Moneta" na página ou pela
-// bandeja), a janela também fecha.
+// bandeja), a janela também fecha. Com o serviço do systemd, a janela espera um pouco antes de fechar:
+// numa atualização pelo app o serviço reinicia, e a página recarrega sozinha na versão nova.
 fn watch_server(app: AppHandle) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(Duration::from_millis(500));
-        let exited = match app.state::<Server>().0.lock().unwrap().as_mut() {
-            Some(child) => child.try_wait().ok().flatten().is_some(),
-            None => !running(),
-        };
-        if exited {
-            app.exit(0);
-            return;
+    std::thread::spawn(move || {
+        let mut down_since: Option<Instant> = None;
+        loop {
+            std::thread::sleep(Duration::from_millis(500));
+            let exited = match app.state::<Server>().0.lock().unwrap().as_mut() {
+                Some(child) => child.try_wait().ok().flatten().is_some(),
+                None => {
+                    if running() {
+                        down_since = None;
+                        false
+                    } else {
+                        down_since.get_or_insert_with(Instant::now).elapsed() > Duration::from_secs(90)
+                    }
+                }
+            };
+            if exited {
+                app.exit(0);
+                return;
+            }
         }
     });
 }
