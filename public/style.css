@@ -140,7 +140,10 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #card-detail .purchase-metric strong,#card-detail .purchase-amount { color:var(--expense-ink) }
 #card-detail .purchase-metric span::before { background:var(--expense) }
 
-#privacy { display:inline-grid; place-items:center; min-width:40px; min-height:40px }
+/* Todos os controles da barra superior têm a mesma altura. */
+.toolbar button,.toolbar input { height:40px; padding-block:0 }
+.toolbar button { display:inline-grid; place-items:center }
+#privacy { min-width:40px }
 #privacy[aria-pressed=false] .eye-slash { display:none }
 
 #card-detail .invoice-metric strong { color:var(--invoice-ink) }
