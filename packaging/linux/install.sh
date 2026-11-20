@@ -54,7 +54,10 @@ if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
 fi
 
 mkdir -p "$bin" "$(dirname "$desktop")" "$(dirname "$icon")"
-install -m 755 "$tmp" "$bin/moneta"
+# Troca por renomeação: um Moneta ainda rodando continua com o arquivo antigo até reiniciar,
+# em vez de ter o executável sobrescrito por baixo dele.
+install -m 755 "$tmp" "$bin/.moneta.novo"
+mv -f "$bin/.moneta.novo" "$bin/moneta"
 curl -fsSL "https://raw.githubusercontent.com/$repo/main/public/web-app-manifest-512x512.png" -o "$icon" || true
 cat > "$desktop" <<DESKTOP
 [Desktop Entry]
@@ -85,6 +88,9 @@ ExecStart=$bin/moneta --background
 Environment=PORT=4173
 Restart=on-failure
 RestartSec=10
+# Os dados ficam na memória do Moneta: uma queda não pode gravá-la em disco.
+LimitCORE=0
+UMask=0077
 
 [Install]
 WantedBy=default.target

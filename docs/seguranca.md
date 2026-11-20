@@ -17,6 +17,7 @@ O Moneta guarda dados financeiros e a chave de acesso à Pluggy. Este documento 
 | Arquivo do banco adulterado ou corrompido | A tag do AES-GCM impede abrir um cofre alterado; uma gravação interrompida cai para `moneta.cofre.anterior` |
 | Arquivo de banco adulterado executando funções ou gatilhos | `PRAGMA trusted_schema = OFF` |
 | Tabelas temporárias de consultas indo parar no disco | Banco só na memória e `PRAGMA temp_store = MEMORY` |
+| Memória do Moneta, com os dados abertos, gravada em disco numa queda | Serviço do systemd com `LimitCORE=0` |
 
 ## Como funciona o acesso
 
@@ -69,7 +70,7 @@ Estes riscos são conhecidos e aceitos por enquanto:
 
 ## Próximos passos
 
-1. **Serviço do systemd endurecido.** Extrair o AppImage na instalação para dispensar o FUSE e então ligar `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só na pasta de dados, `PrivateTmp`, `RestrictAddressFamilies`, `LimitCORE=0` e `UMask=0077`.
+1. **Serviço do systemd endurecido.** Extrair o AppImage na instalação para dispensar o FUSE e então ligar `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só na pasta de dados, `PrivateTmp`, `RestrictAddressFamilies`. (`LimitCORE=0` e `UMask=0077` já estão no serviço.)
 2. **Backups verificados.** Exportação com manifesto, HMAC e teste de restauração logo após criar, como o `.mbbackup` do artigo.
 3. **Modo cofre (opcional).** Pedir a senha do sistema para abrir o Moneta e fechar após um tempo parado, para quem abrir mão da sincronização em segundo plano.
 4. **Teste no Windows** do lacre por DPAPI.
