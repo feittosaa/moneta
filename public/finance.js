@@ -476,7 +476,6 @@ export function navigate() {
   for (const a of document.querySelectorAll('nav a')) a.setAttribute('aria-current',a.hash === '#'+page ? 'page' : 'false');
   $('#page-title').textContent = document.querySelector('nav a[aria-current=page]').lastChild.textContent;
   $('.toolbar').hidden = !['relatorio','transacoes','cartoes','carteira','conexoes'].includes(page);
-  $('#current-month').hidden = page !== 'relatorio';
   $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab) || (page === 'transacoes' && allMonths());
   if (!data) return;
   if (page !== 'transacoes' || !search) {
