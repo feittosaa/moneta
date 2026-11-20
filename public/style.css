@@ -115,7 +115,11 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #voucher-form { display:grid; margin:0; gap:14px; align-items:stretch; padding:0; border:0; background:none }
 #voucher-form h2 { margin:0 }
 #voucher-error:empty { display:none }
-.vouchers-title { margin-top:32px }
+.page-intro { display:flex; align-items:center; justify-content:space-between; gap:12px 24px; flex-wrap:wrap; margin-bottom:20px }
+.page-intro p { flex:1 1 28rem; margin:0 }
+#vales h2 { margin-top:28px }
+#vales .purchase-metric strong { color:var(--expense-ink) }
+#vales .purchase-metric span::before { background:var(--expense) }
 #tx-form { display:grid; margin:0; gap:14px; align-items:stretch }
 #tx-form textarea { padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); color:var(--text); font:inherit; resize:vertical }
 #tx-error:empty { display:none }

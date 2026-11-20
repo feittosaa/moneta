@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moneta</title><script>/* Aplica o tema antes da primeira pintura. */(()=>{const c=localStorage.getItem("moneta-theme");document.documentElement.dataset.theme=c==="light"||(c==="system"&&matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark"})()</script><link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><meta name="apple-mobile-web-app-title" content="Moneta"><link rel="manifest" href="/site.webmanifest"><link rel="stylesheet" href="/style.css">
-</head><body><aside><a class="brand" href="#relatorio"><img src="/logo.png" alt="" width="38" height="38">Moneta</a><nav aria-label="Navegação principal"><a href="#relatorio"><i aria-hidden="true">▦</i>Visão geral</a><a href="#transacoes"><i aria-hidden="true">⇄</i>Transações</a><a href="#carteira"><i aria-hidden="true">▣</i>Carteira</a><a href="#cartoes"><i aria-hidden="true">▱</i>Cartões</a><hr><a href="#categorias"><i aria-hidden="true">▤</i>Categorias</a><a href="#regras"><i aria-hidden="true">≛</i>Regras</a><hr><a href="#conexoes"><i aria-hidden="true">⌁</i>Conexões</a><a href="#configuracao"><i aria-hidden="true">⚙</i>Configuração</a></nav><div id="fresh" role="status">Carregando dados…</div></aside><main>
+</head><body><aside><a class="brand" href="#relatorio"><img src="/logo.png" alt="" width="38" height="38">Moneta</a><nav aria-label="Navegação principal"><a href="#relatorio"><i aria-hidden="true">▦</i>Visão geral</a><a href="#transacoes"><i aria-hidden="true">⇄</i>Transações</a><a href="#carteira"><i aria-hidden="true">▣</i>Carteira</a><a href="#cartoes"><i aria-hidden="true">▱</i>Cartões</a><a href="#vales"><i aria-hidden="true">◇</i>Vales</a><hr><a href="#categorias"><i aria-hidden="true">▤</i>Categorias</a><a href="#regras"><i aria-hidden="true">≛</i>Regras</a><hr><a href="#conexoes"><i aria-hidden="true">⌁</i>Conexões</a><a href="#configuracao"><i aria-hidden="true">⚙</i>Configuração</a></nav><div id="fresh" role="status">Carregando dados…</div></aside><main>
 <header class="topbar"><h1 id="page-title">Visão geral</h1><div class="toolbar"><div id="period" role="group" aria-label="Período do relatório">
 <button type="button" data-month-step="-12" aria-label="Ano anterior" title="Ano anterior">«</button>
 <button type="button" data-month-step="-1" aria-label="Mês anterior" title="Mês anterior">‹</button>
@@ -43,10 +43,11 @@
 <label>Descrição<input name="description" maxlength="100"></label><button>Registrar</button></form>
 <p>Adicionar e retirar saldo ajustam a carteira. Receitas e despesas em dinheiro entram no resultado do mês.</p>
 <h2>Movimentações do mês</h2><div id="wallet-list"></div></section>
-<section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div>
-<div class="panel-title vouchers-title"><h2>Vales</h2><button type="button" id="new-voucher">Adicionar vale</button></div>
-<p>Vale-transporte, vale-alimentação e bônus não chegam pela Pluggy. Cada crédito entra como receita em Benefícios e, na mesma data, como despesa na categoria do vale.</p>
-<div id="voucher-list"></div>
+<section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
+<section id="vales" hidden><div class="page-intro"><p>Vale-transporte, vale-alimentação e bônus não chegam pela Pluggy. Cada crédito entra como receita em Benefícios e, na mesma data, como despesa na categoria do vale.</p><button type="button" id="new-voucher">Adicionar vale</button></div>
+<div id="voucher-month"></div>
+<h2>Vales cadastrados</h2><div id="voucher-list"></div>
+<h2>Créditos do mês</h2><div id="voucher-credits"></div>
 <dialog id="voucher-editor" aria-labelledby="voucher-heading"><form id="voucher-form">
 <h2 id="voucher-heading">Adicionar vale</h2>
 <label>Nome<input name="name" required maxlength="100" placeholder="Vale-alimentação"></label>

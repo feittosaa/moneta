@@ -275,23 +275,14 @@ function cardAmount(tx) {
   return value;
 }
 function cards() {
-  vouchers();
-  const list = data.accounts.filter(a => ['CREDIT','BANK','VOUCHER'].includes(a.type) && a.currency === currency.value);
-  const cardName = a => a.type === 'VOUCHER' ? 'Vale · '+a.name : [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  const list = data.accounts.filter(a => ['CREDIT','BANK'].includes(a.type) && a.currency === currency.value);
+  const cardName = a => [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
   choices($('#card'),list.map(a => [a.id,cardName(a)]));
   const card = list.find(a => a.id === $('#card').value);
   const pane = $('#card-detail');
   if (!card) {pane.replaceChildren(tag('p','Nenhum cartão ou conta sincronizada nesta moeda.')); return;}
   pane.replaceChildren(tag('h2',cardName(card)));
   if (!month.value) return;
-  if (card.type === 'VOUCHER') {
-    const voucher = data.vouchers.find(v => 'voucher-'+v.id === card.id);
-    const spent = periodRows().filter(t => t.account === card.id && t.amount < 0);
-    pane.append(metrics([['Creditado e gasto no mês',-sum(spent,t => t.amount),'purchase-metric'],['Valor de cada crédito',voucher.amount]]),
-      tag('p',recurrence(voucher)+' · '+voucherPeriod(voucher)),
-      table(['Data','Descrição','Categoria','Valor'],spent.map(t => [formatDate(t.date),t.description,categoryName(t.category),cardAmount(t)]),'Nenhum crédito deste vale no mês.'));
-    return;
-  }
   if (card.type === 'BANK') {
     const accountDebits = periodRows().filter(t => t.account === card.id && t.amount < 0);
     const debitPurchases = accountDebits.filter(t => /^(?:CARTAO|COMPRA_CARTAO|CARTAO_(?:DE_)?DEBITO|COMPRA_CARTAO_(?:DE_)?DEBITO)$/.test(t.operation) ||
@@ -336,6 +327,14 @@ function voucherPeriod(v) {
 }
 function vouchers() {
   const list = data.vouchers.filter(v => v.currency === currency.value);
+  const credits = periodRows().filter(t => t.account.startsWith('voucher-') && t.amount < 0);
+  const month = metrics([['Creditado e gasto no mês',-sum(credits,t => t.amount),'purchase-metric'],['Créditos no mês',null]]);
+  // A segunda métrica é uma contagem, não um valor em dinheiro.
+  month.children[1].querySelector('strong').textContent = String(credits.length);
+  $('#voucher-month').replaceChildren(month);
+  const names = new Map(list.map(v => ['voucher-'+v.id,v.name]));
+  $('#voucher-credits').replaceChildren(table(['Data','Vale','Categoria','Valor'],credits.map(t =>
+    [formatDate(t.date),names.get(t.account) ?? t.description,categoryName(t.category),cardAmount(t)]),'Nenhum crédito de vale neste mês.'));
   $('#voucher-list').replaceChildren(table(['Vale','Valor','Recorrência','Categoria','Período','Ações'],list.map(v => {
     const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
     actions.className = 'rule-actions';
@@ -571,7 +570,7 @@ export function navigate() {
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== page;
   for (const a of document.querySelectorAll('nav a')) a.setAttribute('aria-current',a.hash === '#'+page ? 'page' : 'false');
   $('#page-title').textContent = document.querySelector('nav a[aria-current=page]').lastChild.textContent;
-  $('.toolbar').hidden = !['relatorio','transacoes','cartoes','carteira','conexoes'].includes(page);
+  $('.toolbar').hidden = !['relatorio','transacoes','cartoes','vales','carteira','conexoes'].includes(page);
   $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab) || (page === 'transacoes' && allMonths());
   if (!data) return;
   if (page !== 'transacoes' || !search) {
@@ -614,6 +613,7 @@ export function navigate() {
       .map(t => [formatDate(t.date),t.description,money(t.amount)]),'Nenhuma movimentação neste mês.'));
   }
   if (page === 'cartoes') cards();
+  if (page === 'vales') vouchers();
   if (page === 'transacoes') ledger();
   if (['categorias','regras'].includes(page)) manage(page);
 }
