@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import {investmentCategory} from './public/movement.mjs';
-import { initRuleCatalog, editCatalogRule, catalogRules, importRuleCatalog, categoryKey, receiverDocument, condition, validateConditions, removeCatalogRule } from './category-rules.mjs';
+import { initRuleCatalog, editCatalogRule, validPriority, catalogRules, importRuleCatalog, categoryKey, receiverDocument, condition, validateConditions, removeCatalogRule } from './category-rules.mjs';
 const templates = [
   ['Moradia', 'Housing', 'Telecommunications', 'Utilities', 'Rent'], ['Alimentação', 'Food and drinks', 'Restaurants', 'Food delivery'],
   ['Mercado','Groceries','Supermarket','Supermarkets'], ['Impostos & Taxas','Tax on financial operations'],
@@ -122,6 +122,9 @@ export function initFinance(db) {
   if (!db.prepare('PRAGMA table_info(rules)').all().some(c => c.name === 'definition')) {
     db.exec('ALTER TABLE rules ADD COLUMN definition TEXT');
   }
+  if (!db.prepare('PRAGMA table_info(rules)').all().some(c => c.name === 'priority')) {
+    db.exec('ALTER TABLE rules ADD COLUMN priority INTEGER NOT NULL DEFAULT 5');
+  }
   const seed = db.prepare('INSERT OR IGNORE INTO categories(name,key,custom,internal) VALUES (?,?,0,?)');
   for (const [name] of templates) seed.run(name, fold(name), Number(excluded.has(name)));
   initRuleCatalog(db);
@@ -178,7 +181,7 @@ function validColor(color) {
 export function overview(db, {frozen = true} = {}) {
   const categories = db.prepare('SELECT * FROM categories WHERE deleted=0 ORDER BY name').all()
     .map(c => ({...c,color:c.color ?? categoryColors.get(c.key) ?? categoryPalette[(c.id-1) % categoryPalette.length]}));
-  const rules = db.prepare('SELECT * FROM rules ORDER BY id').all()
+  const rules = db.prepare('SELECT * FROM rules ORDER BY priority, id').all()
     .map(({definition,...rule}) => ({...rule,...(definition ? JSON.parse(definition) : {})}));
   const inherited = catalogRules(db, categories);
   const notes = new Map(db.prepare('SELECT * FROM notes').all().map(r => [r.tx,r.note]));
@@ -308,7 +311,7 @@ export function editFinance(db, path, body) {
       if (body.note.trim()) db.prepare('INSERT OR REPLACE INTO notes VALUES (?,?)').run(body.id,body.note.trim());
       else db.prepare('DELETE FROM notes WHERE tx=?').run(body.id);
       if (body.ruleTerm != null) editFinance(db,'/api/rules',{term:body.ruleTerm,category:body.category});
-      if (body.rule != null) editFinance(db,'/api/rules',{name:body.rule.name,mode:body.rule.mode,active:true,
+      if (body.rule != null) editFinance(db,'/api/rules',{name:body.rule.name,mode:body.rule.mode,active:true,priority:body.rule.priority,
         conditions:inheritDocument(db,body.id,body.rule.conditions),category:body.category});
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
@@ -339,13 +342,16 @@ export function editFinance(db, path, body) {
   if (path === '/api/rules' || path === '/api/rules/edit') {
     if (body.key != null) return editCatalogRule(db,body);
     if (!category) bad('Selecione uma categoria.');
+    // Entre as suas regras, a de prioridade 1 é testada primeiro; empates seguem a ordem de criação.
+    const priority = body.priority ?? 5;
+    if (!validPriority(priority)) bad('A prioridade vai de 1 a 10.');
     const advanced = body.conditions != null;
     const name = label(advanced ? body.name : body.term);
     const definition = advanced ? JSON.stringify({name,mode:body.mode,active:body.active !== false,
       conditions:validateConditions(body.conditions,body.mode)}) : null;
     if (path === '/api/rules/edit') {
-      if (!Number.isSafeInteger(body.id) || !db.prepare('UPDATE rules SET term=?,category=?,definition=? WHERE id=?').run(name,category,definition,body.id).changes) bad('Regra desconhecida.');
-    } else db.prepare('INSERT INTO rules(term,category,definition) VALUES(?,?,?)').run(name,category,definition);
+      if (!Number.isSafeInteger(body.id) || !db.prepare('UPDATE rules SET term=?,category=?,definition=?,priority=? WHERE id=?').run(name,category,definition,priority,body.id).changes) bad('Regra desconhecida.');
+    } else db.prepare('INSERT INTO rules(term,category,definition,priority) VALUES(?,?,?,?)').run(name,category,definition,priority);
     return;
   }
   if (path === '/api/categories/edit') {

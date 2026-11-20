@@ -120,6 +120,15 @@ function terms(conditions) {
   return conditions.map(c => Array.isArray(c?.conditions) ? terms(c.conditions) : c?.value).join(' ');
 }
 
+// Prioridade exibida e editada de 1 (aplicada primeiro) a 10 (por último). O catálogo guarda números
+// maiores (0 a 90, ou o que vier numa importação); a faixa de cada nível preserva a ordem entre eles.
+export function priorityLevel(priority) {
+  return Math.min(10,Math.max(1,Math.ceil(priority/10)));
+}
+export function validPriority(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 10;
+}
+
 export function catalogRules(db, categories) {
   const personal = db.prepare('SELECT definition FROM personal_rules ORDER BY position,name').all()
     .map(row => ({...JSON.parse(row.definition), pack:'Perfil pessoal'}));
@@ -138,7 +147,7 @@ export function catalogRules(db, categories) {
       const category = ids.get(categoryKey(categoryName(rule)));
       const check = condition({op:rule.conditions_op, conditions:rule.conditions});
       const compatible = Boolean(check && category);
-      return {key:rule.key,conditions:rule.conditions,mode:rule.conditions_op,active:rule.is_active !== false,name:rule.name, terms:terms(rule.conditions), pack:rule.pack, imported:rule.imported, category, priority:rule.priority,
+      return {key:rule.key,conditions:rule.conditions,mode:rule.conditions_op,active:rule.is_active !== false,name:rule.name, terms:terms(rule.conditions), pack:rule.pack, imported:rule.imported, category, priority:rule.priority, level:priorityLevel(rule.priority),
         status: rule.is_active === false ? 'Desativada' : !compatible ? 'Requer adaptação' : 'Ativa',
         matches:rule.is_active !== false && compatible ? check : null};
     });
@@ -150,7 +159,7 @@ export function editCatalogRule(db, body) {
   const old = catalogRules(db,categories).find(r => r.key === body.key);
   const category = categories.find(c => c.id === body.category);
   if (!old || !category || typeof body.name !== 'string' || !body.name.trim() ||
-      typeof body.active !== 'boolean' || !['or','and'].includes(body.mode) || !Number.isSafeInteger(body.priority)) invalid();
+      typeof body.active !== 'boolean' || !['or','and'].includes(body.mode) || !validPriority(body.priority)) invalid();
   let index = 0;
   function editValue(node) {
     if (Array.isArray(node.conditions)) return {...node,conditions:node.conditions.map(editValue)};
@@ -166,7 +175,9 @@ export function editCatalogRule(db, body) {
     conditions = old.conditions.map(editValue);
     if (index !== body.values.length) invalid();
   }
-  const definition = {name:body.name.trim(),priority:body.priority,is_active:body.active,conditions_op:body.mode,
+  // Mudar de nível leva a regra para o meio da faixa; mantido o nível, fica a posição original dentro dele.
+  const priority = priorityLevel(old.priority) === body.priority ? old.priority : body.priority*10;
+  const definition = {name:body.name.trim(),priority,is_active:body.active,conditions_op:body.mode,
     conditions,actions:[{op:'set_category',value:category.key}]};
   db.prepare('INSERT OR REPLACE INTO rule_edits VALUES (?,?)').run(body.key,JSON.stringify(definition));
 }

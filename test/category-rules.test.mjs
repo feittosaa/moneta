@@ -166,6 +166,25 @@ test('regra criada pela transação herda o CPF ou CNPJ do destinatário sem exp
   db.close();
 });
 
+test('prioridade de 1 a 10 decide entre regras que se sobrepõem', () => {
+  const db = new DatabaseSync(':memory:');
+  initFinance(db);
+  for (const name of ['Geral','Específica']) editFinance(db,'/api/categories',{name});
+  const id = name => overview(db).categories.find(c => c.name === name).id;
+  db.prepare('INSERT INTO snapshots VALUES(?,?,?)').run('i',JSON.stringify({accounts:[],holdings:[],
+    transactions:[{id:'a',description:'Uber viagem',amount:-1000,providerCategory:'',date:'2026-11-01'}]}),'2026-11-01');
+  editFinance(db,'/api/rules',{term:'uber',category:id('Geral')});
+  editFinance(db,'/api/rules',{term:'uber viagem',category:id('Específica'),priority:1});
+  assert.equal(overview(db).transactions[0].category,id('Específica'));
+  const rule = overview(db).rules.find(r => r.term === 'uber viagem');
+  editFinance(db,'/api/rules/edit',{id:rule.id,term:'uber viagem',category:id('Específica'),priority:9});
+  assert.equal(overview(db).transactions[0].category,id('Geral'));
+  assert.throws(() => editFinance(db,'/api/rules',{term:'x',category:id('Geral'),priority:11}),/de 1 a 10/);
+  const catalog = overview(db).catalogRules;
+  assert.ok(catalog.every(r => r.level >= 1 && r.level <= 10));
+  db.close();
+});
+
 test('categorias duplicadas mesclam atribuições e exclusões permanecem após reiniciar', () => {
   const db = new DatabaseSync(':memory:');
   initFinance(db);

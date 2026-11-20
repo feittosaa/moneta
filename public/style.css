@@ -320,3 +320,4 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 .guide-widget-fields label { display:grid; gap:4px; flex:1 1 14rem; font-weight:650 }
 .guide-widget-next a { font-weight:700 }
 .guide-widget-alt { font-size:14px }
+#edit-rule-form .hint { margin:0; font-size:13px; color:var(--muted, inherit) }
