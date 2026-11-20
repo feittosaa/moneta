@@ -1,24 +1,72 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moneta</title><link rel="stylesheet" href="/style.css">
-</head><body><aside><a class="brand" href="#relatorio"><b aria-hidden="true">M</b>Moneta</a><nav aria-label="Navegação principal"><a href="#relatorio"><i aria-hidden="true">▦</i>Visão geral</a><a href="#transacoes"><i aria-hidden="true">⇄</i>Transações</a><a href="#cartoes"><i aria-hidden="true">▱</i>Cartões</a><hr><a href="#categorias"><i aria-hidden="true">▤</i>Categorias</a><a href="#regras"><i aria-hidden="true">≛</i>Regras</a><hr><a href="#conexoes"><i aria-hidden="true">⌁</i>Conexões</a><a href="#configuracao"><i aria-hidden="true">⚙</i>Configuração</a></nav><div id="fresh" role="status">Carregando dados…</div></aside><main>
-<header class="topbar"><h1 id="page-title">Visão geral</h1><div class="toolbar"><label id="period">Mês <input type="month" id="month" required></label><label id="unit">Moeda <select id="currency"></select></label><button id="sync" disabled>Sincronizar</button></div></header>
-<section id="relatorio"><div id="report">
+</head><body><aside><a class="brand" href="#relatorio"><b aria-hidden="true">M</b>Moneta</a><nav aria-label="Navegação principal"><a href="#relatorio"><i aria-hidden="true">▦</i>Visão geral</a><a href="#transacoes"><i aria-hidden="true">⇄</i>Transações</a><a href="#carteira"><i aria-hidden="true">▣</i>Carteira</a><a href="#cartoes"><i aria-hidden="true">▱</i>Cartões</a><hr><a href="#categorias"><i aria-hidden="true">▤</i>Categorias</a><a href="#regras"><i aria-hidden="true">≛</i>Regras</a><hr><a href="#conexoes"><i aria-hidden="true">⌁</i>Conexões</a><a href="#configuracao"><i aria-hidden="true">⚙</i>Configuração</a></nav><div id="fresh" role="status">Carregando dados…</div></aside><main>
+<header class="topbar"><h1 id="page-title">Visão geral</h1><div class="toolbar"><div id="period" role="group" aria-label="Período do relatório">
+<button type="button" data-month-step="-12" aria-label="Ano anterior" title="Ano anterior">«</button>
+<button type="button" data-month-step="-1" aria-label="Mês anterior" title="Mês anterior">‹</button>
+<input type="month" id="month" aria-label="Mês e ano" required>
+<button type="button" data-month-step="1" aria-label="Próximo mês" title="Próximo mês">›</button>
+<button type="button" data-month-step="12" aria-label="Próximo ano" title="Próximo ano">»</button><button type="button" id="current-month">Mês atual</button></div><button type="button" id="privacy" aria-pressed="false" aria-label="Ocultar valores" title="Ocultar valores"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="M3 3l18 18"/></svg></button><button id="sync" disabled>Sincronizar</button></div></header>
+<section id="relatorio">
+<div class="overview-tabs" role="group" aria-label="Visões do painel">
+<button type="button" id="monthly-tab" aria-pressed="true" aria-controls="report">Resumo mensal</button>
+<button type="button" id="portfolio-tab" aria-pressed="false" aria-controls="portfolio">Patrimônio</button></div>
+<div id="report">
 <div class="balance"><div><span class="eyebrow">Patrimônio líquido</span><strong id="net-worth">—</strong><small>Posição na última sincronização</small></div><div class="orbit" aria-hidden="true"></div></div>
-<div id="month-metrics"></div>
+<div id="month-metrics"></div><p id="bill-note"></p>
 <div class="dashboard-grid">
-<div class="panel"><h2>Fluxo mensal</h2><div class="legend"><span>Receitas</span><span>Despesas</span></div><div id="flow"></div></div>
-<div class="panel"><h2>Despesas por categoria</h2><div id="breakdown"></div></div>
+<div class="panel"><h2>Fluxo mensal</h2><div class="legend"><span>Receitas</span><span>Débito</span><span>Faturas</span></div><div id="flow"></div></div>
+<div class="panel"><h2>Despesas por categoria</h2><label>Mostrar<select id="expense-scope"><option value="all">Todas as despesas</option><option value="invoice">Somente faturas</option></select></label><div id="breakdown"></div></div>
 <div class="panel"><div class="panel-title"><h2>Transações recentes</h2><a href="#transacoes">Ver todas ↗</a></div><div id="recent"></div></div>
 <div class="panel"><h2>Composição patrimonial</h2><dl id="position"></dl></div>
-</div></div></section>
-<section id="transacoes" hidden><div class="filters"><label>Buscar descrição<input id="search" type="search"></label><label>Conta ou cartão<select id="account"></select></label><label>Categoria<select id="filter-category"></select></label></div><div id="ledger"></div></section>
+</div></div>
+<div id="portfolio" hidden>
+<div class="filters"><label>Período<select id="portfolio-range"><option value="year">Ano</option><option value="custom">Personalizado</option></select></label>
+<label id="portfolio-year-label">Ano<select id="portfolio-year"></select></label>
+<label class="portfolio-custom" hidden>De<input type="date" id="portfolio-from"></label><label class="portfolio-custom" hidden>Até<input type="date" id="portfolio-to"></label></div>
+<div id="portfolio-content"></div></div></section>
+<section id="transacoes" hidden><div class="filters"><label>Buscar descrição<input id="search" type="search"></label><label>Conta ou cartão<select id="account"></select></label><label>Categoria<select id="filter-category"></select></label></div><div id="ledger-context" hidden><span id="ledger-context-label"></span> <button type="button" id="clear-ledger-context">Ver transações pela data da compra</button></div><div id="ledger"></div>
+<dialog id="tx-dialog" aria-labelledby="tx-title"><form id="tx-form">
+<h2 id="tx-title"></h2><p id="tx-details"></p>
+<label>Categoria<select name="category"></select></label>
+<label>Nota<textarea name="note" maxlength="2000" rows="3"></textarea></label>
+<label class="check"><input name="createRule" type="checkbox"> Criar regra com esta categoria</label>
+<label id="tx-term" hidden>Quando a descrição contiver<input name="term" maxlength="100"></label>
+<p id="tx-error" role="alert"></p>
+<div class="dialog-actions"><button type="button" id="tx-cancel">Cancelar</button><button>Salvar</button></div>
+</form></dialog></section>
+<section id="carteira" hidden><div id="wallet-balance"></div>
+<form id="wallet-form"><label>Movimentação<select name="operation"><option value="add">Adicionar saldo</option><option value="remove">Retirar saldo</option><option value="income">Receita em dinheiro</option><option value="expense">Despesa em dinheiro</option></select></label>
+<label>Valor<input name="amount" type="number" min="0.01" step="0.01" required></label><label>Data<input name="date" type="date" required></label>
+<label>Descrição<input name="description" maxlength="100"></label><button>Registrar</button></form>
+<p>Adicionar e retirar saldo ajustam a carteira. Receitas e despesas em dinheiro entram no resultado do mês.</p>
+<h2>Movimentações do mês</h2><div id="wallet-list"></div></section>
 <section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
-<section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div id="category-list"></div></section>
-<section id="regras" hidden><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><form id="rule-form"><label>Quando a descrição contiver<input name="term" required maxlength="100"></label><label>Aplicar categoria<select name="category" id="rule-category"></select></label><button>Criar regra</button></form><div id="rule-list"></div></section>
+<section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label>Cor<input type="color" name="color" value="#78a9ff"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div id="category-list"></div>
+<dialog id="category-editor" aria-labelledby="category-heading"><form id="edit-category-form">
+<h2 id="category-heading">Editar categoria</h2><label>Nome<input name="name" required maxlength="100"></label>
+<label>Cor<input type="color" name="color"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label>
+<div class="dialog-actions"><button type="button" id="cancel-category">Cancelar</button><button>Salvar</button></div>
+</form></dialog></section>
+<section id="regras" hidden><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><button type="button" id="apply-rules">Aplicar regras ao histórico</button>
+<dialog id="apply-dialog" aria-labelledby="apply-title" aria-describedby="apply-description">
+<h2 id="apply-title">Aplicar todas as regras ao histórico?</h2>
+<p id="apply-description">A Moneta vai reavaliar os lançamentos de todas as contas e meses com as regras ativas. As categorias escolhidas manualmente serão preservadas.</p>
+<div class="dialog-actions"><button type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply">Confirmar e aplicar</button></div>
+</dialog><button type="button" id="new-rule">Criar regra</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><div id="rule-list"></div>
+<dialog id="rule-editor" aria-labelledby="rule-heading"><form id="edit-rule-form"><h2 id="rule-heading">Editar regra</h2>
+<label id="edit-title-label">Nome<input name="title" required></label>
+<label>Categoria<select name="category" required></select></label>
+<div id="edit-options"><label>Prioridade<input name="priority" type="number" step="1"></label>
+<label>Aplicar quando<select name="mode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label>
+<label class="check"><input type="checkbox" name="active"> Regra ativa</label></div>
+<div id="edit-conditions"></div><p role="alert" id="edit-error"></p>
+<div class="dialog-actions"><button type="button" id="edit-cancel">Cancelar</button><button type="submit">Salvar</button></div>
+</form></dialog></section>
 <section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul>
 </section>
-<section id="configuracao" hidden><h2>Credenciais Pluggy</h2><p id="config"></p><form id="credentials-form">
+<section id="configuracao" hidden><h2>Exibição</h2><label>Moeda padrão<select id="currency"></select></label><h2>Credenciais Pluggy</h2><p id="config"></p><form id="credentials-form">
 <label>Client ID<input name="clientId" required spellcheck="false" autocapitalize="none" autocomplete="off"></label>
 <label>Client Secret<input name="clientSecret" type="password" required autocomplete="off"></label>
 <button>Validar e salvar</button></form>

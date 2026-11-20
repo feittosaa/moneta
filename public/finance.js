@@ -1,9 +1,15 @@
+import {cardPeriod} from './card-periods.mjs';
+import { renderPortfolio } from './portfolio.js';
 import { summarize } from './report.mjs';
 const $ = selector => document.querySelector(selector);
 const month = $('#month'), currency = $('#currency');
-const today = new Date();
-month.value = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+function currentMonth() {
+  const now = new Date();
+  return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+}
+month.value = currentMonth();
 let data, request, notify;
+let portfolioTab = false, historyRequest, ledgerScope, ledgerLink;
 const tag = (name, text) => {
   const element = document.createElement(name);
   if (text != null) element.textContent = text;
@@ -14,14 +20,25 @@ function choices(select, options) {
   select.replaceChildren(...options.map(([value,title]) => new Option(title,String(value))));
   if (options.some(([value]) => String(value) === before)) select.value = before;
 }
-const money = n => n == null ? 'Indisponível' : (n/100).toLocaleString('pt-BR',{style:'currency',currency:currency.value});
+let hiddenAmounts = localStorage.getItem('moneta-hide-amounts') === 'true';
+const money = n => hiddenAmounts ? '••••' : n == null ? 'Indisponível' : (n === 0 ? 0 : n/100).toLocaleString('pt-BR',{style:'currency',currency:currency.value});
 const accountName = a => [a.institution,a.name,a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
-const categoryName = id => data.categories.find(c => c.id === id)?.name || 'Sem categoria';
+const categoryName = id => id === 'invoice' ? 'Fatura sem detalhamento' : data.categories.find(c => c.id === id)?.name || 'Sem categoria';
+function categoryColor(id) {
+  return data.categories.find(c => c.id === id)?.color || (id === 'invoice' ? 'var(--invoice)' : 'var(--muted)');
+}
+function categoryLabel(id) {
+  const label = tag('span',categoryName(id));
+  label.className = 'category-label';
+  label.style.setProperty('--category-color',categoryColor(id));
+  return label;
+}
 function metrics(values) {
   const grid = tag('div');
   grid.className = 'metrics';
-  for (const [title,amount] of values) {
+  for (const [title,amount,tone] of values) {
     const box = tag('article');
+    if (tone) box.className = tone;
     box.append(tag('span',title),tag('strong',money(amount)));
     grid.append(box);
   }
@@ -42,16 +59,29 @@ function table(headers, rows, empty) {
 const periodRows = () => data.transactions.filter(t => t.date.startsWith(month.value || 'invalid') && t.currency === currency.value);
 const sum = (list, value) => list.reduce((total,row) => total + value(row),0);
 function report() {
-  const loaded = data.sources.length > 0;
+  const loaded = data.sources.length > 0 || data.accounts.some(a => a.type === 'CASH' && a.currency === currency.value);
   const period = month.value || 'invalid';
   const summary = summarize(data,period,currency.value);
   const amount = value => loaded ? money(value) : '—';
   $('#net-worth').textContent = amount(summary.net);
-  $('#month-metrics').replaceChildren(metrics([
-    ['Receitas do mês', loaded ? summary.income : null],
-    ['Despesas do mês', loaded ? summary.spent : null],
-    ['Resultado do mês', loaded ? summary.income-summary.spent : null],
-  ]));
+  const result = summary.income - summary.spent;
+  const indicators = metrics([
+    ['Receita', loaded ? summary.income : null],
+    ['Despesas', loaded ? summary.spent : null],
+    ['Resultado do mês', loaded ? result : null,loaded && result ? (result > 0 ? 'result-positive' : 'result-negative') : null],
+  ]);
+  const detail = tag('small');
+  detail.className = 'expense-detail';
+  detail.append(tag('b','Débito '+amount(summary.debit)),tag('i','+'),tag('b','Faturas '+amount(summary.invoices)));
+  if (summary.cashSpent) detail.append(tag('i','+'),tag('b','Dinheiro '+amount(summary.cashSpent)));
+  indicators.children[1].append(detail);
+  $('#month-metrics').replaceChildren(indicators);
+  $('#bill-note').textContent = !loaded ? '' : [
+    summary.projected ? 'O total inclui '+money(summary.projected)+' em faturas estimadas.' : '',
+    summary.inferred ? 'Parte da composição da fatura foi estimada pelas compras do cartão e pelo valor pago.' : '',
+    summary.invoiceFallback ? 'Para faturas sem total disponível, usamos o pagamento identificado.' : '',
+    summary.missingBills ? 'Há cartão sem fatura informada para o mês. O resultado inclui apenas os valores disponíveis.' : ''
+  ].filter(Boolean).join(' ');
   const flow = $('#flow');
   flow.replaceChildren();
   if (month.value) {
@@ -60,18 +90,26 @@ function report() {
       const date = new Date(year,number-6+i,1);
       const key = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
       const values = summarize(data,key,currency.value);
-      return {date, income:values.income, spent:values.spent};
+      return {date, income:values.income, spent:values.spent,invoices:values.invoices,cashSpent:values.cashSpent};
     });
+    $('.legend span:nth-child(2)').textContent = series.some(p => p.cashSpent) ? 'Débito e dinheiro' : 'Débito';
     const peak = Math.max(1,...series.flatMap(point => [point.income,point.spent]));
     for (const point of series) {
       const col = tag('div'), bars = tag('div');
       const label = point.date.toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
-      col.title = label+' · Receitas '+amount(point.income)+' · Despesas '+amount(point.spent);
+      col.title = label+' · Receitas '+amount(point.income)+' · Despesas '+amount(point.spent)+' · Faturas '+amount(point.invoices);
       col.setAttribute('aria-label',col.title);
+    col.tabIndex = 0;
       bars.className = 'bars';
-      for (const value of [point.income,point.spent]) {
+      for (const [index,value] of [point.income,point.spent].entries()) {
         const bar = tag('i');
         bar.style.height = (value/peak*100)+'%';
+        if (index === 1 && value > 0) {
+          const invoice = tag('b');
+          invoice.className = 'flow-invoice';
+          invoice.style.height = (100*point.invoices/value)+'%';
+          bar.append(invoice);
+        }
         bars.append(bar);
       }
       col.append(bars,tag('small',label)); flow.append(col);
@@ -84,14 +122,21 @@ function report() {
   }
   const breakdown = $('#breakdown');
   breakdown.replaceChildren();
-  for (const [id,value] of [...summary.byCategory].sort((a,b) => b[1]-a[1])) {
+  const invoicesOnly = $('#expense-scope').value === 'invoice';
+  const categories = invoicesOnly ? summary.invoiceByCategory : summary.byCategory;
+  for (const [id,value] of [...categories].filter(([,v]) => v !== 0).sort((a,b) => b[1]-a[1])) {
     const row = tag('div'), track = tag('progress');
-    track.max = summary.spent; track.value = value;
+    track.max = Math.max(1,invoicesOnly ? summary.invoices : summary.spent); track.value = Math.max(0,value);
+    track.style.setProperty('--category-color',categoryColor(id));
     track.setAttribute('aria-label',categoryName(id));
-    row.append(tag('span',categoryName(id)),tag('strong',money(value)),track);
+    const link = tag('a');
+    link.href = '#transacoes?'+new URLSearchParams({mes:period,categoria:String(id ?? 'none'),origem:invoicesOnly ? 'faturas' : 'despesas'});
+    link.title = 'Ver lançamentos de '+categoryName(id)+' no resumo deste mês';
+    link.append(categoryLabel(id));
+    row.append(link,tag('strong',money(value)),track);
     breakdown.append(row);
   }
-  if (!breakdown.childElementCount) breakdown.append(tag('p','Nenhuma despesa efetivada neste mês.'));
+  if (!breakdown.childElementCount) breakdown.append(tag('p',invoicesOnly ? 'Nenhuma fatura neste mês.' : 'Nenhuma despesa efetivada neste mês.'));
   $('#recent').replaceChildren(table(['Data','Descrição','Valor'],periodRows().slice(0,5).map(t =>
     [formatDate(t.date),t.description,money(t.amount)]),'Nenhum lançamento neste período.'));
   const position = $('#position'); position.replaceChildren();
@@ -103,16 +148,31 @@ let ledgerLimit = 100;
 function ledger() {
   const query = $('#search').value.trim().toLocaleLowerCase();
   const selected = $('#filter-category').value;
-  const rows = periodRows().filter(t => (!$('#account').value || t.account === $('#account').value) &&
+  let transactions = periodRows();
+  if (ledgerScope) {
+    const summary = summarize(data,month.value,currency.value);
+    transactions = ledgerScope === 'faturas' ? summary.invoiceRows : [...summary.expenses,...summary.invoiceRows];
+    if (selected === 'invoice') {
+      transactions = summary.invoiceByCategory.has('invoice') ? [{
+        date:month.value+'-01',description:'Fatura sem detalhamento',category:'invoice',amount:-summary.invoiceByCategory.get('invoice'),projected:true
+      }] : [];
+    }
+    transactions.sort((a,b) => b.date.localeCompare(a.date));
+  }
+  $('#ledger-context').hidden = !ledgerScope;
+  $('#ledger-context-label').textContent = ledgerScope === 'faturas' ? 'Compras das faturas do mês selecionado.' : 'Lançamentos que compõem as despesas do mês selecionado.';
+  const rows = transactions.filter(t => (!$('#account').value || t.account === $('#account').value) &&
     (!selected || String(t.category ?? 'none') === selected) && t.description.toLocaleLowerCase().includes(query));
   const accounts = new Map(data.accounts.map(a => [a.id,accountName(a)]));
+  const credit = new Set(data.accounts.filter(a => a.type === 'CREDIT').map(a => a.id));
   const records = rows.slice(0,ledgerLimit).map(t => {
-    const select = tag('select');
-    select.setAttribute('aria-label','Categoria de '+t.description);
-    choices(select,[['','Automática'+(t.manual ? '' : ' · '+categoryName(t.category))],...data.categories.map(c => [c.id,c.name])]);
-    select.value = t.manual ? String(t.category) : '';
-    select.onchange = () => save('/assignment',{id:t.id,category:Number(select.value)||null});
-    return [formatDate(t.date),t.description,accounts.get(t.account),select,t.pending?'Pendente':'Efetivada',money(t.amount)];
+    const open = tag('button',t.description);
+    open.className = 'transaction-link';
+    open.onclick = () => openTransaction(t);
+    const value = tag('span',money(t.amount));
+    value.className = t.amount < 0 ? ((t.category === 'invoice' || credit.has(t.account)) ? 'amount-invoice' : 'amount-expense') : t.amount > 0 ? 'amount-income' : '';
+    return [t.category === 'invoice' || t.projected ? '—' : formatDate(t.date),t.projected ? t.description : open,
+      accounts.get(t.account) || '—',categoryLabel(t.category),t.projected ? (t.category === 'invoice' ? 'Sem detalhamento' : 'Prevista') : t.pending?'Pendente':'Efetivada',value];
   });
   $('#ledger').replaceChildren(table(['Data','Descrição','Conta','Categoria','Situação','Valor'],records,'Nenhuma transação para estes filtros.'));
   if (rows.length > ledgerLimit) {
@@ -120,47 +180,296 @@ function ledger() {
   }
 }
 const formatDate = value => value.split('-').reverse().join('/');
+function openTransaction(tx) {
+  const dialog = $('#tx-dialog'), form = $('#tx-form');
+  const {category,note,createRule,term} = form.elements;
+  form.reset();
+  $('#tx-error').textContent = '';
+  $('#tx-title').textContent = tx.description;
+  const account = data.accounts.find(a => a.id === tx.account);
+  $('#tx-details').textContent = [formatDate(tx.date),account && accountName(account),money(tx.amount)].filter(Boolean).join(' · ');
+  choices(category,[['','Seguir regras'+(tx.manual ? '' : ' · '+categoryName(tx.category))],...data.categories.map(c => [c.id,c.name])]);
+  category.value = tx.manual ? String(tx.category) : '';
+  note.value = tx.note || '';
+  term.value = tx.description.slice(0,100);
+  function toggleRule() {
+    $('#tx-term').hidden = !createRule.checked;
+    category.required = term.required = createRule.checked;
+    if (createRule.checked && !category.value && tx.category) category.value = String(tx.category);
+  }
+  createRule.onchange = toggleRule;
+  toggleRule();
+  $('#tx-cancel').onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const submit = form.querySelector('button:not([type])');
+    submit.disabled = true;
+    try {
+      await request('transaction',{id:tx.id,note:note.value,category:Number(category.value)||null,ruleTerm:createRule.checked ? term.value : null});
+      dialog.close();
+      await refresh();
+      notify('Transação salva.');
+    } catch (error) { $('#tx-error').textContent = error.message; notify(error.message); }
+    finally { submit.disabled = false; }
+  };
+  dialog.showModal();
+}
+function cardAmount(tx) {
+  const value = tag('span',money(tx.amount));
+  if (tx.amount < 0) value.className = 'purchase-amount';
+  return value;
+}
 function cards() {
-  const list = data.accounts.filter(a => a.type === 'CREDIT' && a.currency === currency.value);
-  choices($('#card'),list.map(a => [a.id,accountName(a)]));
+  const list = data.accounts.filter(a => ['CREDIT','BANK'].includes(a.type) && a.currency === currency.value);
+  const cardName = a => [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  choices($('#card'),list.map(a => [a.id,cardName(a)]));
   const card = list.find(a => a.id === $('#card').value);
   const pane = $('#card-detail');
-  if (!card) {pane.replaceChildren(tag('p','Nenhum cartão sincronizado nesta moeda.')); return;}
-  const rows = periodRows().filter(t => t.account === card.id);
-  pane.replaceChildren(tag('h2',accountName(card)),metrics([['Saldo usado atual',card.balance],['Limite informado',card.limit],['Débitos efetivados no mês',-sum(rows.filter(t => !t.pending && t.amount<0),t => t.amount)]]),
-    tag('h2','Lançamentos do mês'),table(['Data','Descrição','Categoria','Situação','Valor'],rows.map(t => [formatDate(t.date),t.description,categoryName(t.category),t.pending?'Pendente':'Efetivada',money(t.amount)]),'Nenhum lançamento neste mês.'));
+  if (!card) {pane.replaceChildren(tag('p','Nenhum cartão ou conta sincronizada nesta moeda.')); return;}
+  pane.replaceChildren(tag('h2',cardName(card)));
+  if (!month.value) return;
+  if (card.type === 'BANK') {
+    const accountDebits = periodRows().filter(t => t.account === card.id && t.amount < 0);
+    const debitPurchases = accountDebits.filter(t => /^(?:CARTAO|COMPRA_CARTAO|CARTAO_(?:DE_)?DEBITO|COMPRA_CARTAO_(?:DE_)?DEBITO)$/.test(t.operation) ||
+      /^(?:compra (?:no |com )?(?:cartão (?:de )?)?d[eé]bito|compra cart[aã]o|rshop)\b/i.test(t.description));
+    pane.append(metrics([['Saldo atual da conta',card.balance],['Compras no débito no mês',-sum(debitPurchases.filter(t => !t.pending),t => t.amount),'purchase-metric']]),
+      tag('h2','Compras identificadas no débito'),table(['Data','Descrição','Categoria','Situação','Valor'],debitPurchases.map(t =>
+        [formatDate(t.date),t.description,categoryName(t.category),t.pending?'Pendente':'Efetivada',cardAmount(t)]),'Nenhuma compra no cartão de débito identificada neste mês.'));
+    return;
+  }
+  const day = new Date().toLocaleDateString('en-CA');
+  const period = cardPeriod(data,card,month.value,day);
+  const open = period.openMonth && cardPeriod(data,card,period.openMonth,day);
+  const openLabel = open?.open ? 'Fatura em aberto · '+period.openMonth.split('-').reverse().join('/') : 'Fatura atual em aberto';
+  pane.append(metrics([[openLabel,open?.open ? open.amount : null,'invoice-metric'],['Limite total',card.limit],['Limite utilizado',card.used]]));
+  const status = period.official.length ? 'fechada' : period.open ? 'em aberto' : 'estimada';
+  const [year,number] = month.value.split('-');
+  pane.append(tag('h2','Fatura de '+number+'/'+year+(period.amount == null ? '' : ' · '+status)),
+    tag('p',period.amount == null ? (period.paid ? 'Pagamento de fatura identificado no mês · '+money(period.paid) : 'Fatura indisponível para este período.') : money(period.amount)));
+  if (!period.official.length && period.amount != null && period.dueDate) {
+    pane.append(tag('p',[period.closingDate && 'Fechamento previsto em '+formatDate(period.closingDate),'Vencimento previsto em '+formatDate(period.dueDate)].filter(Boolean).join(' · ')));
+  }
+  for (const bill of period.official) {
+    pane.append(tag('p',[bill.close && 'Fechamento em '+formatDate(bill.close),'Vencimento em '+formatDate(bill.due)].filter(Boolean).join(' · ')));
+  }
+  pane.append(table(['Data','Descrição','Parcela','Categoria','Valor'],period.rows.map(t => [
+    t.projected ? 'Prevista' : formatDate(t.date),t.description,t.installment ? t.installment+'/'+t.installments : '—',categoryName(t.category),cardAmount(t)
+  ]),'Nenhum lançamento vinculado a esta fatura.'));
+}
+function editRule(rule = {}) {
+  const dialog = $('#rule-editor'), form = $('#edit-rule-form');
+  const field = name => form.elements.namedItem(name);
+  const editing = rule.id != null || rule.key != null;
+  $('#rule-heading').textContent = editing ? 'Editar regra' : 'Criar regra';
+  form.reset();
+  field('title').value = rule.name || '';
+  choices(field('category'),data.categories.map(c => [c.id,c.name]));
+  field('category').value = rule.category ?? '';
+  field('priority').value = rule.priority ?? 0;
+  field('priority').closest('label').hidden = rule.key == null;
+  field('mode').value = rule.mode || 'and';
+  field('active').checked = rule.active ?? true;
+  const root = $('#edit-conditions');
+  root.replaceChildren();
+  const fields = [['description','Descrição'],['receiver_document','CPF ou CNPJ do destinatário'],['amount','Valor'],['date','Data'],['status','Situação'],['type','Tipo'],['payee_id','Favorecido importado']];
+  const operators = [['contains','contém'],['not_contains','não contém'],['starts_with','começa com'],['ends_with','termina com'],['equals','igual a'],['not_equals','diferente de'],['regex','corresponde à expressão'],['lt','menor que'],['lte','menor ou igual a'],['gt','maior que'],['gte','maior ou igual a']];
+  const conditions = structuredClone(rule.conditions || [{field:'description',op:'contains',value:rule.term || ''}]);
+  function button(title,action) {
+    const control = tag('button',title);
+    control.type = 'button';
+    control.onclick = action;
+    return control;
+  }
+  function renderGroup(container, nodes) {
+    container.replaceChildren();
+    for (const node of nodes) {
+      const row = tag('fieldset');
+      const remove = button('Remover',() => {
+        nodes.splice(nodes.indexOf(node),1);
+        row.remove();
+      });
+      if (Array.isArray(node.conditions)) {
+        const mode = tag('select'), inner = tag('div');
+        choices(mode,[['and','Todas (E)'],['or','Qualquer (OU)']]);
+        mode.value = node.op;
+        mode.setAttribute('aria-label','Combinação do grupo');
+        mode.onchange = () => { node.op = mode.value; };
+        row.append(tag('legend','Grupo de condições'),mode,inner,remove);
+        renderGroup(inner,node.conditions);
+      } else {
+        const key = tag('select'), op = tag('select'), value = tag('input');
+        choices(key,fields.some(([id]) => id === node.field) ? fields : [...fields,[node.field,node.field]]);
+        key.value = node.field;
+        key.setAttribute('aria-label','Campo da condição');
+        op.setAttribute('aria-label','Operador');
+        value.setAttribute('aria-label','Valor da condição');
+        value.required = true;
+        value.value = node.value ?? '';
+        function updateOperators() {
+          const options = node.field === 'receiver_document' ? operators.filter(([id]) => id === 'equals') : operators;
+          choices(op,options);
+          if (!options.some(([id]) => id === node.op)) node.op = options[0][0];
+          op.value = node.op;
+        }
+        updateOperators();
+        key.onchange = () => { node.field = key.value; updateOperators(); };
+        op.onchange = () => { node.op = op.value; };
+        value.oninput = () => { node.value = value.value; };
+        row.append(tag('legend','Condição'),key,op,value,remove);
+      }
+      container.append(row);
+    }
+    container.append(button('Adicionar condição',() => {
+      nodes.push({field:'description',op:'contains',value:''});
+      renderGroup(container,nodes);
+    }),button('Adicionar grupo',() => {
+      nodes.push({op:'or',conditions:[{field:'description',op:'contains',value:''}]});
+      renderGroup(container,nodes);
+    }));
+  }
+  renderGroup(root,conditions);
+  $('#edit-error').textContent = '';
+  $('#edit-cancel').onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const submit = form.querySelector('[type=submit]');
+    submit.disabled = true;
+    try {
+      await request(editing ? 'rules/edit' : 'rules',{key:rule.key,id:rule.id,name:field('title').value,
+        active:field('active').checked,mode:field('mode').value,priority:Number(field('priority').value),
+        conditions,category:Number(field('category').value)});
+      dialog.close(); await refresh(); notify('Regra salva.');
+    } catch (error) { $('#edit-error').textContent = error.message; }
+    finally { submit.disabled = false; }
+  };
+  dialog.showModal();
+}
+function editCategory(category) {
+  const dialog = $('#category-editor'), form = $('#edit-category-form');
+  const {name,color,internal} = form.elements;
+  name.value = category.name;
+  color.value = category.color;
+  internal.checked = Boolean(category.internal);
+  $('#cancel-category').onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    try {
+      await request('categories/edit',{id:category.id,name:name.value,color:color.value,internal:internal.checked});
+      dialog.close(); await refresh(); notify('Categoria salva.');
+    } catch (error) { notify(error.message); }
+  };
+  dialog.showModal();
 }
 function manage(page) {
   if (page === 'categorias') {
-    $('#category-list').replaceChildren(table(['Categoria','Modelo','Participa do fluxo mensal'],data.categories.map(c => [c.name,c.custom?'Personalizada':'Padrão',c.internal?'Não':'Sim']),'Nenhuma categoria.'));
+    $('#category-list').replaceChildren(table(['Categoria','Cor','Modelo','Participa do fluxo mensal','Ações'],data.categories.map(c => {
+      const picker = tag('input');
+      picker.type = 'color'; picker.value = c.color;
+      picker.setAttribute('aria-label','Cor de '+c.name);
+      picker.onchange = async () => {
+        picker.disabled = true;
+        try { await save('/categories/color',{id:c.id,color:picker.value}); }
+        finally { picker.disabled = false; }
+      };
+      const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+      actions.className = 'rule-actions';
+      edit.onclick = () => editCategory(c);
+      remove.onclick = () => {
+        if (confirm('Excluir a categoria '+c.name+'? As classificações e regras locais associadas serão removidas.')) save('/categories/remove',{id:c.id});
+      };
+      actions.append(edit,remove);
+      return [categoryLabel(c.id),picker,c.custom?'Personalizada':'Padrão',c.internal?'Não':'Sim',actions];
+    }),'Nenhuma categoria.'));
   } else {
-    choices($('#rule-category'),data.categories.map(c => [c.id,c.name]));
-    $('#rule-list').replaceChildren(table(['Prioridade','Descrição contém','Categoria',''],data.rules.map((r,i) => {
-      const remove = tag('button','Excluir'); remove.onclick = () => save('/rules/remove',{id:r.id});
-      return [i+1,r.term,categoryName(r.category),remove];
-    }),'Nenhuma regra criada.'));
+    const normalize = value => value.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+    const query = normalize($('#rule-search').value.trim());
+    const matches = (...values) => normalize(values.join(' ')).includes(query);
+    const rules = [...data.rules.map(r => ({...r,name:r.name || r.term,pack:'Criada por mim',status:r.active === false ? 'Desativada' : 'Ativa'})),...data.catalogRules];
+    const rows = rules.flatMap((r,index) => {
+      if (!matches(r.name,r.pack,categoryName(r.category),r.status,r.terms)) return [];
+      const actions = tag('div'), edit = tag('button','Editar');
+      edit.onclick = () => editRule(r);
+      actions.className = 'rule-actions'; actions.append(edit);
+      const remove = tag('button','Excluir');
+      remove.onclick = () => {
+        if (confirm('Excluir a regra '+r.name+'?')) save('/rules/remove',{id:r.id,key:r.key});
+      };
+      actions.append(remove);
+      return [[index+1,r.name,r.pack,categoryName(r.category),r.status,actions]];
+    });
+    $('#rule-list').replaceChildren(table(['Ordem','Regra','Origem','Categoria','Situação','Ações'],rows,'Nenhuma regra encontrada.'));
   }
 }
 export function navigate() {
-  const page = [...document.querySelectorAll('main > section')].find(s => '#'+s.id === location.hash)?.id || 'relatorio';
+  const [hash,search] = location.hash.split('?');
+  const page = [...document.querySelectorAll('main > section')].find(s => '#'+s.id === hash)?.id || 'relatorio';
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== page;
   for (const a of document.querySelectorAll('nav a')) a.setAttribute('aria-current',a.hash === '#'+page ? 'page' : 'false');
   $('#page-title').textContent = document.querySelector('nav a[aria-current=page]').lastChild.textContent;
-  $('.toolbar').hidden = !['relatorio','transacoes','cartoes','conexoes'].includes(page);
-  $('#period').hidden = $('#unit').hidden = page === 'conexoes';
+  $('.toolbar').hidden = !['relatorio','transacoes','cartoes','carteira','conexoes'].includes(page);
+  $('#current-month').hidden = page !== 'relatorio';
+  $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab);
   if (!data) return;
-  if (page === 'relatorio') report();
+  if (page !== 'transacoes' || !search) {
+    ledgerScope = ledgerLink = null;
+    const synthetic = $('#filter-category option[value=invoice]');
+    if (synthetic) synthetic.remove();
+  }
+  if (page === 'transacoes' && search && search !== ledgerLink) {
+    ledgerLink = search;
+    const params = new URLSearchParams(search);
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mes'))) month.value = params.get('mes');
+    ledgerScope =['despesas','faturas'].includes(params.get('origem')) ? params.get('origem') : null;
+    const category = $('#filter-category');
+    if (params.get('categoria') === 'invoice' && ![...category.options].some(o => o.value === 'invoice'))
+      category.add(new Option('Fatura sem detalhamento','invoice'));
+    category.value = params.get('categoria') || '';
+    if (category.selectedIndex < 0) category.value = '';
+    $('#account').value = $('#search').value = '';
+    ledgerLimit = 100;
+  }
+  if (page === 'relatorio') {
+    $('#report').hidden = portfolioTab;
+    $('#portfolio').hidden = !portfolioTab;
+    $('#monthly-tab').setAttribute('aria-pressed',String(!portfolioTab));
+    $('#portfolio-tab').setAttribute('aria-pressed',String(portfolioTab));
+    if (portfolioTab) showPortfolio();
+    else report();
+  }
+  if (page === 'carteira') {
+    const id = 'wallet-'+currency.value;
+    const account = data.accounts.find(a => a.id === id);
+    $('#wallet-balance').replaceChildren(metrics([['Saldo em dinheiro',account?.balance ?? 0]]));
+    $('#wallet-list').replaceChildren(table(['Data','Descrição','Valor'],periodRows().filter(t => t.account === id)
+      .map(t => [formatDate(t.date),t.description,money(t.amount)]),'Nenhuma movimentação neste mês.'));
+  }
   if (page === 'cartoes') cards();
   if (page === 'transacoes') ledger();
   if (['categorias','regras'].includes(page)) manage(page);
 }
+async function showPortfolio() {
+  const target = $('#portfolio-content');
+  const pending = historyRequest ??= request('portfolio');
+  try {
+    const history = await pending;
+    if (historyRequest === pending && !$('#relatorio').hidden && !$('#portfolio').hidden)
+      renderPortfolio(history,data.transactions,currency.value,target,money);
+  } catch (error) {
+    if (historyRequest !== pending) return;
+    historyRequest = null;
+    target.textContent = error.message;
+  }
+}
 async function refresh() {
   data = await request('finance');
-  const units = new Set(['BRL',...[...data.accounts,...data.transactions,...data.holdings].map(row => row.currency).filter(Boolean)]);
-  choices(currency,[...units].map(u => [u,u]));
+  historyRequest = null;
+  const units = new Set([data.currency,'BRL','USD','EUR',...Intl.supportedValuesOf('currency'),...[...data.accounts,...data.transactions,...data.holdings].map(row => row.currency).filter(Boolean)]);
+  choices(currency,[...units].sort().map(u => [u,u]));
+  currency.value = data.currency;
   choices($('#account'),[['','Todas'],...data.accounts.map(a => [a.id,accountName(a)])]);
-  choices($('#filter-category'),[['','Todas'],['none','Sem categoria'],...data.categories.map(c => [c.id,c.name])]);
-  $('#fresh').textContent = data.sources.length ? 'Atualizado em '+new Date(data.sources[0].updated).toLocaleString('pt-BR') : 'Nenhum dado importado';
+  choices($('#filter-category'),[['','Todas'],['none','Sem categoria'],...(ledgerScope ? [['invoice','Fatura sem detalhamento']] : []),...data.categories.map(c => [c.id,c.name])]);
+  const latest = data.sources.map(s => s.updated).sort().at(-1);
+  $('#fresh').textContent = latest ? 'Atualizado em '+new Date(latest).toLocaleString('pt-BR') : 'Nenhum dado importado';
   navigate();
 }
 async function save(path,body,form) {
@@ -177,17 +486,112 @@ export async function syncFinance() {
 }
 export function initializeFinance(api, message) {
   request = api; notify = message;
+  $('#expense-scope').onchange = navigate;
+  $('#monthly-tab').onclick = () => { portfolioTab = false; navigate(); };
+  $('#portfolio-tab').onclick = () => { portfolioTab = true; navigate(); };
+  $('#clear-ledger-context').onclick = () => { location.hash = 'transacoes'; };
+  for (const id of ['portfolio-range','portfolio-year','portfolio-from','portfolio-to']) $('#'+id).onchange = showPortfolio;
+  $('#sync').title = 'Atualizar agora os dados disponíveis no MeuPluggy';
+  const privacy = $('#privacy');
+  function reflectPrivacy() {
+    privacy.title = hiddenAmounts ? 'Mostrar valores' : 'Ocultar valores';
+    privacy.setAttribute('aria-label',privacy.title);
+    privacy.setAttribute('aria-pressed',String(hiddenAmounts));
+  }
+  reflectPrivacy();
+  privacy.onclick = () => {
+    hiddenAmounts = !hiddenAmounts;
+    localStorage.setItem('moneta-hide-amounts', String(hiddenAmounts));
+    reflectPrivacy();
+    navigate();
+  };
+  currency.onchange = async () => {
+    currency.disabled = true;
+    try {
+      await request('settings/currency',{currency:currency.value});
+      data.currency = currency.value;
+      notify('Moeda padrão salva.');
+    } catch (error) { currency.value = data.currency; notify(error.message); }
+    finally { currency.disabled = false; navigate(); }
+  };
   $('#sync').onclick = syncFinance;
-  for (const id of ['month','currency','account','filter-category','card','search']) {
+  $('#current-month').onclick = () => {
+    month.value = currentMonth();
+    month.dispatchEvent(new Event('input'));
+  };
+  for (const button of document.querySelectorAll('[data-month-step]')) {
+    button.onclick = () => {
+      const [year, number] = (month.value || currentMonth()).split('-').map(Number);
+      const offset = year * 12 + number - 1 + Number(button.dataset.monthStep);
+      if (offset < 12 || offset >= 120000) return;
+      month.value = String(Math.floor(offset / 12)).padStart(4,'0') + '-' + String(offset % 12 + 1).padStart(2,'0');
+      month.dispatchEvent(new Event('input'));
+    };
+  }
+  for (const id of ['month','account','filter-category','card','search','rule-search']) {
     $('#'+id).oninput = () => {ledgerLimit=100; navigate();};
   }
+  const dialog = $('#apply-dialog');
+  const apply = $('#apply-rules');
+  apply.onclick = () => dialog.showModal();
+  $('#cancel-apply').onclick = () => dialog.close();
+  $('#confirm-apply').onclick = async () => {
+    dialog.close();
+    apply.disabled = true;
+    notify('Reavaliando lançamentos…');
+    try {
+      const { total, changed } = await request('rules/apply', {confirmed:true});
+      await refresh();
+      notify(`Histórico reavaliado. Lançamentos: ${total}. Categorias alteradas: ${changed}.`);
+    } catch (error) { notify(error.message); }
+    finally { apply.disabled = false; }
+  };
+  $('#rules-import').onsubmit = async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      const payload = JSON.parse(await form.elements.file.files[0].text());
+      const applyExisting = form.elements.applyExisting.checked;
+      await request('rules/import',{...payload,applyExisting});
+      form.reset();
+      await refresh();
+      notify(applyExisting ? 'Regras importadas e histórico reavaliado.' : 'Regras importadas para novos lançamentos.');
+    } catch (error) { notify(error instanceof SyntaxError ? 'O arquivo contém JSON inválido.' : error.message); }
+  };
   $('#category-form').onsubmit = e => {
     e.preventDefault(); const form = e.currentTarget;
-    save('/categories',{name:form.elements.name.value,internal:form.elements.internal.checked},form);
+    save('/categories',{name:form.elements.name.value,color:form.elements.color.value,internal:form.elements.internal.checked},form);
   };
-  $('#rule-form').onsubmit = e => {
-    e.preventDefault(); const form = e.currentTarget;
-    save('/rules',{term:form.elements.term.value,category:Number(form.elements.category.value)},form);
+  $('#new-rule').onclick = () => editRule();
+  const walletForm = $('#wallet-form');
+  const walletDate = walletForm.elements.date;
+  walletDate.value = new Date().toLocaleDateString('en-CA');
+  let draftId;
+  walletForm.oninput = () => { draftId = null; };
+  walletForm.onsubmit = async event => {
+    event.preventDefault();
+    const {operation,amount,date,description} = walletForm.elements;
+    const outgoing = ['remove','expense'].includes(operation.value);
+    const kind = ['add','remove'].includes(operation.value) ? 'adjustment' : operation.value;
+    const submit = walletForm.querySelector('button');
+    submit.disabled = true;
+    try {
+      draftId ||= 'wallet-'+crypto.randomUUID();
+      await request('wallet',{id:draftId,currency:currency.value,kind,date:date.value,
+        amount:Math.round(Number(amount.value)*100)*(outgoing ? -1 : 1),
+        description:description.value.trim() || operation.selectedOptions[0].textContent});
+      month.value = date.value.slice(0,7);
+      draftId = null; amount.value = description.value = '';
+      await refresh(); notify('Movimentação registrada.');
+    } catch (error) { notify(error.message); }
+    finally { submit.disabled = false; }
   };
   refresh().catch(e => notify(e.message));
+  setInterval(async () => {
+    if (document.hidden || !data || document.querySelector('dialog[open]')) return;
+    try {
+      const {updated} = await request('status');
+      if (updated && data.sources.every(s => s.updated < updated)) await refresh();
+    } catch { /* The displayed local copy remains available while the server reconnects. */ }
+  },60_000);
 }
