@@ -128,8 +128,9 @@ export function catalogRules(db, categories) {
   const ids = new Map(categories.map(c => [c.key,c.id]));
   const edits = new Map(db.prepare('SELECT * FROM rule_edits').all().map(r => [r.key,JSON.parse(r.definition)]));
   const rules = [...personal,...defaults.filter(rule => !overridden(rule))].map(rule => {
-    const key = JSON.stringify([personal.includes(rule) ? 'import' : 'default',rule.pack,rule.name]);
-    return {...rule,...edits.get(key),key};
+    const imported = personal.includes(rule);
+    const key = JSON.stringify([imported ? 'import' : 'default',rule.pack,rule.name]);
+    return {...rule,...edits.get(key),key,imported};
   });
   return rules.filter(rule => !rule.deleted)
     .sort((a,b) => a.priority-b.priority)
@@ -137,7 +138,7 @@ export function catalogRules(db, categories) {
       const category = ids.get(categoryKey(categoryName(rule)));
       const check = condition({op:rule.conditions_op, conditions:rule.conditions});
       const compatible = Boolean(check && category);
-      return {key:rule.key,conditions:rule.conditions,mode:rule.conditions_op,active:rule.is_active !== false,name:rule.name, terms:terms(rule.conditions), pack:rule.pack, category, priority:rule.priority,
+      return {key:rule.key,conditions:rule.conditions,mode:rule.conditions_op,active:rule.is_active !== false,name:rule.name, terms:terms(rule.conditions), pack:rule.pack, imported:rule.imported, category, priority:rule.priority,
         status: rule.is_active === false ? 'Desativada' : !compatible ? 'Requer adaptação' : 'Ativa',
         matches:rule.is_active !== false && compatible ? check : null};
     });

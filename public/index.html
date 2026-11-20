@@ -43,7 +43,7 @@
 <p>Adicionar e retirar saldo ajustam a carteira. Receitas e despesas em dinheiro entram no resultado do mês.</p>
 <h2>Movimentações do mês</h2><div id="wallet-list"></div></section>
 <section id="cartoes" hidden><label>Selecionar cartão<select id="card"></select></label><div id="card-detail"></div></section>
-<section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label>Cor<input type="color" name="color" value="#78a9ff"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div id="category-list"></div>
+<section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label>Cor<input type="color" name="color" value="#78a9ff"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div class="filters"><label>Origem<select id="category-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="category-list"></div>
 <dialog id="category-editor" aria-labelledby="category-heading"><form id="edit-category-form">
 <h2 id="category-heading">Editar categoria</h2><label>Nome<input name="name" required maxlength="100"></label>
 <label>Cor<input type="color" name="color"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label>
@@ -54,7 +54,7 @@
 <h2 id="apply-title">Aplicar todas as regras ao histórico?</h2>
 <p id="apply-description">A Moneta vai reavaliar os lançamentos de todas as contas e meses com as regras ativas. As categorias escolhidas manualmente serão preservadas.</p>
 <div class="dialog-actions"><button type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply">Confirmar e aplicar</button></div>
-</dialog><button type="button" id="new-rule">Criar regra</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><div id="rule-list"></div>
+</dialog><button type="button" id="new-rule">Criar regra</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><div class="filters"><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><label>Origem<select id="rule-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="rule-list"></div>
 <dialog id="rule-editor" aria-labelledby="rule-heading"><form id="edit-rule-form"><h2 id="rule-heading">Editar regra</h2>
 <label id="edit-title-label">Nome<input name="title" required></label>
 <label>Categoria<select name="category" required></select></label>
