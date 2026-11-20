@@ -255,7 +255,7 @@ function ledger() {
 const formatDate = value => value.split('-').reverse().join('/');
 function openTransaction(tx) {
   const dialog = $('#tx-dialog'), form = $('#tx-form');
-  const {category,note,createRule,term} = form.elements;
+  const {category,note,createRule,ruleMode} = form.elements;
   form.reset();
   $('#tx-error').textContent = '';
   $('#tx-title').textContent = tx.description;
@@ -264,10 +264,14 @@ function openTransaction(tx) {
   choices(category,[['','Seguir regras'+(tx.manual ? '' : ' · '+categoryName(tx.category))],...data.categories.map(c => [c.id,c.name])]);
   category.value = tx.manual ? String(tx.category) : '';
   note.value = tx.note || '';
-  term.value = tx.description.slice(0,100);
+  // A regra criada aqui aceita várias condições, como na página Regras. O CPF ou CNPJ, quando escolhido,
+  // é o do destinatário desta transação (só saídas têm destinatário).
+  const conditions = [{field:'description',op:'contains',value:tx.description.slice(0,100)}];
+  conditionEditor($('#tx-conditions'),conditions,tx.amount < 0 && tx.receiverKind || null);
   function toggleRule() {
-    $('#tx-term').hidden = !createRule.checked;
-    category.required = term.required = createRule.checked;
+    // Desligado, o grupo fica desativado e não entra na validação do formulário.
+    $('#tx-rule').hidden = $('#tx-rule').disabled = !createRule.checked;
+    category.required = createRule.checked;
     if (createRule.checked && !category.value && tx.category) category.value = String(tx.category);
   }
   createRule.onchange = toggleRule;
@@ -278,7 +282,8 @@ function openTransaction(tx) {
     const submit = form.querySelector('button:not([type])');
     submit.disabled = true;
     try {
-      await request('transaction',{id:tx.id,note:note.value,category:Number(category.value)||null,ruleTerm:createRule.checked ? term.value : null});
+      await request('transaction',{id:tx.id,note:note.value,category:Number(category.value)||null,
+        rule:createRule.checked ? {name:tx.description.slice(0,100),mode:ruleMode.value,conditions} : null});
       dialog.close();
       await refresh();
       notify('Transação salva.');
@@ -399,24 +404,13 @@ function editVoucher(voucher) {
   };
   dialog.showModal();
 }
-function editRule(rule = {}) {
-  const dialog = $('#rule-editor'), form = $('#edit-rule-form');
-  const field = name => form.elements.namedItem(name);
-  const editing = rule.id != null || rule.key != null;
-  $('#rule-heading').textContent = editing ? 'Editar regra' : 'Criar regra';
-  form.reset();
-  field('title').value = rule.name || '';
-  choices(field('category'),data.categories.map(c => [c.id,c.name]));
-  field('category').value = rule.category ?? '';
-  field('priority').value = rule.priority ?? 0;
-  field('priority').closest('label').hidden = rule.key == null;
-  field('mode').value = rule.mode || 'and';
-  field('active').checked = rule.active ?? true;
-  const root = $('#edit-conditions');
-  root.replaceChildren();
-  const fields = [['description','Descrição'],['receiver_document','CPF ou CNPJ do destinatário'],['amount','Valor'],['date','Data'],['status','Situação'],['type','Tipo'],['payee_id','Favorecido importado']];
+// Editor de condições usado na página Regras e no modal da transação. Com inherit ('CPF' ou 'CNPJ'),
+// a condição de CPF ou CNPJ do destinatário usa o da transação aberta, preenchido pelo servidor.
+function conditionEditor(root, conditions, inherit) {
+  const receiver = inherit === undefined ? [['receiver_document','CPF ou CNPJ do destinatário']]
+    : inherit ? [['receiver_document',inherit+' do destinatário desta transação']] : [];
+  const fields = [['description','Descrição'],...receiver,['amount','Valor'],['date','Data'],['status','Situação'],['type','Tipo'],['payee_id','Favorecido importado']];
   const operators = [['contains','contém'],['not_contains','não contém'],['starts_with','começa com'],['ends_with','termina com'],['equals','igual a'],['not_equals','diferente de'],['regex','corresponde à expressão'],['lt','menor que'],['lte','menor ou igual a'],['gt','maior que'],['gte','maior ou igual a']];
-  const conditions = structuredClone(rule.conditions || [{field:'description',op:'contains',value:rule.term || ''}]);
   function button(title,action) {
     const control = tag('button',title);
     control.type = 'button';
@@ -446,8 +440,15 @@ function editRule(rule = {}) {
         key.setAttribute('aria-label','Campo da condição');
         op.setAttribute('aria-label','Operador');
         value.setAttribute('aria-label','Valor da condição');
-        value.required = true;
         value.value = node.value ?? '';
+        // No modal da transação, o CPF ou CNPJ não é digitado: vem da transação, pelo servidor.
+        function updateValue() {
+          const inherited = Boolean(inherit) && node.field === 'receiver_document';
+          if (inherited) { node.fromTransaction = true; node.value = ''; value.value = 'o '+inherit+' desta transação'; }
+          else if (node.fromTransaction) { delete node.fromTransaction; value.value = node.value = ''; }
+          value.disabled = inherited;
+          value.required = !inherited;
+        }
         function updateOperators() {
           const options = node.field === 'receiver_document' ? operators.filter(([id]) => id === 'equals') : operators;
           choices(op,options);
@@ -455,7 +456,8 @@ function editRule(rule = {}) {
           op.value = node.op;
         }
         updateOperators();
-        key.onchange = () => { node.field = key.value; updateOperators(); };
+        updateValue();
+        key.onchange = () => { node.field = key.value; updateOperators(); updateValue(); };
         op.onchange = () => { node.op = op.value; };
         value.oninput = () => { node.value = value.value; };
         row.append(tag('legend','Condição'),key,op,value,remove);
@@ -471,6 +473,24 @@ function editRule(rule = {}) {
     }));
   }
   renderGroup(root,conditions);
+}
+function editRule(rule = {}) {
+  const dialog = $('#rule-editor'), form = $('#edit-rule-form');
+  const field = name => form.elements.namedItem(name);
+  const editing = rule.id != null || rule.key != null;
+  $('#rule-heading').textContent = editing ? 'Editar regra' : 'Criar regra';
+  form.reset();
+  field('title').value = rule.name || '';
+  choices(field('category'),data.categories.map(c => [c.id,c.name]));
+  field('category').value = rule.category ?? '';
+  field('priority').value = rule.priority ?? 0;
+  field('priority').closest('label').hidden = rule.key == null;
+  field('mode').value = rule.mode || 'and';
+  field('active').checked = rule.active ?? true;
+  const root = $('#edit-conditions');
+  root.replaceChildren();
+  const conditions = structuredClone(rule.conditions || [{field:'description',op:'contains',value:rule.term || ''}]);
+  conditionEditor(root,conditions);
   $('#edit-error').textContent = '';
   $('#edit-cancel').onclick = () => dialog.close();
   form.onsubmit = async event => {

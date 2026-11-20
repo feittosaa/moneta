@@ -1,6 +1,10 @@
 // Mostra o guia oficial (docs/guia/conectar-bancos.md) dentro do app.
 // Lê só o subconjunto de Markdown que o guia usa e monta o DOM sem innerHTML.
 const base = '/guia/';
+// Quadros interativos que o app encaixa no guia, marcados no Markdown com <!-- moneta:nome -->.
+// No GitHub o comentário não aparece; aqui ele vira o quadro registrado com esse nome.
+const widgets = new Map();
+export function registerGuideWidget(name, build) { widgets.set(name, build); }
 const slug = text => text.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 
 function inline(text) {
@@ -34,6 +38,13 @@ export function renderMarkdown(source) {
   const close = () => { list = quote = paragraph = null; };
   for (const line of lines) {
     if (!line.trim()) { close(); continue; }
+    const comment = /^<!--\s*(?:moneta:([a-z-]+))?.*-->$/.exec(line.trim());
+    if (comment) {
+      close();
+      const widget = comment[1] && widgets.get(comment[1]);
+      if (widget) root.append(widget());
+      continue;
+    }
     const heading = /^(#{1,3})\s+(.*)$/.exec(line);
     const image = /^!\[([^\]]*)\]\(([a-z0-9-]+\.(?:svg|png))\)$/.exec(line.trim());
     const item = /^\s*(?:(\d+)\.|-)\s+(.*)$/.exec(line);

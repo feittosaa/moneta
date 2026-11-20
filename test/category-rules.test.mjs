@@ -146,6 +146,26 @@ test('regras combinam documento do destinatário e grupos E/OU', () => {
   db.close();
 });
 
+test('regra criada pela transação herda o CPF ou CNPJ do destinatário sem expô-lo', () => {
+  const db = new DatabaseSync(':memory:');
+  initFinance(db);
+  editFinance(db,'/api/categories',{name:'Aluguel por documento'});
+  const category = overview(db).categories.find(c => c.name === 'Aluguel por documento').id;
+  const rows = [
+    ['a','Pix enviado',-1000,'12345678000190'],
+    ['b','Pix enviado',-1000,'12345678000271'],
+    ['c','Pix enviado',-1000,null],
+  ].map(([id,description,amount,receiverDocument]) => ({id,description,amount,receiverDocument,providerCategory:'',date:'2026-11-01'}));
+  db.prepare('INSERT INTO snapshots VALUES(?,?,?)').run('i',JSON.stringify({accounts:[],holdings:[],transactions:rows}),'2026-11-01');
+  assert.deepEqual(overview(db).transactions.map(t => t.receiverKind),['CNPJ','CNPJ',undefined]);
+  const conditions = [{field:'description',op:'contains',value:'pix'},{field:'receiver_document',op:'equals',value:'',fromTransaction:true}];
+  editFinance(db,'/api/transaction',{id:'a',note:'',category,rule:{name:'Aluguel',mode:'and',conditions}});
+  assert.deepEqual(overview(db).transactions.filter(t => t.category === category).map(t => t.id),['a']);
+  assert.equal(overview(db).rules[0].conditions[1].value,'12345678000190');
+  assert.throws(() => editFinance(db,'/api/transaction',{id:'c',note:'',category,rule:{name:'Sem documento',mode:'and',conditions}}),/não tem o CPF ou CNPJ/);
+  db.close();
+});
+
 test('categorias duplicadas mesclam atribuições e exclusões permanecem após reiniciar', () => {
   const db = new DatabaseSync(':memory:');
   initFinance(db);

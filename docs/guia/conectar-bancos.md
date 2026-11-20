@@ -41,7 +41,7 @@ O Moneta não entra no seu banco. Quem faz essa ponte é a **Pluggy**, uma empre
 
 O conector é a opção que aparece na janela de conexão. Esta etapa garante que **MeuPluggy** esteja na lista.
 
-1. No menu à esquerda, abra **Customization** e depois a aba **Connectors**.
+1. No menu à esquerda, abra **Applications** e depois a aba **Connectors**.
 2. Se estiver marcado **Default to all selected**, todos os conectores já aparecem. Pule para a Etapa 4.
 3. Se estiver marcado **Custom selection active**, digite `MeuPluggy` na busca, abra o grupo **Personal**, escolha a aba **Direct Connectors** e ligue a chave do **MeuPluggy**.
 4. Para conferir, use **Preview**, à direita, que mostra a lista como ela vai aparecer.
@@ -64,9 +64,11 @@ A aplicação representa o Moneta dentro da Pluggy. É ela que recebe o Client I
 
 ## Etapa 5: cole as chaves no Moneta
 
-1. No Moneta, abra **Configuração** no menu à esquerda.
-2. Em **Credenciais Pluggy**, cole o **Client ID** e o **Client Secret** nos campos com esses nomes.
-3. Clique em **Validar e salvar**. O Moneta confere as chaves com a Pluggy e mostra a mensagem "Credenciais salvas. Você já pode conectar uma instituição."
+1. Cole o **Client ID** e o **Client Secret** nos campos com esses nomes. Lendo este guia dentro do Moneta, os campos estão logo abaixo, sem sair daqui. Eles também ficam em **Configuração**, na seção **Credenciais Pluggy**.
+2. Clique em **Validar e salvar**. O Moneta confere as chaves com a Pluggy e mostra a mensagem "Credenciais salvas. Você já pode conectar uma instituição."
+3. Depois de salvar, clique em **Ir para Conexões** e siga a Etapa 6.
+
+<!-- moneta:credenciais -->
 
 ![Página Configuração do Moneta com os campos Client ID e Client Secret e o botão Validar e salvar](moneta-configuracao.png)
 
@@ -77,10 +79,12 @@ A aplicação representa o Moneta dentro da Pluggy. É ela que recebe o Client I
 1. Abra **Conexões** e clique em **Conectar instituição**. Abre a janela de conexão da Pluggy.
 2. Na busca, digite `MeuPluggy` e escolha **MeuPluggy**. Não escolha o seu banco diretamente: os bancos já estão conectados no Meu Pluggy.
 3. Entre com a sua conta do Meu Pluggy e autorize o acesso.
-4. A janela fecha sozinha. O Moneta salva a conexão e faz a primeira sincronização, que pode levar alguns segundos.
+4. A janela fecha sozinha. O Moneta salva a conexão e faz a primeira sincronização.
 5. A autorização é feita banco por banco. Se algum banco do Meu Pluggy não aparecer, clique em **Conectar instituição** de novo e repita, escolhendo o banco que faltou.
 
 ![Janela de conexão aberta pelo Moneta, com MeuPluggy escolhido em vez do banco direto](widget.svg)
+
+> **Na primeira conexão, tenha paciência.** A Pluggy leva um tempo para buscar todo o histórico: pode demorar de alguns minutos a algumas horas até todas as transações chegarem. O Moneta sincroniza sozinho a cada 6 horas, e você pode clicar em **Sincronizar** mais tarde para trazer o que faltou.
 
 Quando der certo, a instituição aparece na lista de **Conexões** e os saldos e lançamentos aparecem na **Visão geral**.
 

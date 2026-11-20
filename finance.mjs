@@ -12,6 +12,17 @@ const templates = [
 ];
 const excluded = new Set(templates.slice(-2).map(([name]) => name));
 const fold = s => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+// Condições marcadas com fromTransaction recebem o CPF ou CNPJ do destinatário da própria transação,
+// que nunca sai do servidor.
+function inheritDocument(db, id, nodes) {
+  let document;
+  const lookup = () => document ??= db.prepare(`SELECT json_extract(tx.value,'$.receiverDocument') AS doc
+    FROM snapshots, json_each(snapshots.payload,'$.transactions') AS tx WHERE json_extract(tx.value,'$.id')=?`).get(id)?.doc
+    || bad('Esta transação não tem o CPF ou CNPJ do destinatário.');
+  const fill = group => Array.isArray(group) ? group.map(node => Array.isArray(node?.conditions) ? {...node,conditions:fill(node.conditions)}
+    : node?.fromTransaction === true ? {field:'receiver_document',op:'equals',value:lookup()} : node) : group;
+  return fill(nodes);
+}
 function bad(message) { throw Object.assign(new Error(message), { status: 400 }); }
 function label(value) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 100) bad('Informe um texto de até 100 caracteres.');
@@ -197,6 +208,8 @@ export function overview(db, {frozen = true} = {}) {
       const fallback = movement ? aliases.get(categoryKey(movement)) : null;
       const category = manual.get(tx.id) ?? rule?.category ?? (internal && movement ? fallback : automatic) ?? fallback ?? classified ?? null;
       const displayTx = {...tx};
+      // O número fica no servidor; a página só sabe se há CPF ou CNPJ, para oferecer a regra por ele.
+      if (tx.receiverDocument) displayTx.receiverKind = tx.receiverDocument.length === 11 ? 'CPF' : 'CNPJ';
       delete displayTx.receiverDocument;
       transactions.push({...displayTx, note:notes.get(tx.id) || '', category, manual:manual.has(tx.id)});
     }
@@ -295,6 +308,8 @@ export function editFinance(db, path, body) {
       if (body.note.trim()) db.prepare('INSERT OR REPLACE INTO notes VALUES (?,?)').run(body.id,body.note.trim());
       else db.prepare('DELETE FROM notes WHERE tx=?').run(body.id);
       if (body.ruleTerm != null) editFinance(db,'/api/rules',{term:body.ruleTerm,category:body.category});
+      if (body.rule != null) editFinance(db,'/api/rules',{name:body.rule.name,mode:body.rule.mode,active:true,
+        conditions:inheritDocument(db,body.id,body.rule.conditions),category:body.category});
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
     return;

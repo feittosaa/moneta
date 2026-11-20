@@ -5,8 +5,9 @@ html,body{height:100%;margin:0}
 body{display:grid;place-items:center;background:#101316;color:#e8eceb;font:15px system-ui,sans-serif}
 @media (prefers-color-scheme: light){body{background:#f1ece3;color:#22262a}}
 main{text-align:center}
-img{width:64px;height:64px;filter:invert(1)}
-@media (prefers-color-scheme: light){img{filter:none}}
+/* O logo é branco: fica como está no escuro e é invertido (fica preto) no claro. */
+img{width:64px;height:64px}
+@media (prefers-color-scheme: light){img{filter:invert(1)}}
 p{opacity:.75}
 </style></head>
 <body><main><img src="logo.png" alt=""><p id="status">Abrindo o Moneta…</p></main></body></html>

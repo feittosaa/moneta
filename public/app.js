@@ -1,4 +1,5 @@
 import { initializeFinance, navigate, syncFinance } from './finance.js';
+import { registerGuideWidget } from './guide.js';
 const $ = selector => document.querySelector(selector);
 const message = text => { $('#message').textContent = text; };
 async function request(path, body) {
@@ -21,12 +22,15 @@ const keyProtections = {
   'systemd-creds': 'lacrada pelo sistema (systemd-creds, presa a este usuário e, com TPM, a este computador)',
   dpapi: 'protegida pelo cofre do Windows (DPAPI) do seu usuário',
 };
+let pluggy = { configured: false, connections: 0 };
 async function refresh() {
   const { configured, connections, protection, credentialsError } = await request('connections');
   $('#config').textContent = credentialsError || (configured
     ? 'Credenciais salvas, ' + (protections[protection] || 'em arquivo que só o seu usuário consegue ler') + '.'
     : 'Credenciais pendentes.');
   $('#hint').textContent = !configured ? 'Abra Configuração para habilitar a conexão via Pluggy. O Guia, no menu, mostra o passo a passo.' : connections.length ? '' : 'Nenhuma instituição vinculada ao Moneta. A sincronização começa após o vínculo.';
+  pluggy = { configured, connections: connections.length };
+  reflectGuideCredentials();
   $('#connect').disabled = !configured;
   $('#sync').disabled = !configured || !connections.length;
   $('#items').replaceChildren(...connections.map(item => {
@@ -38,18 +42,78 @@ async function refresh() {
 const form = $('#credentials-form');
 const restart = $('#restart');
 const save = form.querySelector('button');
-form.onsubmit = async event => {
-  event.preventDefault();
-  save.disabled = restart.disabled = true;
-  message('Validando credenciais com a Pluggy…');
+// Valida e salva as chaves da Pluggy; usado pela Configuração e pelo quadro da Etapa 5 do guia.
+async function saveCredentials(target, buttons, say) {
+  for (const button of buttons) button.disabled = true;
+  say('Validando credenciais com a Pluggy…');
   try {
-    await request('settings/pluggy', Object.fromEntries(new FormData(form)));
-    form.reset();
+    await request('settings/pluggy', Object.fromEntries(new FormData(target)));
+    target.reset();
     await refresh();
-    message('Credenciais salvas. Você já pode conectar uma instituição.');
-  } catch (error) { message(error.message); }
-  finally { save.disabled = restart.disabled = false; }
+    say('Credenciais salvas. Você já pode conectar uma instituição.');
+    return true;
+  } catch (error) { say(error.message); return false; }
+  finally { for (const button of buttons) button.disabled = false; }
+}
+form.onsubmit = event => {
+  event.preventDefault();
+  saveCredentials(form, [save, restart], message);
 };
+
+// Etapa 5 do guia: cola as chaves sem sair do guia e leva direto para Conexões.
+let guideCredentials;
+function field(label, attributes) {
+  const wrapper = document.createElement('label'), input = document.createElement('input');
+  for (const [name, value] of Object.entries(attributes)) input.setAttribute(name, value);
+  wrapper.append(label, input);
+  return wrapper;
+}
+registerGuideWidget('credenciais', () => {
+  const box = document.createElement('form');
+  box.className = 'guide-widget';
+  const title = document.createElement('strong');
+  title.textContent = 'Cole as chaves aqui';
+  const status = document.createElement('p');
+  status.setAttribute('role', 'status');
+  const fields = document.createElement('div');
+  fields.className = 'guide-widget-fields';
+  const button = document.createElement('button');
+  button.textContent = 'Validar e salvar';
+  fields.append(
+    field('Client ID', { name: 'clientId', required: '', spellcheck: 'false', autocapitalize: 'none', autocomplete: 'off' }),
+    field('Client Secret', { name: 'clientSecret', type: 'password', required: '', autocomplete: 'off' }),
+    button,
+  );
+  const next = document.createElement('p');
+  next.className = 'guide-widget-next';
+  const link = document.createElement('a');
+  link.href = '#conexoes';
+  link.textContent = 'Ir para Conexões e conectar o Meu Pluggy →';
+  next.append(link);
+  const other = document.createElement('p');
+  other.className = 'guide-widget-alt';
+  const settings = document.createElement('a');
+  settings.href = '#configuracao';
+  settings.textContent = 'Configuração';
+  other.append('Prefere colar pela página de configurações? Abra ', settings, ' e depois volte aqui.');
+  box.append(title, status, fields, next, other);
+  box.onsubmit = async event => {
+    event.preventDefault();
+    if (await saveCredentials(box, [button], text => { status.textContent = text; })) link.focus();
+  };
+  guideCredentials = { status, next, other };
+  reflectGuideCredentials();
+  return box;
+});
+function reflectGuideCredentials() {
+  if (!guideCredentials) return;
+  const { status, next, other } = guideCredentials;
+  next.hidden = !pluggy.configured;
+  other.hidden = pluggy.configured;
+  status.textContent = pluggy.configured
+    ? 'As credenciais já estão salvas. Para trocar, cole as novas e salve de novo.'
+    : 'Cole o Client ID e o Client Secret que você copiou na Etapa 4.';
+}
 restart.onclick = async () => {
   save.disabled = restart.disabled = true;
   message('Reiniciando o servidor…');
@@ -91,6 +155,7 @@ $('#connect').onclick = async () => {
     function register(item) {
       if (!item?.id || registration) return registration;
       message('Salvando a conexão autorizada…');
+      const first = !pluggy.connections;
       registration = (async () => {
         try {
           await request('connections', { itemId: item.id, connectToken: accessToken });
@@ -98,6 +163,7 @@ $('#connect').onclick = async () => {
           $('#connect').disabled = true;
           await syncFinance();
           await refresh();
+          if (first) message('Primeira conexão salva. A Pluggy pode levar de alguns minutos a algumas horas para entregar todo o histórico, então nem todas as transações aparecem de imediato. O Moneta sincroniza sozinho a cada 6 horas, e você pode clicar em Sincronizar mais tarde para trazer o que faltou.');
         } catch (error) {
           message('Falha ao registrar a conexão. ' + error.message);
         } finally {
