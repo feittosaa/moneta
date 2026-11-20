@@ -716,7 +716,8 @@ async function refresh() {
   choices($('#account'),[['','Todas'],...data.accounts.map(a => [a.id,accountName(a)])]);
   choices($('#filter-category'),[['','Todas'],['none','Sem categoria'],...(ledgerScope ? [['invoice','Fatura sem detalhamento']] : []),...data.categories.map(c => [c.id,c.name])]);
   const latest = data.sources.map(s => s.updated).sort().at(-1);
-  $('#fresh').textContent = latest ? 'Atualizado em '+new Date(latest).toLocaleString('pt-BR') : 'Nenhum dado importado';
+  // O rodapé do menu mostra a versão do app; a data dos dados fica na dica do botão Sincronizar.
+  $('#sync').title = 'Atualizar agora os dados disponíveis no MeuPluggy. '+(latest ? 'Dados de '+new Date(latest).toLocaleString('pt-BR')+'.' : 'Nenhum dado importado.');
   navigate();
 }
 async function save(path,body,form) {
@@ -740,7 +741,6 @@ export function initializeFinance(api, message) {
   $('#portfolio-tab').onclick = () => { portfolioTab = true; navigate(); };
   $('#clear-ledger-context').onclick = () => { location.hash = 'transacoes'; };
   for (const id of ['portfolio-range','portfolio-year','portfolio-from','portfolio-to']) $('#'+id).onchange = showPortfolio;
-  $('#sync').title = 'Atualizar agora os dados disponíveis no MeuPluggy';
   const privacy = $('#privacy');
   function reflectPrivacy() {
     privacy.title = hiddenAmounts ? 'Mostrar valores' : 'Ocultar valores';

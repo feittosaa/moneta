@@ -24,7 +24,8 @@ nav a { color:var(--muted); display:flex; align-items:center; gap:13px; border-r
 nav a:hover,nav a[aria-current=page] { background:var(--nav-active); color:var(--accent-ink); text-decoration:none }
 nav i { width:20px; text-align:center; font:normal 22px/1 system-ui }
 nav hr { border:0; border-top:1px solid var(--line); margin:14px 8px }
-#fresh { margin-top:auto; padding:16px 8px 0; color:var(--muted); font-size:12px; border-top:1px solid var(--line) }
+#fresh { margin-top:auto; padding:16px 8px 0; color:var(--muted); font-size:12px; border-top:1px solid var(--line); display:grid; gap:8px }
+#app-update { justify-self:start; padding:6px 10px; font-size:12px }
 main { width:100%; max-width:1580px; margin-inline:auto; padding:clamp(20px,2.5vw,40px); min-width:0 }
 .topbar,.toolbar,.filters,form,.panel-title { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
 .topbar,.panel-title { justify-content:space-between }

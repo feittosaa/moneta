@@ -198,6 +198,45 @@ $('#connect').onclick = async () => {
     $('#connect').disabled = false;
   }
 };
+// Rodapé do menu: versão do app e, quando houver, o botão para instalar a nova (Linux e Windows).
+async function waitForRestart(instance) {
+  for (let attempt = 0; attempt < 360; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const status = await fetch('/api/status').then(r => r.json()).catch(() => null);
+    if (status?.instance && status.instance !== instance) return location.reload();
+  }
+  $('#app-version').textContent = 'A atualização está demorando. Abra o Moneta de novo em instantes.';
+}
+async function checkUpdate() {
+  const label = $('#app-version'), button = $('#app-update');
+  let update;
+  try { update = await request('update'); }
+  catch { label.textContent = 'Moneta'; return; }
+  const { supported, current, latest, available, installing, error } = update;
+  label.textContent = !current ? 'Moneta (versão de desenvolvimento)'
+    : installing ? 'Instalando a atualização…'
+    : available ? 'Moneta ' + current + ' · nova versão ' + latest
+    : supported && error ? 'Moneta ' + current + ' · não foi possível verificar atualizações'
+    : 'Moneta ' + current + (supported ? ' · atualizado' : '');
+  label.title = error || '';
+  button.hidden = !available || installing;
+  button.textContent = 'Instalar a versão ' + latest;
+  button.onclick = async () => {
+    if (!confirm('Instalar o Moneta ' + latest + '? O Moneta fecha por alguns instantes e abre de novo já atualizado. Seus dados não são alterados.')) return;
+    button.disabled = true;
+    label.textContent = 'Baixando e instalando a versão ' + latest + '…';
+    try {
+      const { instance } = await request('update/install', {});
+      label.textContent = 'Instalando a versão ' + latest + '. O Moneta reinicia sozinho.';
+      button.hidden = true;
+      await waitForRestart(instance);
+    } catch (error) {
+      label.textContent = 'Moneta ' + current;
+      message('Não foi possível atualizar. ' + error.message);
+      button.disabled = false;
+    }
+  };
+}
 const shutdown = $('#shutdown');
 let unlocked = false;
 async function showLock() {
@@ -405,3 +444,6 @@ window.addEventListener('hashchange', navigate);
 initializeFinance(request, message);
 navigate();
 refresh().catch(error => message(error.message));
+// Verifica ao abrir e, com o app aberto por muito tempo, de novo a cada 6 horas.
+checkUpdate();
+setInterval(checkUpdate, 6 * 60 * 60_000);

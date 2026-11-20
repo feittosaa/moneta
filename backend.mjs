@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { readJsonObject } from './request-body.mjs';
 import { createSecretStore, createSecret, protectionLabel } from './secret-store.mjs';
 import { openVault, recoverVault, passwordSecret } from './vault.mjs';
+import { createUpdater } from './updater.mjs';
 import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, ruleChanges, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
@@ -254,6 +255,8 @@ function stop(kind) {
   server.closeAllConnections?.();
 }
 
+const updater = createUpdater({ dataDir, desktop, stop });
+
 const server = http.createServer(async (req, res) => {
   for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
   const json = (status, value) => {
@@ -331,10 +334,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/connections') {
       return json(200, { configured: configured(), protection: credentialsFromEnv ? 'ambiente' : secrets.protection, credentialsError, connections: db.prepare('SELECT * FROM connections ORDER BY institution, id').all() });
     }
+    if (req.method === 'GET' && req.url === '/api/update') return json(200, await updater.status());
     if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
-    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
+    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
@@ -451,6 +455,10 @@ const server = http.createServer(async (req, res) => {
       passwordStore.remove();
       console.log('Cofre aberto com a chave de recuperação; reiniciando.');
       req.url = '/api/restart';
+    }
+    if (req.url === '/api/update/install') {
+      try { return json(202, { ...(await updater.install()), instance }); }
+      catch (error) { fail(error.status || 502, error.message); }
     }
     if (req.url === '/api/restart' || req.url === '/api/shutdown') {
       // Encerrar só existe na instalação de desktop; no Docker o container cuida do ciclo de vida.
