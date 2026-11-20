@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/logo.svg">
-    <img src="docs/logo-light.svg" alt="Logo da Moneta: perfil de uma figura clássica com coroa de louros, dentro de um círculo, como em uma moeda" width="160">
-  </picture>
+  <img src="public/web-app-manifest-512x512.png" alt="Logo da Moneta: perfil de uma figura clássica com coroa de louros, dentro de um círculo, como em uma moeda" width="160">
 </p>
 
 <h1 align="center">Moneta</h1>
