@@ -10,6 +10,8 @@ Moneta é um painel de finanças pessoais que roda no seu próprio computador. E
 - **Sem dependências externas:** usa só Node.js 22 (servidor HTTP e `node:sqlite` nativos) e HTML, CSS e JavaScript puros no navegador.
 - **Interface em português**, com valores em várias moedas mantidos separados.
 
+> **Primeira vez?** O [Guia de conexão](docs/guia/conectar-bancos.md) mostra, passo a passo e com imagens, como criar as contas gratuitas na Pluggy, pegar o Client ID e o Client Secret e conectar seus bancos. Não é preciso saber programar. O mesmo guia abre dentro do Moneta, no menu **Guia**.
+
 ## Capturas de tela
 
 As imagens usam uma base de demonstração com dados fictícios e o modo que oculta os valores.
@@ -25,7 +27,7 @@ As imagens usam uma base de demonstração com dados fictícios e o modo que ocu
 ## Requisitos
 
 - Docker com Docker Compose **ou** Node.js 22.16 ou superior.
-- Uma aplicação na Pluggy, com **Client ID** e **Client Secret**. Crie-a no [painel da Pluggy](https://dashboard.pluggy.ai).
+- Uma aplicação na Pluggy, com **Client ID** e **Client Secret**. Para uso pessoal ela é gratuita; o [Guia de conexão](docs/guia/conectar-bancos.md) mostra como criar.
 - Acesso à internet para a API e o widget de conexão da Pluggy.
 
 ## Instalação
@@ -70,8 +72,10 @@ Todas são opcionais.
 
 ## Primeiros passos
 
+O [Guia de conexão](docs/guia/conectar-bancos.md) detalha cada passo abaixo, inclusive a criação das contas na Pluggy e no Meu Pluggy. Em resumo:
+
 1. Em **Configuração**, informe o Client ID e o Client Secret e clique em **Validar e salvar**. As credenciais passam a valer assim que a Pluggy as aceita.
-2. Em **Conexões**, clique em **Conectar instituição** e siga o widget da Pluggy para autorizar o acesso ao banco, cartão ou corretora.
+2. Em **Conexões**, clique em **Conectar instituição**, escolha **MeuPluggy** no widget da Pluggy e autorize o acesso aos bancos que você conectou no Meu Pluggy.
 3. A Moneta sincroniza a nova conexão logo em seguida. Depois disso, use **Sincronizar** quando quiser atualizar. Com o servidor ligado, uma sincronização automática ocorre a cada 6 horas.
 
 A sincronização lê todo o histórico disponível na Pluggy e só grava o resultado depois de ler todas as conexões. Se algo falhar no meio do caminho, a cópia anterior é mantida.
@@ -136,6 +140,10 @@ Nas tabelas de regras e de categorias, clique no título de uma coluna para orde
 
 Define a moeda padrão, o tema (escuro, claro ou igual ao sistema, guardado neste navegador), as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
 
+### Guia
+
+Abaixo de Configuração, o **Guia** mostra o [Guia de conexão](docs/guia/conectar-bancos.md) dentro do app. O texto e as imagens ficam em `docs/guia/` e são os mesmos que aparecem no GitHub.
+
 ### Barra superior
 
 Nas páginas que dependem do mês (Visão geral, Transações, Carteira, Cartões e Vales), a barra superior tem os mesmos controles e no mesmo lugar: ano e mês anterior, o seletor de mês, mês e ano seguinte e **Mês atual**, que volta ao mês corrente. O botão com o ícone de olho oculta os valores da tela.
@@ -196,8 +204,13 @@ Estrutura do projeto:
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
 | `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio, campos de data), ícones e fontes. |
+| `docs/guia/` | Guia de conexão (Markdown e imagens), exibido no app e no GitHub. |
 | `test/` | Testes automatizados. |
 
 ### Fontes
 
 O nome Moneta e os títulos das páginas usam a [Goudy Bookletter 1911](https://github.com/theleagueof/goudy-bookletter-1911), de Barry Schwartz, distribuída em `public/fonts/` sob a SIL Open Font License 1.1 (veja [`public/fonts/OFL.txt`](public/fonts/OFL.txt)). O restante da interface usa a fonte sem serifa do sistema. O projeto só usa fontes gratuitas.
+
+## Licença
+
+O código é distribuído sob a [licença MIT](LICENSE): qualquer pessoa pode usar, copiar, modificar e redistribuir, inclusive em outros projetos, desde que mantenha o aviso de copyright. A fonte Goudy Bookletter 1911 segue a sua própria licença, a SIL Open Font License 1.1.

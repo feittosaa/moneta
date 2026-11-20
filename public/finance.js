@@ -1,6 +1,7 @@
 import {cardPeriod} from './card-periods.mjs';
 import { renderPortfolio } from './portfolio.js';
 import { localDateField } from './date-field.mjs';
+import { showGuide } from './guide.js';
 import { summarize } from './report.mjs';
 const $ = selector => document.querySelector(selector);
 const month = $('#month'), currency = $('#currency');
@@ -569,9 +570,11 @@ export function navigate() {
   const page = [...document.querySelectorAll('main > section')].find(s => '#'+s.id === hash)?.id || 'relatorio';
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== page;
   for (const a of document.querySelectorAll('nav a')) a.setAttribute('aria-current',a.hash === '#'+page ? 'page' : 'false');
-  $('#page-title').textContent = document.querySelector('nav a[aria-current=page]').lastChild.textContent;
+  const current = document.querySelector('nav a[aria-current=page]');
+  $('#page-title').textContent = current.dataset.title || current.lastChild.textContent;
   $('.toolbar').hidden = !['relatorio','transacoes','cartoes','vales','carteira','conexoes'].includes(page);
   $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab) || (page === 'transacoes' && allMonths());
+  if (page === 'guia') showGuide($('#guide'),new URLSearchParams(search || '').get('secao'));
   if (!data) return;
   if (page !== 'transacoes' || !search) {
     ledgerScope = ledgerLink = null;

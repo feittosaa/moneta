@@ -11,7 +11,7 @@ async function request(path, body) {
 async function refresh() {
   const { configured, connections } = await request('connections');
   $('#config').textContent = configured ? 'Credenciais presentes no servidor.' : 'Credenciais pendentes.';
-  $('#hint').textContent = !configured ? 'Abra Configuração para habilitar a conexão via Pluggy.' : connections.length ? '' : 'Nenhuma instituição vinculada ao Moneta. A sincronização começa após o vínculo.';
+  $('#hint').textContent = !configured ? 'Abra Configuração para habilitar a conexão via Pluggy. O Guia, no menu, mostra o passo a passo.' : connections.length ? '' : 'Nenhuma instituição vinculada ao Moneta. A sincronização começa após o vínculo.';
   $('#connect').disabled = !configured;
   $('#sync').disabled = !configured || !connections.length;
   $('#items').replaceChildren(...connections.map(item => {
