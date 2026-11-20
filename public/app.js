@@ -117,6 +117,19 @@ $('#connect').onclick = async () => {
     $('#connect').disabled = false;
   }
 };
+const shutdown = $('#shutdown');
+request('status').then(({ desktop }) => { shutdown.hidden = !desktop; }).catch(() => {});
+shutdown.onclick = async () => {
+  if (!confirm('Encerrar o Moneta? A sincronização automática para até você abrir o Moneta de novo.')) return;
+  save.disabled = restart.disabled = shutdown.disabled = true;
+  try {
+    await request('shutdown', {});
+    message('O Moneta foi encerrado. Você já pode fechar esta aba.');
+  } catch (error) {
+    message(error.message);
+    save.disabled = restart.disabled = shutdown.disabled = false;
+  }
+};
 window.addEventListener('hashchange', navigate);
 initializeFinance(request, message);
 navigate();

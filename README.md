@@ -26,13 +26,48 @@ As imagens usam uma base de demonstração com dados fictícios e o modo que ocu
 
 ## Requisitos
 
-- Docker com Docker Compose **ou** Node.js 22.16 ou superior.
+- Para o app instalado: Linux x86_64 ou Windows 10/11 de 64 bits, e um navegador. O instalador já traz tudo o que o Moneta precisa.
+- Para rodar pelo código: Docker com Docker Compose **ou** Node.js 22.16 ou superior.
 - Uma aplicação na Pluggy, com **Client ID** e **Client Secret**. Para uso pessoal ela é gratuita; o [Guia de conexão](docs/guia/conectar-bancos.md) mostra como criar.
 - Acesso à internet para a API e o widget de conexão da Pluggy.
 
 ## Instalação
 
-### Com Docker Compose (recomendado)
+### Linux
+
+No terminal:
+
+```sh
+curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh
+```
+
+O comando baixa a versão mais recente, confere o arquivo e cria o atalho **Moneta** no menu de aplicativos, sem pedir senha de administrador. Depois, abra pelo menu ou rode `moneta`.
+
+Prefere não usar o terminal? Baixe o [Moneta-x86_64.AppImage](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-x86_64.AppImage), marque como executável (nas propriedades do arquivo, **Permitir executar como programa**) e abra com dois cliques.
+
+Para remover, mantendo os seus dados:
+
+```sh
+curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --remover
+```
+
+### Windows
+
+Baixe e abra o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe). Ele instala só para o seu usuário, sem pedir administrador, e cria atalhos no menu Iniciar e na área de trabalho. Para remover, use **Configurações → Aplicativos**.
+
+O instalador não tem assinatura digital paga, por isso o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e depois em **Executar assim mesmo**.
+
+### Como o app instalado funciona
+
+- Ao abrir, o Moneta liga o servidor local e abre o navegador em http://127.0.0.1:4173. Abrir de novo, com ele já ligado, só abre o navegador.
+- No Windows, uma janela de terminal fica aberta enquanto o Moneta roda. Fechar essa janela encerra o Moneta.
+- Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta**.
+- Os dados ficam em `~/.local/share/moneta` no Linux e em `%LOCALAPPDATA%\Moneta` no Windows. Atualizar ou remover o app não apaga os dados.
+- Para atualizar, rode o comando de instalação de novo ou baixe e abra o instalador mais recente.
+
+Todas as versões, com as somas de verificação, ficam em [Releases](https://github.com/feittosaa/moneta/releases).
+
+### Com Docker Compose
 
 Na raiz do projeto:
 
@@ -67,6 +102,7 @@ Todas são opcionais.
 | Variável | Padrão | Uso |
 | --- | --- | --- |
 | `PORT` | `4173` | Porta do servidor. |
+| `MONETA_DATA_DIR` | `./data` | Pasta do banco e das credenciais. O app instalado usa a pasta de dados do usuário. |
 | `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` | vazio | Credenciais da Pluggy. Valem até que outro par seja salvo pela interface. |
 | `MONETA_UID` e `MONETA_GID` | `1000` | Usuário e grupo do container (somente Docker). |
 
@@ -176,10 +212,10 @@ Para importar um arquivo nesse formato, vá em **Regras**, selecione o arquivo e
 
 ## Dados e privacidade
 
-Tudo fica na pasta `data/`, que está no `.gitignore`:
+Tudo fica na pasta de dados: `data/` no Docker e no Node.js (ela está no `.gitignore`), `~/.local/share/moneta` no app instalado no Linux e `%LOCALAPPDATA%\Moneta` no Windows:
 
-- `data/moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio;
-- `data/pluggy.json`: credenciais salvas pela interface, acessível apenas pelo dono do arquivo. **O segredo fica em texto simples**, então proteja backups e cópias dessa pasta.
+- `moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio;
+- `pluggy.json`: credenciais salvas pela interface, acessível apenas pelo dono do arquivo. **O segredo fica em texto simples**, então proteja backups e cópias dessa pasta.
 
 O servidor recusa requisições cujo cabeçalho `Host` não seja `localhost` ou `127.0.0.1`, e recusa escritas vindas de outra origem. Os únicos dados que saem da máquina são as chamadas à API da Pluggy.
 
@@ -193,17 +229,27 @@ Rode os testes com o executor nativo do Node.js:
 node --test
 ```
 
+Para gerar os instaladores localmente (precisa de `curl`, `xz`, `unzip`, `makensis` e `sha256sum`):
+
+```sh
+packaging/build.sh 1.0.0
+```
+
+Os arquivos saem em `dist/`. Ao enviar uma tag de versão, como `1.0.0`, o GitHub Actions roda os testes, gera os instaladores e publica a release.
+
 Estrutura do projeto:
 
 | Caminho | Conteúdo |
 | --- | --- |
-| `server.mjs` | Processo supervisor que inicia e reinicia o backend. |
+| `server.mjs` | Processo supervisor que inicia e reinicia o backend; com `--desktop`, usa a pasta de dados do usuário e abre o navegador. |
 | `backend.mjs` | Servidor HTTP, rotas da API e integração com a Pluggy. |
 | `finance.mjs` | Banco SQLite, sincronização e classificação de lançamentos. |
 | `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
 | `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio, campos de data), ícones e fontes. |
+| `packaging/` | Scripts que geram o AppImage, o instalador do Windows e o comando de instalação para Linux. |
+| `.github/workflows/` | Publicação automática da release ao enviar uma tag de versão. |
 | `docs/guia/` | Guia de conexão (Markdown e imagens), exibido no app e no GitHub. |
 | `test/` | Testes automatizados. |
 

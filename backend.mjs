@@ -2,14 +2,18 @@ import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { readJsonObject } from './request-body.mjs';
 import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, ruleChanges, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
 const instance = randomUUID();
-const settingsFile = 'data/pluggy.json';
-mkdirSync('data', { recursive: true, mode: 0o700 });
+// Na instalação de desktop os dados ficam na pasta do usuário; no Docker e no Node direto, em ./data.
+const dataDir = process.env.MONETA_DATA_DIR || 'data';
+const desktop = process.env.MONETA_DESKTOP === '1';
+const settingsFile = join(dataDir, 'pluggy.json');
+mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 let credentials;
 try {
   credentials = JSON.parse(readFileSync(settingsFile, 'utf8'));
@@ -30,7 +34,7 @@ function saveCredentials(pair) {
     rmSync(tmp, { force: true });
   }
 }
-const db = new DatabaseSync('data/moneta.sqlite');
+const db = new DatabaseSync(join(dataDir, 'moneta.sqlite'));
 db.exec('CREATE TABLE IF NOT EXISTS profile (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL); CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, institution TEXT NOT NULL, status TEXT NOT NULL)');
 db.prepare('INSERT OR IGNORE INTO profile VALUES (1, ?)').run(randomUUID());
 const clientUserId = db.prepare('SELECT uuid FROM profile WHERE id=1').get().uuid;
@@ -106,7 +110,7 @@ const server = http.createServer(async (req, res) => {
     if (!['localhost:' + port, '127.0.0.1:' + port].includes(host)) fail(403, 'Host inválido.');
     if (req.method === 'GET' && req.url === '/api/status') {
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
-      return json(200, {instance,updated});
+      return json(200, {instance,updated,desktop});
     }
     // Guia de conexão: o Markdown e as imagens ficam em docs/guia, lidos também pelo GitHub.
     const guide = req.method === 'GET' && /^\/guia\/([a-z0-9-]+\.(md|svg|png))$/.exec(req.url);
@@ -131,7 +135,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
-    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
+    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
@@ -147,14 +151,16 @@ const server = http.createServer(async (req, res) => {
       saveCredentials(pair);
       return json(200, { ok: true });
     }
-    if (req.url === '/api/restart') {
+    if (req.url === '/api/restart' || req.url === '/api/shutdown') {
+      // Encerrar só existe na instalação de desktop; no Docker o container cuida do ciclo de vida.
+      if (req.url === '/api/shutdown' && !desktop) fail(404, 'Rota desconhecida.');
       restarting = true;
       res.once('finish', () => {
         server.close(() => {
           clearInterval(syncTimer);
           const close = () => {
             db.close();
-            process.send('restart', () => process.disconnect());
+            process.send(req.url === '/api/restart' ? 'restart' : 'shutdown', () => process.disconnect());
           };
           if (syncJob) syncJob.then(close,close);
           else close();
@@ -195,4 +201,7 @@ const server = http.createServer(async (req, res) => {
     json(error.status || 502, { error: error.status ? error.message : 'Não foi possível concluir a operação. Tente novamente.' });
   }
 });
-server.listen(port, process.env.MONETA_BIND_ADDRESS || '127.0.0.1', () => console.log('Moneta em http://127.0.0.1:' + port));
+server.listen(port, process.env.MONETA_BIND_ADDRESS || '127.0.0.1', () => {
+  console.log('Moneta em http://127.0.0.1:' + port);
+  process.send?.('ready');
+});
