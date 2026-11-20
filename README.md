@@ -85,6 +85,8 @@ Valores positivos aparecem em negrito.
 
 Registra dinheiro em espécie, que não passa pela Pluggy. **Adicionar saldo** e **Retirar saldo** só ajustam o saldo da carteira. **Receita em dinheiro** e **Despesa em dinheiro** também entram no resultado do mês.
 
+Ao lado do saldo em dinheiro, **Saldo nos bancos** soma as contas bancárias na moeda selecionada, como as instituições informaram na última sincronização. As três maiores aparecem logo abaixo do total. Passe o mouse sobre o cartão, ou selecione-o pelo teclado, para ver todas as contas.
+
 ### Cartões
 
 Mostra cada cartão de crédito com as compras do ciclo (inclusive parcelas), a situação da fatura (fechada, em aberto ou estimada), o limite total e o limite utilizado. Faturas fechadas continuam disponíveis mesmo depois que saem da janela de histórico da Pluggy.
@@ -93,15 +95,25 @@ Mostra cada cartão de crédito com as compras do ciclo (inclusive parcelas), a 
 
 Crie, renomeie, recolora ou remova categorias. Uma categoria marcada como **interna** fica fora do fluxo mensal. Use esse tipo para movimentos que não são receita nem despesa, como pagamentos de fatura e aplicações e resgates de investimentos.
 
+Filtre a lista pela **Origem**: categorias criadas por você (inclusive as criadas ao importar regras) ou que já vêm com a Moneta.
+
 ### Regras
 
 Regras classificam lançamentos automaticamente. Cada regra combina condições sobre a descrição, o valor, a data, o tipo, a situação ou o CPF/CNPJ do destinatário. As condições podem exigir que todas coincidam ou que qualquer uma coincida. Os operadores disponíveis são: contém, não contém, começa com, termina com, igual, diferente, expressão regular e comparações numéricas (maior, menor, maior ou igual, menor ou igual).
 
-**Aplicar regras ao histórico** reavalia todos os lançamentos com as regras ativas, preservando as escolhas manuais.
+Filtre a lista pela **Origem**. Regras criadas na Moneta e regras importadas contam como suas; as do catálogo padrão aparecem como **Moneta**.
+
+**Aplicar regras ao histórico** reavalia todos os lançamentos com as regras ativas, preservando as escolhas manuais. Antes de aplicar, a Moneta mostra uma prévia com cada lançamento que muda de categoria, a categoria atual e a nova. Nada muda até você confirmar. Se os dados mudarem entre a prévia e a confirmação (por uma sincronização, por exemplo), a aplicação é recusada e você revisa a prévia de novo.
+
+Nas tabelas de regras e de categorias, clique no título de uma coluna para ordenar. O primeiro clique ordena de forma crescente, o segundo de forma decrescente e o terceiro volta à ordem padrão. A seta ao lado do título mostra a ordenação ativa.
 
 ### Configuração
 
-Define a moeda padrão, as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta). O botão com o ícone de olho, no topo, oculta os valores da tela.
+Define a moeda padrão, as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
+
+### Barra superior
+
+Nas páginas que dependem do mês (Visão geral, Transações, Carteira e Cartões), a barra superior tem os mesmos controles e no mesmo lugar: ano e mês anterior, o seletor de mês, mês e ano seguinte e **Mês atual**, que volta ao mês corrente. O botão com o ícone de olho oculta os valores da tela.
 
 ## Como uma transação é classificada
 
@@ -154,5 +166,11 @@ Estrutura do projeto:
 | `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
-| `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio). |
+| `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio), ícones e fontes. |
 | `test/` | Testes automatizados. |
+
+### Fontes
+
+Os títulos usam a [Goudy Bookletter 1911](https://github.com/theleagueof/goudy-bookletter-1911), de Barry Schwartz, distribuída em `public/fonts/` sob a SIL Open Font License 1.1 (veja [`public/fonts/OFL.txt`](public/fonts/OFL.txt)).
+
+O nome Moneta, na barra lateral, usa a fonte comercial GC Troja Pro, da Glyphonic, quando ela está instalada no computador que abre a página. Ela não acompanha o projeto. Sem ela, o nome aparece na Goudy Bookletter 1911.
