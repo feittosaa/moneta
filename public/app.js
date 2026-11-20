@@ -10,12 +10,17 @@ async function request(path, body) {
   if (!response.ok) throw new Error(data.error);
   return data;
 }
+const protections = {
+  'systemd-creds': 'lacradas pelo sistema (systemd-creds, presas a este usuário e, com TPM, a este computador)',
+  dpapi: 'protegidas pelo cofre do Windows (DPAPI) do seu usuário',
+  ambiente: 'definidas pelas variáveis de ambiente PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET',
+};
+const keyProtections = {
+  'systemd-creds': 'lacrada pelo sistema (systemd-creds, presa a este usuário e, com TPM, a este computador)',
+  dpapi: 'protegida pelo cofre do Windows (DPAPI) do seu usuário',
+};
 async function refresh() {
   const { configured, connections, protection, credentialsError } = await request('connections');
-  const protections = {
-    'systemd-creds': 'lacradas pelo sistema (systemd-creds, presas a este usuário e, com TPM, a este computador)',
-    dpapi: 'protegidas pelo cofre do Windows (DPAPI) do seu usuário',
-  };
   $('#config').textContent = credentialsError || (configured
     ? 'Credenciais salvas, ' + (protections[protection] || 'em arquivo que só o seu usuário consegue ler') + '.'
     : 'Credenciais pendentes.');
@@ -126,7 +131,58 @@ $('#connect').onclick = async () => {
   }
 };
 const shutdown = $('#shutdown');
-request('status').then(({ desktop }) => { shutdown.hidden = !desktop; }).catch(() => {});
+request('status').then(({ desktop, locked }) => {
+  shutdown.hidden = !desktop;
+  if (locked) $('#recovery').hidden = false;
+  else return loadVault();
+}).catch(() => {});
+
+// Cofre do banco: situação, chave de recuperação e troca da chave.
+async function loadVault() {
+  const { protection, pending } = await request('vault');
+  $('#vault-status').textContent = 'O banco fica cifrado com AES-256-GCM no arquivo moneta.cofre. A chave está ' +
+    (keyProtections[protection] || 'num arquivo que só o seu usuário consegue ler') + '.';
+  $('#vault-pending').hidden = !pending;
+}
+function showCode(code) {
+  $('#vault-code-text').textContent = code;
+  $('#vault-code').hidden = false;
+  $('#vault-pending').hidden = true;
+}
+$('#vault-show').onclick = async () => {
+  try { showCode((await request('vault/code', {})).code); } catch (error) { message(error.message); }
+};
+$('#vault-copy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('#vault-code-text').textContent); message('Chave copiada. Cole no gerenciador de senhas e limpe a área de transferência.'); }
+  catch { message('Não foi possível copiar. Selecione a chave e copie manualmente.'); }
+};
+$('#vault-confirm').onclick = async () => {
+  try {
+    await request('vault/confirm', {});
+    $('#vault-code').hidden = true;
+    $('#vault-code-text').textContent = '';
+    message('Chave de recuperação marcada como guardada.');
+  } catch (error) { message(error.message); }
+};
+$('#vault-rotate').onclick = async () => {
+  if (!confirm('Gerar uma nova chave de recuperação? A chave atual deixa de valer, e o banco é cifrado de novo com a nova.')) return;
+  try { showCode((await request('vault/rotate', {})).code); } catch (error) { message(error.message); }
+};
+$('#recovery-form').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget, button = form.querySelector('button');
+  button.disabled = true;
+  $('#recovery-error').textContent = 'Abrindo o cofre…';
+  try {
+    const { instance } = await request('recovery', { code: form.elements.code.value });
+    form.reset();
+    for (let attempt = 0; attempt < 60; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      try { const status = await request('status'); if (status.instance !== instance && !status.locked) return location.reload(); } catch {}
+    }
+    $('#recovery-error').textContent = 'O cofre abriu, mas o servidor ainda não voltou. Atualize a página em instantes.';
+  } catch (error) { $('#recovery-error').textContent = error.message; button.disabled = false; }
+};
 shutdown.onclick = async () => {
   if (!confirm('Encerrar o Moneta? A sincronização automática para até você abrir o Moneta de novo.')) return;
   save.disabled = restart.disabled = shutdown.disabled = true;

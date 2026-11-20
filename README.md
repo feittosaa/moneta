@@ -70,7 +70,7 @@ O instalador não tem assinatura digital paga, por isso o Windows pode mostrar "
 - Ao abrir, o Moneta liga o servidor local e abre o navegador em http://127.0.0.1:4173. Abrir de novo, com ele já ligado, só abre o navegador.
 - No Windows, uma janela de terminal fica aberta enquanto o Moneta roda. Fechar essa janela encerra o Moneta.
 - Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta**. Com o início automático do Linux, ele volta a ligar no próximo login, ou na hora com `systemctl --user start moneta`.
-- Quem já usava o Moneta pelo Docker pode levar os dados: pare o container (`docker compose down`) e copie `data/moneta.sqlite` e `data/pluggy.json` para a pasta de dados do app instalado.
+- Quem já usava o Moneta pelo Docker pode levar os dados: pare o container (`docker compose down`) e copie o conteúdo de `data/` para a pasta de dados do app instalado. Na primeira abertura, as chaves que estavam em arquivo comum são lacradas pelo sistema.
 - Os dados ficam em `~/.local/share/moneta` no Linux e em `%LOCALAPPDATA%\Moneta` no Windows. Atualizar ou remover o app não apaga os dados.
 - Para atualizar, rode o comando de instalação de novo ou baixe e abra o instalador mais recente.
 
@@ -224,7 +224,8 @@ Para importar um arquivo nesse formato, vá em **Regras**, selecione o arquivo e
 
 Tudo fica na pasta de dados: `data/` no Docker e no Node.js (ela está no `.gitignore`), `~/.local/share/moneta` no app instalado no Linux e `%LOCALAPPDATA%\Moneta` no Windows:
 
-- `moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio;
+- `moneta.cofre`: o banco inteiro (conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio), cifrado com AES-256-GCM. Enquanto o Moneta roda, o banco fica só na memória. `moneta.cofre.anterior` é a gravação anterior, usada se a última for interrompida;
+- `banco.cred` (Linux) ou `banco.dpapi` (Windows): a chave do cofre, lacrada pelo sistema. Sem esse recurso, como no Docker, fica em `banco.key` com permissão `0600`, ao lado do cofre;
 - `pluggy.cred` (Linux) ou `pluggy.dpapi` (Windows): credenciais da Pluggy lacradas pelo sistema. Sem esse recurso, como no Docker, ficam em `pluggy.json` com permissão `0600`;
 - `acesso.key`: chave que libera o navegador, trocada por um cookie quando você abre o Moneta pelo atalho.
 
@@ -258,6 +259,7 @@ Estrutura do projeto:
 | `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
+| `vault.mjs` | Cofre do banco: SQLite em memória, gravado cifrado com AES-256-GCM em `moneta.cofre`, migração verificada e chave de recuperação. |
 | `secret-store.mjs` | Lacre das credenciais da Pluggy pelo sistema (systemd-creds no Linux, DPAPI no Windows). |
 | `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio, campos de data), ícones e fontes. |
 | `packaging/` | Scripts que geram o AppImage, o instalador do Windows e o comando de instalação para Linux. |
