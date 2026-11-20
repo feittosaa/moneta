@@ -23,6 +23,9 @@ function choices(select, options) {
 let hiddenAmounts = localStorage.getItem('moneta-hide-amounts') === 'true';
 const money = n => hiddenAmounts ? '••••' : n == null ? 'Indisponível' : (n === 0 ? 0 : n/100).toLocaleString('pt-BR',{style:'currency',currency:currency.value});
 const accountName = a => [a.institution,a.name,a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+// Rótulo curto: instituição e tipo de conta, com o final do número só quando o tipo não basta.
+const accountLabel = a => [a.institution,a.kind || (a.type === 'CREDIT' ? 'Cartão' : a.name && a.name.toLocaleLowerCase() !== a.institution?.toLocaleLowerCase() ? a.name : ''),
+  (a.type === 'CREDIT' || !a.kind) && a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
 const categoryName = id => id === 'invoice' ? 'Fatura sem detalhamento' : id === 'invoices' ? 'Faturas de cartão' : data.categories.find(c => c.id === id)?.name || 'Sem categoria';
 function categoryColor(id) {
   return data.categories.find(c => c.id === id)?.color || (id === 'invoice' || id === 'invoices' ? 'var(--invoice)' : 'var(--muted)');
@@ -526,8 +529,7 @@ function bankBalance(accounts) {
   const box = tag('article'), shown = 3;
   box.className = 'bank-metric';
   const known = accounts.filter(a => a.balance != null);
-  const label = a => [a.institution,a.kind || (a.name && a.name.toLocaleLowerCase() !== a.institution?.toLocaleLowerCase() ? a.name : ''),
-    !a.kind && a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  const label = accountLabel;
   const ordered = [...accounts].sort((a,b) => (b.balance ?? -Infinity)-(a.balance ?? -Infinity) || compare(label(a),label(b)));
   const list = rows => {
     const items = tag('ul');
@@ -665,7 +667,7 @@ export function initializeFinance(api, message) {
       const count = result.changes.length;
       $('#apply-summary').textContent = count ? count+' de '+result.total+' lançamentos mudam de categoria:' :
         'Nenhum lançamento muda de categoria agora. Ao aplicar, mudanças futuras nas regras também passam a valer para o histórico.';
-      const accounts = new Map(data.accounts.map(a => [a.id,accountName(a)]));
+      const accounts = new Map(data.accounts.map(a => [a.id,accountLabel(a)]));
       const value = t => hiddenAmounts ? '••••' : (t.amount/100).toLocaleString('pt-BR',{style:'currency',currency:t.currency || currency.value});
       if (count) $('#apply-preview').replaceChildren(table(['Data','Descrição','Conta','Valor','Categoria atual','Nova categoria'],
         result.changes.map(t => [formatDate(t.date),t.description,accounts.get(t.account) || '—',value(t),categoryLabel(t.from),categoryLabel(t.to)]),''));
