@@ -407,6 +407,18 @@ function editCategory(category) {
   dialog.showModal();
 }
 const mine = 'Criada por mim';
+// Gera regras no mesmo formato aceito pela importação, na ordem em que a Moneta as avalia.
+function exportRules(origin) {
+  const target = id => data.categories.find(c => c.id === id)?.name;
+  const action = id => target(id) ? [{op:'set_category',value:target(id)}] : [];
+  // As regras criadas na Moneta vencem o catálogo; uma prioridade menor preserva isso em outra instalação.
+  const first = Math.min(0,...data.catalogRules.map(r => r.priority)) - 1;
+  const own = origin === 'moneta' ? [] : data.rules.map(r => ({name:r.name || r.term,priority:first,is_active:r.active !== false,
+    conditions_op:r.mode || 'and',conditions:r.conditions || [{field:'description',op:'contains',value:r.term}],actions:action(r.category)}));
+  const catalog = data.catalogRules.filter(r => !origin || (origin === 'mine') === Boolean(r.imported))
+    .map(r => ({name:r.name,priority:r.priority,is_active:r.active,conditions_op:r.mode,conditions:r.conditions,actions:action(r.category)}));
+  return [...own,...catalog];
+}
 function originCell(label, detail) {
   const cell = tag('span',label);
   if (detail) cell.append(' ',tag('small',detail));
@@ -719,6 +731,18 @@ export function initializeFinance(api, message) {
     save('/categories',{name:form.elements.name.value,color:form.elements.color.value,internal:form.elements.internal.checked},form);
   };
   $('#new-rule').onclick = () => editRule();
+  $('#export-rules').onclick = () => {
+    const origin = $('#rule-origin').value;
+    const rules = exportRules(origin);
+    if (!rules.length) return notify('Nenhuma regra com esta origem para exportar.');
+    const file = new Blob([JSON.stringify({format:'moneta-categorization-rules',version:1,exported_at:new Date().toISOString(),rules},null,2)+'\n'],{type:'application/json'});
+    const link = tag('a');
+    link.href = URL.createObjectURL(file);
+    link.download = 'moneta-regras' + (origin ? '-' + (origin === 'mine' ? 'minhas' : 'moneta') : '') + '-' + new Date().toLocaleDateString('en-CA') + '.json';
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href),0);
+    notify(rules.length === 1 ? '1 regra exportada.' : rules.length + ' regras exportadas.');
+  };
   const walletForm = $('#wallet-form');
   const walletDate = walletForm.elements.date;
   walletDate.value = new Date().toLocaleDateString('en-CA');

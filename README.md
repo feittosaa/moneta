@@ -130,7 +130,9 @@ Pagamentos de fatura e aplicações e resgates de investimentos são reconhecido
 
 O arquivo [`default-rules.json`](default-rules.json) traz regras prontas para comércios e serviços comuns no Brasil, como delivery, mercados, transporte, assinaturas, farmácias e contas da casa, além de pagamentos de fatura, aplicações, salário e rendimentos. Elas aparecem com a origem **Moneta** na tela de regras, podem ser editadas ou desativadas e vêm todas ativas.
 
-Também é possível importar regras de um arquivo JSON no formato de exportação de regras (`*-categorization-rules`, versão 1). Em **Regras**, selecione o arquivo e clique em **Importar regras**:
+Para compartilhar regras com alguém ou levá-las para outra instalação, clique em **Exportar regras**. A Moneta baixa um arquivo JSON (`moneta-categorization-rules`, versão 1) com as regras da origem escolhida no filtro: todas, só as suas ou só as do catálogo, já com as suas edições. As regras criadas na Moneta saem com prioridade menor que a do catálogo, para continuarem vencendo depois de importadas.
+
+Para importar um arquivo nesse formato, vá em **Regras**, selecione o arquivo e clique em **Importar regras**:
 
 - regras com o mesmo nome são atualizadas, por isso importar de novo traz as alterações do arquivo;
 - categorias que ainda não existem são criadas;
