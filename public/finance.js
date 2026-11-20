@@ -117,6 +117,22 @@ function report() {
     ['Despesas', loaded ? summary.spent : null],
     ['Resultado do mês', loaded ? result : null,loaded && result ? (result > 0 ? 'result-positive' : 'result-negative') : null],
   ]);
+  // Mês atual: soma das faturas ainda abertas dos cartões, ao lado do resultado.
+  const today = new Date().toLocaleDateString('en-CA');
+  if (loaded && period === today.slice(0,7)) {
+    const open = data.accounts.filter(a => a.type === 'CREDIT' && a.currency === currency.value).map(card => {
+      const current = cardPeriod(data,card,period,today);
+      const bill = current.openMonth && cardPeriod(data,card,current.openMonth,today);
+      return bill?.open ? bill.amount : null;
+    }).filter(value => value != null);
+    if (open.length) {
+      indicators.append(metrics([['Fatura em aberto',sum(open,value => value),'invoice-metric']]).firstChild);
+      indicators.classList.add('with-invoice');
+      const note = tag('small',open.length === 1 ? '1 cartão' : open.length+' cartões');
+      note.className = 'expense-detail';
+      indicators.lastChild.append(note);
+    }
+  }
   const detail = tag('small');
   detail.className = 'expense-detail';
   // Cada parcela leva o próprio "+", para a quebra de linha não deixar o sinal sozinho no fim.
