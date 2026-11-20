@@ -1,50 +1,154 @@
 # Moneta
 
-Aplicação local de usuário único para conectar instituições via Pluggy. A implementação usa Node.js e SQLite, com interface em português.
+Moneta é um painel de finanças pessoais que roda no seu próprio computador. Ele se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo em um banco SQLite local. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
 
-## Execução com Docker Compose
+- **Local e de usuário único:** o servidor escuta apenas em `127.0.0.1` e não tem contas de usuário.
+- **Sem dependências externas:** usa só Node.js 22 (servidor HTTP e `node:sqlite` nativos) e HTML, CSS e JavaScript puros no navegador.
+- **Interface em português**, com valores em várias moedas mantidos separados.
 
-Na raiz do projeto, prepare a pasta de dados e suba o serviço:
+## Requisitos
+
+- Docker com Docker Compose **ou** Node.js 22.16 ou superior.
+- Uma aplicação na Pluggy, com **Client ID** e **Client Secret**. Crie-a no [painel da Pluggy](https://dashboard.pluggy.ai).
+- Acesso à internet para a API e o widget de conexão da Pluggy.
+
+## Instalação
+
+### Com Docker Compose (recomendado)
+
+Na raiz do projeto:
 
 ```sh
 mkdir -p -m 700 data
 docker compose up -d --build
 ```
 
-Abra http://127.0.0.1:4173. Em **Configuração**, informe o Client ID e o Client Secret da sua aplicação Pluggy e clique em **Validar e salvar**. O Compose monta `./data` para preservar as credenciais e os dados financeiros. Se a execução direta já estiver ativa, encerre-a antes de subir o container na mesma porta. Use `docker compose down` para parar.
+Abra http://127.0.0.1:4173. Para parar, use `docker compose down`.
 
-O serviço roda com UID/GID 1000 por padrão. Em Linux com outros IDs, defina `MONETA_UID` e `MONETA_GID` no `.env` com os valores de `id -u` e `id -g`.
+A pasta `./data` é montada no container e guarda o banco e as credenciais, por isso os dados sobrevivem a recriações do container. O serviço roda com UID/GID 1000. Se o seu usuário no Linux tiver outros IDs, crie um arquivo `.env` com os valores de `id -u` e `id -g`:
 
-## Execução direta com Node.js
+```sh
+MONETA_UID=1001
+MONETA_GID=1001
+```
 
-Use Node.js 22.16 ou superior. Na raiz do projeto:
+### Com Node.js
 
 ```sh
 node --env-file-if-exists=.env server.mjs
 ```
 
-Abra http://127.0.0.1:4173. Cadastre as credenciais em **Configuração**. Elas entram em vigor assim que a Pluggy as valida. O botão **Reiniciar servidor** reinicia o processo que atende a aplicação tanto no Docker quanto na execução direta. A conexão requer internet para a API e o widget. O servidor escuta somente no loopback.
+Abra http://127.0.0.1:4173. Não é preciso instalar pacotes: o projeto não tem dependências npm.
 
-## Dados e integração
+Encerre uma das formas de execução antes de iniciar a outra, pois ambas usam a mesma porta.
 
-O banco local em data/moneta.sqlite guarda o perfil, vínculos, saldos, investimentos, lançamentos, categorias e regras. Preserve esse arquivo entre execuções. GET /api/connections fornece a lista local em JSON para uma futura integração com a Ayla. O servidor guarda as credenciais cadastradas em `data/pluggy.json`, com permissão de leitura e escrita apenas para o proprietário. Proteja as cópias dessa pasta, pois o arquivo contém o segredo em texto simples. Instalações com credenciais no ambiente continuam a usá-las até que um novo par seja salvo pela interface.
+### Variáveis de ambiente
 
-## Telas financeiras
+Todas são opcionais.
 
-Para uma conexão existente, use **Sincronizar**. A Moneta busca o histórico disponível na Pluggy e grava a nova posição após concluir a leitura das páginas de todas as conexões. Uma falha preserva a consulta anterior. A sincronização também ocorre ao conectar uma nova instituição.
+| Variável | Padrão | Uso |
+| --- | --- | --- |
+| `PORT` | `4173` | Porta do servidor. |
+| `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` | vazio | Credenciais da Pluggy. Valem até que outro par seja salvo pela interface. |
+| `MONETA_UID` e `MONETA_GID` | `1000` | Usuário e grupo do container (somente Docker). |
 
-- **Relatório mensal** reúne receitas, despesas, resultado e despesas por categoria dos lançamentos efetivados. Entradas e débitos usam a data do lançamento. Os cartões entram pelo total da fatura no mês do vencimento, incluindo parcelas. Quando a fatura não vem da instituição, o relatório procura pagamentos identificados e sinaliza cobertura incompleta. Defina a moeda em Configuração.
-- **Patrimônio** usa a posição da última sincronização. O bruto soma saldos positivos e investimentos brutos. O líquido considera investimentos líquidos e desconta dívidas de cartões e saldos bancários negativos. A parcela de aplicação automática é descontada do saldo bancário para evitar dupla contagem. Valores ausentes aparecem como indisponíveis.
-- **Transações** permite buscar a descrição, filtrar por conta ou categoria e alterar a classificação. O filtro de período é opcional: escolha **Todos os meses** para listar o histórico inteiro na moeda selecionada. Selecione Automática para devolver uma transação às regras.
-- **Cartões** mostra cada conta de crédito com seus lançamentos do mês, saldo usado atual e limite informado.
-- **Categorias e regras** permitem criar categorias personalizadas e associá-las a trechos da descrição. A classificação manual precede a primeira regra correspondente e depois a categoria reconhecida da Pluggy. Classifique transferências próprias, pagamentos de fatura e movimentações de investimentos nas categorias internas para excluí-los do fluxo mensal.
+## Primeiros passos
+
+1. Em **Configuração**, informe o Client ID e o Client Secret e clique em **Validar e salvar**. As credenciais passam a valer assim que a Pluggy as aceita.
+2. Em **Conexões**, clique em **Conectar instituição** e siga o widget da Pluggy para autorizar o acesso ao banco, cartão ou corretora.
+3. A Moneta sincroniza a nova conexão logo em seguida. Depois disso, use **Sincronizar** quando quiser atualizar. Com o servidor ligado, uma sincronização automática ocorre a cada 6 horas.
+
+A sincronização lê todo o histórico disponível na Pluggy e só grava o resultado depois de ler todas as conexões. Se algo falhar no meio do caminho, a cópia anterior é mantida.
+
+## Telas
+
+### Visão geral
+
+- **Resumo mensal:** receitas, despesas, resultado e despesas por categoria do mês escolhido. Débitos e créditos em conta contam na data do lançamento. Compras no cartão contam pelo total da fatura no mês do vencimento, inclusive parcelas. Quando a instituição não informa a fatura, a Moneta a reconstrói a partir dos pagamentos identificados e avisa que a cobertura pode estar incompleta.
+- **Patrimônio:** posição da última sincronização e sua evolução diária. O **bruto** soma saldos positivos e investimentos brutos. O **líquido** usa investimentos líquidos e desconta dívidas de cartão e saldos negativos. O valor aplicado automaticamente pelo banco é descontado do saldo da conta para não ser contado duas vezes. Valores que a instituição não informou aparecem como indisponíveis.
+
+### Transações
+
+Lista os lançamentos de todas as contas. Você pode:
+
+- escolher o **Período**: o mês selecionado no topo da página ou **Todos os meses**, para ver o histórico inteiro na moeda selecionada;
+- buscar pela descrição e filtrar por conta, cartão ou categoria;
+- clicar em uma transação para mudar a categoria, escrever uma nota ou criar uma regra a partir dela. Escolha **Automática** para devolver a transação às regras.
+
+Valores positivos aparecem em negrito.
+
+### Carteira
+
+Registra dinheiro em espécie, que não passa pela Pluggy. **Adicionar saldo** e **Retirar saldo** só ajustam o saldo da carteira. **Receita em dinheiro** e **Despesa em dinheiro** também entram no resultado do mês.
+
+### Cartões
+
+Mostra cada cartão de crédito com as compras do ciclo (inclusive parcelas), a situação da fatura (fechada, em aberto ou estimada), o limite total e o limite utilizado. Faturas fechadas continuam disponíveis mesmo depois que saem da janela de histórico da Pluggy.
+
+### Categorias
+
+Crie, renomeie, recolora ou remova categorias. Uma categoria marcada como **interna** fica fora do fluxo mensal. Use esse tipo para movimentos que não são receita nem despesa, como pagamentos de fatura e aplicações e resgates de investimentos.
+
+### Regras
+
+Regras classificam lançamentos automaticamente. Cada regra combina condições sobre a descrição, o valor, a data, o tipo, a situação ou o CPF/CNPJ do destinatário. As condições podem exigir que todas coincidam ou que qualquer uma coincida. Os operadores disponíveis são: contém, não contém, começa com, termina com, igual, diferente, expressão regular e comparações numéricas (maior, menor, maior ou igual, menor ou igual).
+
+**Aplicar regras ao histórico** reavalia todos os lançamentos com as regras ativas, preservando as escolhas manuais.
+
+### Configuração
+
+Define a moeda padrão, as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta). O botão com o ícone de olho, no topo, oculta os valores da tela.
+
+## Como uma transação é classificada
+
+A Moneta usa a primeira fonte disponível, nesta ordem:
+
+1. a categoria escolhida manualmente na transação;
+2. as regras criadas na Moneta;
+3. as regras do catálogo, em ordem crescente de prioridade (com a mesma prioridade, as regras importadas vêm antes das padrão);
+4. a categoria informada pela Pluggy.
+
+Pagamentos de fatura e aplicações e resgates de investimentos são reconhecidos pela descrição e vão para as categorias internas **Pagamento de fatura** e **Movimentação de investimentos**, para não inflarem receitas e despesas. Rendimentos e impostos sobre investimentos continuam contando como receita e despesa.
 
 ## Catálogo de regras
 
-O catálogo em `default-rules.json` traz regras prontas para comércios e serviços comuns no Brasil. Todas vêm ativas.
+O arquivo [`default-rules.json`](default-rules.json) traz regras prontas para comércios e serviços comuns no Brasil, como delivery, mercados, transporte, assinaturas, farmácias e contas da casa, além de pagamentos de fatura, aplicações, salário e rendimentos. Elas aparecem com a origem **Moneta** na tela de regras, podem ser editadas ou desativadas e vêm todas ativas.
 
-Em **Regras → Importar regras**, selecione a exportação JSON da tela Regras do seu workspace pessoal. A Moneta guarda as definições no SQLite local. Importar novamente atualiza regras de mesmo nome, inclusive padrões que você personalizou. A tela sinaliza regras sem ação de categoria compatível ou com campos que o Moneta ainda não possui.
+Também é possível importar regras de um arquivo JSON no formato de exportação de regras (`*-categorization-rules`, versão 1). Em **Regras**, selecione o arquivo e clique em **Importar regras**:
 
-A escolha manual de uma transação tem precedência, seguida das regras criadas na Moneta, das regras do catálogo em ordem crescente de prioridade e da categoria da Pluggy. Entre regras do catálogo com a mesma prioridade, as do perfil pessoal vêm primeiro.
+- regras com o mesmo nome são atualizadas, por isso importar de novo traz as alterações do arquivo;
+- categorias que ainda não existem são criadas;
+- a tela sinaliza regras sem uma categoria de destino ou que usam campos que a Moneta ainda não lê;
+- com **Aplicar também aos lançamentos existentes** marcado, todo o histórico é reavaliado. Desmarcado, a classificação atual é preservada e as regras importadas valem apenas para lançamentos novos.
 
-Na importação, **Aplicar também aos lançamentos existentes** reavalia o histórico. Desmarque para preservar a classificação anterior e aplicar o catálogo atualizado apenas aos lançamentos adicionados depois.
+## Dados e privacidade
+
+Tudo fica na pasta `data/`, que está no `.gitignore`:
+
+- `data/moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, categorias, regras, notas e histórico de patrimônio;
+- `data/pluggy.json`: credenciais salvas pela interface, acessível apenas pelo dono do arquivo. **O segredo fica em texto simples**, então proteja backups e cópias dessa pasta.
+
+O servidor recusa requisições cujo cabeçalho `Host` não seja `localhost` ou `127.0.0.1`, e recusa escritas vindas de outra origem. Os únicos dados que saem da máquina são as chamadas à API da Pluggy.
+
+Outras aplicações locais podem ler a lista de conexões em JSON por `GET /api/connections`.
+
+## Desenvolvimento
+
+Rode os testes com o executor nativo do Node.js:
+
+```sh
+node --test
+```
+
+Estrutura do projeto:
+
+| Caminho | Conteúdo |
+| --- | --- |
+| `server.mjs` | Processo supervisor que inicia e reinicia o backend. |
+| `backend.mjs` | Servidor HTTP, rotas da API e integração com a Pluggy. |
+| `finance.mjs` | Banco SQLite, sincronização e classificação de lançamentos. |
+| `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
+| `default-rules.json` | Regras padrão do catálogo. |
+| `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
+| `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio). |
+| `test/` | Testes automatizados. |
