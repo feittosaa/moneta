@@ -134,7 +134,8 @@ test('composição da fatura agrupa compras e estornos e preserva a diferença a
       {...tx('bank',-1000,2),date:'2026-11-01'},tx('card',-9000,2,'dez')]};
   const result = summarize(data,'2026-11','BRL','2026-11-19');
   assert.deepEqual(Object.fromEntries(result.invoiceByCategory),{1:2500,2:2000,invoice:500});
-  assert.equal(result.byCategory.get(2),3000);
+  // Fora do filtro de faturas, a fatura aparece como uma linha só ao lado das despesas de débito.
+  assert.deepEqual(Object.fromEntries(result.byCategory),{2:1000,invoices:5000});
   assert.equal(result.spent,6000);
 });
 

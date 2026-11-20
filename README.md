@@ -64,7 +64,7 @@ A sincronização lê todo o histórico disponível na Pluggy e só grava o resu
 
 ### Visão geral
 
-- **Resumo mensal:** receitas, despesas, resultado e despesas por categoria do mês escolhido. Débitos e créditos em conta contam na data do lançamento. Compras no cartão contam pelo total da fatura no mês do vencimento, inclusive parcelas. Quando a instituição não informa a fatura, a Moneta a reconstrói a partir dos pagamentos identificados e avisa que a cobertura pode estar incompleta.
+- **Resumo mensal:** receitas, despesas, resultado e despesas por categoria do mês escolhido. Débitos e créditos em conta contam na data do lançamento. Compras no cartão contam pelo total da fatura no mês do vencimento, inclusive parcelas. Quando a instituição não informa a fatura, a Moneta a reconstrói a partir dos pagamentos identificados e avisa que a cobertura pode estar incompleta. Em **Despesas por categoria**, as faturas aparecem agrupadas em uma linha só, **Faturas de cartão**. Escolha **Somente faturas** para ver a composição delas por categoria.
 - **Patrimônio:** posição da última sincronização e sua evolução diária. O **bruto** soma saldos positivos e investimentos brutos. O **líquido** usa investimentos líquidos e desconta dívidas de cartão e saldos negativos. O valor aplicado automaticamente pelo banco é descontado do saldo da conta para não ser contado duas vezes. Valores que a instituição não informou aparecem como indisponíveis.
 
 ### Transações

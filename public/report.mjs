@@ -137,8 +137,10 @@ export function summarize(data, month, currency, today = new Date().toLocaleDate
   allocate(invoiceFallback-allocated,[]);
   const invoices = projected + sum(due,b => Math.max(0,b.amount)) + invoiceFallback;
   const spent = debit + cashSpent + invoices;
-  const byCategory = new Map(invoiceByCategory);
+  // Na visão geral as faturas formam uma linha só; a composição por categoria fica em invoiceByCategory.
+  const byCategory = new Map();
   for (const t of expenses) byCategory.set(t.category,(byCategory.get(t.category)||0)-t.amount);
+  if (invoices) byCategory.set('invoices',invoices);
   const missingBills = data.accounts.some(a => a.type === 'CREDIT' && a.currency === currency &&
     !estimatedCards.has(a.id) && !paidFromBank.has(a.id) && !due.some(b => b.account === a.id) && !creditPayments.some(t => t.account === a.id));
   return {income,debit,cashSpent,projected,invoices,invoiceFallback,missingBills,spent,byCategory,invoiceByCategory,inferred,invoiceRows,expenses,...portfolio(data,currency)};
