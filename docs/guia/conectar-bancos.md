@@ -14,7 +14,7 @@ O Moneta não entra no seu banco. Quem faz essa ponte é a **Pluggy**, uma empre
 
 - Um e-mail que você consiga abrir. Use **o mesmo e-mail** no Meu Pluggy e no painel da Pluggy.
 - Seu CPF e o aplicativo de cada banco no celular, para aprovar o compartilhamento.
-- O Moneta instalado e aberto no navegador. Se ainda não instalou, siga a seção [Instalação do README](https://github.com/feittosaa/moneta#instalação): no Linux é um comando e no Windows, um instalador.
+- O Moneta instalado e aberto. Se ainda não instalou, siga a seção [Instalação do README](https://github.com/feittosaa/moneta#instalação): no Linux é um comando e no Windows, um instalador.
 
 > **Custa alguma coisa?** Não. Para ler os seus próprios dados pelo Meu Pluggy, a Pluggy não cobra e não pede análise de empresa. O limite é de 5 conexões, só para uso pessoal, sem uso comercial.
 

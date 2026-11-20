@@ -4,13 +4,79 @@
 
 <h1 align="center">Moneta</h1>
 
-Moneta é um painel de finanças pessoais que roda no seu próprio computador. Ele se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo em um banco SQLite local. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
+Moneta é um painel de finanças pessoais que roda no seu próprio computador. Ele se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo num banco local cifrado. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
 
-- **Local e de usuário único:** o servidor escuta apenas em `127.0.0.1` e não tem contas de usuário.
-- **Sem dependências externas:** usa só Node.js 22 (servidor HTTP e `node:sqlite` nativos) e HTML, CSS e JavaScript puros no navegador.
+<p align="center">
+  <a href="https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe"><b>⬇ Baixar para Windows</b></a>
+  &nbsp;·&nbsp;
+  <a href="#linux"><b>Instalar no Linux</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/feittosaa/moneta/releases/latest">Novidades da última versão</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/feittosaa/moneta/releases">Todas as versões</a>
+</p>
+
+- **Local e de usuário único:** o servidor escuta apenas em `127.0.0.1` e não tem contas de usuário. O banco fica cifrado em disco, com backups diários testados.
+- **Janela própria:** abre como um aplicativo, sem navegador e, no Windows, sem terminal. Fechado, continua sincronizando em segundo plano.
+- **Sem dependências no servidor:** usa só Node.js 22 (servidor HTTP e `node:sqlite` nativos) e HTML, CSS e JavaScript puros na interface. A janela é feita com [Tauri](https://tauri.app).
 - **Interface em português**, com valores em várias moedas mantidos separados.
 
-> **Primeira vez?** O [Guia de conexão](docs/guia/conectar-bancos.md) mostra, passo a passo e com imagens, como criar as contas gratuitas na Pluggy, pegar o Client ID e o Client Secret e conectar seus bancos. Não é preciso saber programar. O mesmo guia abre dentro do Moneta, no menu **Guia**.
+> **Primeira vez?** Instale pelo link acima e siga o [Guia de conexão](docs/guia/conectar-bancos.md): ele mostra, passo a passo e com imagens, como criar as contas gratuitas na Pluggy e conectar seus bancos. Não é preciso saber programar. O mesmo guia abre dentro do Moneta, no menu **Guia**.
+
+## Instalação
+
+Os instaladores já trazem tudo o que o Moneta precisa e não pedem senha de administrador.
+
+### Windows
+
+Para Windows 10 ou 11, de 64 bits.
+
+1. Baixe o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe) e abra.
+2. O instalador não tem assinatura digital paga, então o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e depois em **Executar assim mesmo**.
+3. Deixe marcada a opção **Iniciar com o Windows, em segundo plano** para que o Moneta sincronize sozinho desde o login, e conclua.
+
+O Moneta abre numa janela própria e cria atalhos no menu Iniciar e na área de trabalho. Fechar a janela deixa o Moneta na bandeja, ao lado do relógio, sincronizando. Clique no ícone para voltar, ou clique com o botão direito em **Encerrar o Moneta** para desligar.
+
+O Moneta usa o Microsoft Edge WebView2, que já vem no Windows 11 e no Windows 10 atualizado. Se faltar, o instalador avisa e abre a página da Microsoft para instalar. Para remover, use **Configurações → Aplicativos**.
+
+### Linux
+
+Para Linux x86_64. Abra o terminal e cole:
+
+```sh
+curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --iniciar-com-o-sistema
+```
+
+O comando baixa a versão mais recente, confere o arquivo, cria o atalho **Moneta** no menu de aplicativos e deixa o Moneta ligado em segundo plano a cada login, sincronizando. Abra pelo menu, pela barra de tarefas ou com o comando `moneta`.
+
+- Prefere que ele só ligue quando você abrir? Use o mesmo comando sem `-s -- --iniciar-com-o-sistema`. Para desligar o início automático depois: `systemctl --user disable --now moneta`.
+- A janela usa o WebKitGTK 4.1, que já vem na maioria das distribuições com GNOME ou KDE (`webkit2gtk4.1` no Fedora, `libwebkit2gtk-4.1-0` no Debian e no Ubuntu). Sem ele, o Moneta abre no navegador.
+- Sem terminal: baixe o [Moneta-x86_64.AppImage](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-x86_64.AppImage), marque como executável (nas propriedades do arquivo, **Permitir executar como programa**) e abra com dois cliques. Se não abrir, instale o pacote `fuse3` da sua distribuição, ou use o comando acima, que não precisa dele.
+- Para desligar o Moneta até o próximo login, use **Configuração → Encerrar o Moneta**.
+- Para remover, mantendo os seus dados:
+
+```sh
+curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --remover
+```
+
+### Atualizar
+
+- **Windows:** baixe e abra o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe) mais recente. Ele fecha o Moneta aberto, guardando tudo, e instala por cima.
+- **Linux:** rode o comando de instalação de novo. O serviço em segundo plano reinicia com a versão nova.
+
+Atualizar ou remover nunca apaga os dados. Eles ficam em `%LOCALAPPDATA%\Moneta` no Windows e em `~/.local/share/moneta` no Linux. As novidades de cada versão ficam em [Releases](https://github.com/feittosaa/moneta/releases), com as somas de verificação dos arquivos.
+
+## Primeiros passos
+
+O [Guia de conexão](docs/guia/conectar-bancos.md) detalha cada passo abaixo, inclusive a criação das contas na Pluggy e no Meu Pluggy. Em resumo:
+
+1. Em **Configuração**, informe o Client ID e o Client Secret e clique em **Validar e salvar**. As credenciais passam a valer assim que a Pluggy as aceita.
+2. Em **Conexões**, clique em **Conectar instituição**, escolha **MeuPluggy** no widget da Pluggy e autorize o acesso aos bancos que você conectou no Meu Pluggy.
+3. A Moneta sincroniza a nova conexão logo em seguida. Depois disso, use **Sincronizar** quando quiser atualizar. Com o Moneta ligado, uma sincronização automática ocorre a cada 6 horas.
+4. Em **Configuração → Cofre do banco**, clique em **Mostrar chave de recuperação** e guarde a chave num gerenciador de senhas ou no papel. Ela abre o banco se você trocar de computador.
+5. De vez em quando, em **Configuração → Backups**, baixe um backup e guarde fora do computador.
+
+A sincronização lê todo o histórico disponível na Pluggy e só grava o resultado depois de ler todas as conexões. Se algo falhar no meio do caminho, a cópia anterior é mantida.
 
 ## Capturas de tela
 
@@ -24,57 +90,9 @@ As imagens usam uma base de demonstração com dados fictícios e o modo que ocu
 | ![Lista de transações com conta, categoria e situação](docs/screenshots/transacoes.png) | ![Fatura do cartão de crédito com as compras do ciclo](docs/screenshots/cartoes.png) |
 | ![Vales cadastrados e créditos do mês](docs/screenshots/vales.png) | ![Regras de categorização com filtro de origem, ordenação e exportação](docs/screenshots/regras.png) |
 
-## Requisitos
+## Rodar pelo código
 
-- Para o app instalado: Linux x86_64 ou Windows 10/11 de 64 bits, e um navegador. O instalador já traz tudo o que o Moneta precisa.
-- Para rodar pelo código: Docker com Docker Compose **ou** Node.js 22.16 ou superior.
-- Uma aplicação na Pluggy, com **Client ID** e **Client Secret**. Para uso pessoal ela é gratuita; o [Guia de conexão](docs/guia/conectar-bancos.md) mostra como criar.
-- Acesso à internet para a API e o widget de conexão da Pluggy.
-
-## Instalação
-
-### Linux
-
-No terminal:
-
-```sh
-curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh
-```
-
-O comando baixa a versão mais recente, confere o arquivo, instala o app em `~/.local/lib/moneta` e cria o atalho **Moneta** no menu de aplicativos, sem pedir senha de administrador. Depois, abra pelo menu ou rode `moneta`.
-
-Para que o Moneta ligue sozinho, em segundo plano, sempre que você entrar no computador (na porta 4173, sem abrir o navegador):
-
-```sh
-curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --iniciar-com-o-sistema
-```
-
-Isso cria um serviço de usuário do systemd, em sandbox: o Moneta só consegue escrever na própria pasta de dados. Para desligar o início automático, rode `systemctl --user disable --now moneta`.
-
-Prefere não usar o terminal? Baixe o [Moneta-x86_64.AppImage](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-x86_64.AppImage), marque como executável (nas propriedades do arquivo, **Permitir executar como programa**) e abra com dois cliques.
-
-Para remover, mantendo os seus dados:
-
-```sh
-curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --remover
-```
-
-### Windows
-
-Baixe e abra o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe). Ele instala só para o seu usuário, sem pedir administrador, e cria atalhos no menu Iniciar e na área de trabalho. Na instalação, a opção **Iniciar com o Windows, em segundo plano** deixa o Moneta ligado na bandeja desde o login. O Moneta usa o Microsoft Edge WebView2, que já vem no Windows 11 e no Windows 10 atualizado. Para remover, use **Configurações → Aplicativos**.
-
-O instalador não tem assinatura digital paga, por isso o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e depois em **Executar assim mesmo**.
-
-### Como o app instalado funciona
-
-- **Linux:** pelo menu, pela barra de tarefas ou com `moneta`, o painel abre numa janela própria. Ela usa o servidor que já estiver ligado (o serviço do systemd, por exemplo) ou sobe um, e fechar a janela não desliga o serviço. A janela usa o WebKitGTK 4.1 do sistema (`webkit2gtk4.1` no Fedora, `libwebkit2gtk-4.1-0` no Debian e no Ubuntu); sem ele, o Moneta abre no navegador.
-- **Windows:** o Moneta abre numa janela própria, sem terminal. Fechar a janela deixa o Moneta na bandeja, sincronizando. Para voltar, clique no ícone da bandeja ou abra pelo menu Iniciar. A janela é feita com [Tauri](https://tauri.app) e fica em `desktop/`.
-- Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta** ou, no Windows, **Encerrar o Moneta** no ícone da bandeja. Com o início automático do Linux, ele volta a ligar no próximo login, ou na hora com `systemctl --user start moneta`.
-- Quem já usava o Moneta pelo Docker pode levar os dados: pare o container (`docker compose down`) e copie o conteúdo de `data/` para a pasta de dados do app instalado. Na primeira abertura, as chaves que estavam em arquivo comum são lacradas pelo sistema.
-- Os dados ficam em `~/.local/share/moneta` no Linux e em `%LOCALAPPDATA%\Moneta` no Windows. Atualizar ou remover o app não apaga os dados.
-- Para atualizar, rode o comando de instalação de novo ou baixe e abra o instalador mais recente.
-
-Todas as versões, com as somas de verificação, ficam em [Releases](https://github.com/feittosaa/moneta/releases).
+Para desenvolver ou rodar sem instalador. Precisa de Docker com Docker Compose **ou** Node.js 22.16 ou superior, além de uma aplicação na Pluggy (veja o [Guia de conexão](docs/guia/conectar-bancos.md)). Nesse modo, o Moneta abre no navegador, e o endereço de entrada aparece no log ao iniciar.
 
 ### Com Docker Compose
 
@@ -93,6 +111,8 @@ A pasta `./data` é montada no container e guarda o banco e as credenciais, por 
 MONETA_UID=1001
 MONETA_GID=1001
 ```
+
+Quem já usava o Docker e passou para o app instalado pode levar os dados: pare o container (`docker compose down`) e copie o conteúdo de `data/` para a pasta de dados do app. Na primeira abertura, as chaves que estavam em arquivo comum são lacradas pelo sistema.
 
 ### Com Node.js
 
@@ -116,21 +136,11 @@ Todas são opcionais.
 | `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` | vazio | Credenciais da Pluggy. Valem até que outro par seja salvo pela interface. |
 | `MONETA_UID` e `MONETA_GID` | `1000` | Usuário e grupo do container (somente Docker). |
 
-## Primeiros passos
-
-O [Guia de conexão](docs/guia/conectar-bancos.md) detalha cada passo abaixo, inclusive a criação das contas na Pluggy e no Meu Pluggy. Em resumo:
-
-1. Em **Configuração**, informe o Client ID e o Client Secret e clique em **Validar e salvar**. As credenciais passam a valer assim que a Pluggy as aceita.
-2. Em **Conexões**, clique em **Conectar instituição**, escolha **MeuPluggy** no widget da Pluggy e autorize o acesso aos bancos que você conectou no Meu Pluggy.
-3. A Moneta sincroniza a nova conexão logo em seguida. Depois disso, use **Sincronizar** quando quiser atualizar. Com o servidor ligado, uma sincronização automática ocorre a cada 6 horas.
-
-A sincronização lê todo o histórico disponível na Pluggy e só grava o resultado depois de ler todas as conexões. Se algo falhar no meio do caminho, a cópia anterior é mantida.
-
 ## Telas
 
 ### Visão geral
 
-- **Resumo mensal:** receitas, despesas, resultado e despesas por categoria do mês escolhido. Débitos e créditos em conta contam na data do lançamento. Compras no cartão contam pelo total da fatura no mês do vencimento, inclusive parcelas. Quando a instituição não informa a fatura, a Moneta a reconstrói a partir dos pagamentos identificados e avisa que a cobertura pode estar incompleta. Em **Despesas por categoria**, as faturas aparecem agrupadas em uma linha só, **Faturas de cartão**. Escolha **Somente faturas** para ver a composição delas por categoria.
+- **Resumo mensal:** receitas, despesas, resultado e despesas por categoria do mês escolhido. No mês atual, o card **Fatura em aberto** soma as faturas dos cartões que ainda não fecharam. Débitos e créditos em conta contam na data do lançamento. Compras no cartão contam pelo total da fatura no mês do vencimento, inclusive parcelas. Quando a instituição não informa a fatura, a Moneta a reconstrói a partir dos pagamentos identificados e avisa que a cobertura pode estar incompleta. Em **Despesas por categoria**, as faturas aparecem agrupadas em uma linha só, **Faturas de cartão**. Escolha **Somente faturas** para ver a composição delas por categoria.
 - **Patrimônio:** posição da última sincronização e sua evolução diária. O **bruto** soma saldos positivos e investimentos brutos. O **líquido** usa investimentos líquidos e desconta dívidas de cartão e saldos negativos. O valor aplicado automaticamente pelo banco é descontado do saldo da conta para não ser contado duas vezes. Valores que a instituição não informou aparecem como indisponíveis.
 
 ### Transações
@@ -184,7 +194,7 @@ Nas tabelas de regras e de categorias, clique no título de uma coluna para orde
 
 ### Configuração
 
-Define a moeda padrão, o tema (igual ao sistema, que é o padrão, escuro ou claro, guardado neste navegador), as credenciais da Pluggy e permite reiniciar o servidor (funciona tanto no Docker quanto na execução direta).
+Define a moeda padrão, o tema (igual ao sistema, que é o padrão, escuro ou claro) e as credenciais da Pluggy. Também mostra a chave de recuperação do **Cofre do banco**, os **Backups** (baixar e restaurar), o **Modo cofre** (senha para abrir o Moneta) e permite reiniciar ou encerrar o servidor.
 
 ### Guia
 
@@ -229,7 +239,7 @@ Tudo fica na pasta de dados: `data/` no Docker e no Node.js (ela está no `.giti
 - `pluggy.cred` (Linux) ou `pluggy.dpapi` (Windows): credenciais da Pluggy lacradas pelo sistema. Sem esse recurso, como no Docker, ficam em `pluggy.json` com permissão `0600`;
 - `banco-senha.cred` no lugar de `banco.cred`, com o **modo cofre** ligado: a chave do cofre cifrada com a sua senha e, por cima, lacrada pelo sistema;
 - `backups/`: um backup automático por dia, dos últimos 7 dias, cifrado e testado depois de criado. Em **Configuração → Backups** dá para baixar um backup para guardar fora do computador e restaurar de um arquivo;
-- `acesso.key`: chave que libera o navegador, trocada por um cookie quando você abre o Moneta pelo atalho.
+- `acesso.key`: chave que libera a janela do Moneta (ou o navegador, trocada por um cookie) quando você abre o Moneta pelo atalho.
 
 Com o **modo cofre** (em Configuração), o Moneta pede uma senha para abrir e tranca sozinho depois de um tempo sem uso. Trancado, nem um programa rodando com o seu usuário consegue abrir o banco; em troca, a sincronização automática só acontece com ele aberto.
 
