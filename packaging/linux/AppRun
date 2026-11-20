@@ -1,4 +1,13 @@
 #!/bin/sh
 # Inicia o Moneta com o Node.js que vem dentro do AppImage.
+# Sem argumentos (menu, barra de tarefas, comando moneta): abre a janela nativa, que usa o servidor
+# já ligado (por exemplo, o serviço do systemd) ou sobe um. Se o sistema não tiver o WebKitGTK que a
+# janela usa, abre no navegador, como antes. Com argumentos (--background do serviço), só o servidor.
 here="$(dirname "$(readlink -f "$0")")"
+if [ "$#" -eq 0 ] && [ -x "$here/usr/bin/moneta" ]; then
+  MONETA_NODE="$here/usr/bin/node" MONETA_APP="$here/usr/lib/moneta" "$here/usr/bin/moneta"
+  status=$?
+  # 127: faltam bibliotecas do sistema para a janela.
+  [ "$status" -ne 127 ] && exit "$status"
+fi
 exec "$here/usr/bin/node" --disable-warning=ExperimentalWarning "$here/usr/lib/moneta/server.mjs" --desktop "$@"

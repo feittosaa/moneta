@@ -8,3 +8,4 @@ Icon=moneta
 Terminal=false
 Categories=Office;Finance;
 X-AppImage-Version=@VERSION@
+StartupWMClass=moneta

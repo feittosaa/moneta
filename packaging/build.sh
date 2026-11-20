@@ -39,6 +39,10 @@ cp "$work/node-v$node_version-linux-x64/bin/node" "$appdir/usr/bin/node"
 cp "$work/node-v$node_version-linux-x64/LICENSE" "$appdir/usr/bin/NODE-LICENSE"
 stage "$appdir/usr/lib/moneta"
 cp "$root/packaging/linux/AppRun" "$appdir/AppRun" && chmod +x "$appdir/AppRun"
+# Janela nativa do Linux (Tauri), compilada antes e passada em MONETA_DESKTOP_LINUX.
+if [ -n "${MONETA_DESKTOP_LINUX:-}" ]; then
+  install -m 755 "$MONETA_DESKTOP_LINUX" "$appdir/usr/bin/moneta"
+fi
 sed "s/@VERSION@/$version/" "$root/packaging/linux/moneta.desktop" > "$appdir/moneta.desktop"
 cp "$root/public/web-app-manifest-512x512.png" "$appdir/moneta.png"
 ln -sf moneta.png "$appdir/.DirIcon"
