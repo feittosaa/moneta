@@ -8,7 +8,8 @@ function element(tag,text) {
 }
 // Cores do gráfico vêm do tema ativo (variáveis CSS), para servir no escuro e no claro.
 const themeColor = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const selectedInvestments = new Set();
+// Todos os investimentos aparecem no gráfico; guarda só os que a pessoa desmarcou.
+const hiddenInvestments = new Set();
 const localDay = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
 const dateLabel = day => day.split('-').reverse().join('/');
 
@@ -83,15 +84,15 @@ export function renderPortfolio(history,transactions,currency,target,money) {
     const line = element('label'), checkbox = element('input');
     const color = colors[added.length % colors.length];
     const key = currency+'-'+holding.id;
-    checkbox.type = 'checkbox'; checkbox.checked = selectedInvestments.has(key);
+    checkbox.type = 'checkbox'; checkbox.checked = !hiddenInvestments.has(key);
     checkbox.style.accentColor = color;
     line.title = current?.stale ? 'Último saldo conhecido'+(current.lastSeen ? ' em '+dateLabel(current.lastSeen.slice(0,10)) : '') : 'Mostrar ou ocultar este investimento no gráfico';
     line.append(checkbox,element('span',holding.name),element('strong',current ? money(current.net)+(current.stale ? ' · Último saldo conhecido' : '') : 'Fora da última posição'));
     list.append(line);
     added.push({key,holding,color,checkbox});
     checkbox.onchange = () => {
-      if (checkbox.checked) selectedInvestments.add(key);
-      else selectedInvestments.delete(key);
+      if (checkbox.checked) hiddenInvestments.delete(key);
+      else hiddenInvestments.add(key);
       draw();
     };
   }
@@ -122,8 +123,9 @@ export function renderPortfolio(history,transactions,currency,target,money) {
     }
     ctx.fillStyle = themeColor('--muted');
     ctx.font = '14px system-ui';
-    ctx.fillText(dateLabel(points[0].day),left,302);
+    // Com uma só posição, a data já aparece na legenda abaixo do gráfico.
     if (duration) {
+      ctx.fillText(dateLabel(points[0].day),left,302);
       const last = dateLabel(points.at(-1).day);
       ctx.fillText(last,left+width-ctx.measureText(last).width,302);
     }
