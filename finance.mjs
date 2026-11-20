@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {investmentCategory} from './public/movement.mjs';
 import { initRuleCatalog, editCatalogRule, catalogRules, importRuleCatalog, categoryKey, receiverDocument, condition, validateConditions, removeCatalogRule } from './category-rules.mjs';
 const templates = [
@@ -133,14 +134,14 @@ function validColor(color) {
   return color.toUpperCase();
 }
 
-export function overview(db) {
+export function overview(db, {frozen = true} = {}) {
   const categories = db.prepare('SELECT * FROM categories WHERE deleted=0 ORDER BY name').all()
     .map(c => ({...c,color:c.color ?? categoryColors.get(c.key) ?? categoryPalette[(c.id-1) % categoryPalette.length]}));
   const rules = db.prepare('SELECT * FROM rules ORDER BY id').all()
     .map(({definition,...rule}) => ({...rule,...(definition ? JSON.parse(definition) : {})}));
   const inherited = catalogRules(db, categories);
   const notes = new Map(db.prepare('SELECT * FROM notes').all().map(r => [r.tx,r.note]));
-  const history = new Map(db.prepare('SELECT tx,category FROM rule_history').all().map(row => [row.tx,row.category]));
+  const history = new Map(frozen ? db.prepare('SELECT tx,category FROM rule_history').all().map(row => [row.tx,row.category]) : []);
   const internalCategories = new Set(categories.filter(c => c.internal).map(c => c.id));
   const normalizedRules = rules.map(rule => ({...rule,matches:rule.conditions ? condition({op:rule.mode,conditions:rule.conditions}) : tx => fold(tx.description).includes(fold(rule.term))}));
   const manual = new Map(db.prepare('SELECT * FROM assignments').all().map(x => [x.tx, x.category]));
@@ -186,6 +187,16 @@ export function overview(db) {
   const currency = db.prepare("SELECT value FROM preferences WHERE name='currency'").get()?.value || 'BRL';
   return {currency,bills,categories,rules,catalogRules:inherited.map(({matches,...rule}) => rule),accounts,holdings,transactions,sources};
 }
+// Lançamentos cuja categoria muda quando as regras passam a valer para todo o histórico.
+export function ruleChanges(db) {
+  const { transactions } = overview(db);
+  const next = new Map(overview(db, {frozen:false}).transactions.map(tx => [tx.id, tx.category]));
+  const changes = transactions.filter(tx => tx.category !== (next.get(tx.id) ?? null)).map(tx => ({
+    id:tx.id, date:tx.date, description:tx.description, account:tx.account, amount:tx.amount, currency:tx.currency,
+    from:tx.category, to:next.get(tx.id) ?? null}));
+  const token = createHash('sha256').update(JSON.stringify(changes.map(c => [c.id, c.from, c.to]))).digest('hex');
+  return { total: transactions.length, changes, token };
+}
 export function editFinance(db, path, body) {
   if (path === '/api/wallet') {
     if (!/^wallet-[0-9a-f-]{36}$/.test(body.id) || !Intl.supportedValuesOf('currency').includes(body.currency) ||
@@ -223,13 +234,14 @@ export function editFinance(db, path, body) {
     if (body.confirmed !== true) bad('Confirme a aplicação das regras.');
     db.exec('BEGIN IMMEDIATE');
     try {
-      const before = new Map(overview(db).transactions.map(tx => [tx.id, tx.category]));
+      const { total, changes, token } = ruleChanges(db);
+      // A prévia aprovada precisa ser exatamente o que será aplicado.
+      if (body.token != null && body.token !== token)
+        throw Object.assign(new Error('As alterações mudaram desde a prévia. Abra a revisão de novo.'), {status:409});
       // Remove classificações congeladas por importações limitadas a lançamentos novos.
       db.exec('DELETE FROM rule_history');
-      const { transactions } = overview(db);
-      const changed = transactions.filter(tx => tx.category !== before.get(tx.id)).length;
       db.exec('COMMIT');
-      return { total: transactions.length, changed };
+      return { total, changed: changes.length };
     } catch (error) { db.exec('ROLLBACK'); throw error; }
   }
   if (path === '/api/rules/import') return importRuleCatalog(db, body);

@@ -610,16 +610,44 @@ export function initializeFinance(api, message) {
     if (ledgerScope && allMonths()) location.hash = 'transacoes';
     else navigate();
   };
-  const dialog = $('#apply-dialog');
-  const apply = $('#apply-rules');
-  apply.onclick = () => dialog.showModal();
+  const dialog = $('#apply-dialog'), apply = $('#apply-rules'), confirmApply = $('#confirm-apply');
+  let preview, previewTicket = 0;
+  // A prévia lista o que muda; a confirmação envia a assinatura dela para aplicar exatamente isso.
+  apply.onclick = async () => {
+    const ticket = ++previewTicket;
+    preview = null;
+    confirmApply.disabled = true;
+    confirmApply.textContent = 'Confirmar e aplicar';
+    $('#apply-summary').textContent = 'Calculando quais lançamentos mudam de categoria…';
+    $('#apply-preview').replaceChildren();
+    dialog.showModal();
+    try {
+      const result = await request('rules/preview');
+      if (ticket !== previewTicket || !dialog.open) return;
+      preview = result;
+      const count = result.changes.length;
+      $('#apply-summary').textContent = count ? count+' de '+result.total+' lançamentos mudam de categoria:' :
+        'Nenhum lançamento muda de categoria agora. Ao aplicar, mudanças futuras nas regras também passam a valer para o histórico.';
+      const accounts = new Map(data.accounts.map(a => [a.id,accountName(a)]));
+      const value = t => hiddenAmounts ? '••••' : (t.amount/100).toLocaleString('pt-BR',{style:'currency',currency:t.currency || currency.value});
+      if (count) $('#apply-preview').replaceChildren(table(['Data','Descrição','Conta','Valor','Categoria atual','Nova categoria'],
+        result.changes.map(t => [formatDate(t.date),t.description,accounts.get(t.account) || '—',value(t),categoryLabel(t.from),categoryLabel(t.to)]),''));
+      confirmApply.textContent = count ? 'Confirmar e aplicar '+count+' alteraç'+(count > 1 ? 'ões' : 'ão') : 'Confirmar e aplicar';
+      confirmApply.disabled = false;
+    } catch (error) {
+      if (ticket === previewTicket) $('#apply-summary').textContent = error.message;
+    }
+  };
   $('#cancel-apply').onclick = () => dialog.close();
-  $('#confirm-apply').onclick = async () => {
+  dialog.onclose = () => { previewTicket++; };
+  confirmApply.onclick = async () => {
+    if (!preview) return;
+    const {token} = preview;
     dialog.close();
     apply.disabled = true;
     notify('Reavaliando lançamentos…');
     try {
-      const { total, changed } = await request('rules/apply', {confirmed:true});
+      const { total, changed } = await request('rules/apply', {confirmed:true,token});
       await refresh();
       notify(`Histórico reavaliado. Lançamentos: ${total}. Categorias alteradas: ${changed}.`);
     } catch (error) { notify(error.message); }
