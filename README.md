@@ -19,9 +19,8 @@ As imagens usam uma base de demonstração com dados fictícios e o modo que ocu
 | | |
 | --- | --- |
 | ![Visão geral no tema claro](docs/screenshots/visao-geral-claro.png) | ![Evolução do patrimônio e dos investimentos ao longo do ano](docs/screenshots/patrimonio.png) |
-| ![Lista de transações com conta, categoria e situação](docs/screenshots/transacoes.png) | ![Fatura do cartão de crédito e vales cadastrados](docs/screenshots/cartoes.png) |
-
-![Regras de categorização com filtro de origem, ordenação e exportação](docs/screenshots/regras.png)
+| ![Lista de transações com conta, categoria e situação](docs/screenshots/transacoes.png) | ![Fatura do cartão de crédito com as compras do ciclo](docs/screenshots/cartoes.png) |
+| ![Vales cadastrados e créditos do mês](docs/screenshots/vales.png) | ![Regras de categorização com filtro de origem, ordenação e exportação](docs/screenshots/regras.png) |
 
 ## Requisitos
 
@@ -104,16 +103,16 @@ Ao lado do saldo em dinheiro, **Saldo nos bancos** soma as contas bancárias na 
 
 Mostra cada cartão de crédito com as compras do ciclo (inclusive parcelas), a situação da fatura (fechada, em aberto ou estimada), o limite total e o limite utilizado. Faturas fechadas continuam disponíveis mesmo depois que saem da janela de histórico da Pluggy.
 
-#### Vales
+### Vales
 
-Vale-transporte, vale-alimentação e outros benefícios não chegam pela Pluggy. Em **Cartões → Vales**, clique em **Adicionar vale** e informe o nome, o valor de cada crédito, a categoria do gasto e a recorrência:
+Vale-transporte, vale-alimentação e outros benefícios não chegam pela Pluggy. Na página **Vales**, clique em **Adicionar vale** e informe o nome, o valor de cada crédito, a categoria do gasto e a recorrência:
 
 - **Mensal:** todo mês no dia do primeiro crédito. Nos meses sem esse dia (31, por exemplo), cai no último dia do mês;
 - **Semanal:** toda semana no mesmo dia da semana do primeiro crédito;
 - **Diária:** todos os dias, ou só de segunda a sexta com **Só dias úteis**, como num vale-transporte;
 - **Uso único:** um crédito só, como um bônus.
 
-Cada crédito, até a data de hoje, entra no mês como receita na categoria **Benefícios** e, na mesma data, como despesa na categoria do vale. O total de despesas passa a incluir o que foi pago com vale, com um item próprio, **Vales**, e o resultado do mês não muda. Os vales também aparecem no seletor de cartões, com os créditos do mês.
+Cada crédito, até a data de hoje, entra no mês como receita na categoria **Benefícios** e, na mesma data, como despesa na categoria do vale. O total de despesas passa a incluir o que foi pago com vale, com um item próprio, **Vales**, e o resultado do mês não muda. A página mostra o total creditado no mês, os vales cadastrados e cada crédito do mês selecionado.
 
 Para parar um vale recorrente sem perder o histórico, edite-o e informe o **Último crédito**. Editar o valor ou a recorrência recalcula todos os créditos do vale. Para mudar só daqui em diante, encerre o vale atual e crie outro. **Excluir** remove o vale e todos os créditos já lançados por ele.
 
@@ -139,7 +138,7 @@ Define a moeda padrão, o tema (escuro, claro ou igual ao sistema, guardado nest
 
 ### Barra superior
 
-Nas páginas que dependem do mês (Visão geral, Transações, Carteira e Cartões), a barra superior tem os mesmos controles e no mesmo lugar: ano e mês anterior, o seletor de mês, mês e ano seguinte e **Mês atual**, que volta ao mês corrente. O botão com o ícone de olho oculta os valores da tela.
+Nas páginas que dependem do mês (Visão geral, Transações, Carteira, Cartões e Vales), a barra superior tem os mesmos controles e no mesmo lugar: ano e mês anterior, o seletor de mês, mês e ano seguinte e **Mês atual**, que volta ao mês corrente. O botão com o ícone de olho oculta os valores da tela.
 
 ## Como uma transação é classificada
 
