@@ -35,7 +35,7 @@ Para uma conexão existente, use **Sincronizar**. A Moneta busca o histórico di
 
 - **Relatório mensal** reúne receitas, despesas, resultado e despesas por categoria dos lançamentos efetivados. Entradas e débitos usam a data do lançamento. Os cartões entram pelo total da fatura no mês do vencimento, incluindo parcelas. Quando a fatura não vem da instituição, o relatório procura pagamentos identificados e sinaliza cobertura incompleta. Defina a moeda em Configuração.
 - **Patrimônio** usa a posição da última sincronização. O bruto soma saldos positivos e investimentos brutos. O líquido considera investimentos líquidos e desconta dívidas de cartões e saldos bancários negativos. A parcela de aplicação automática é descontada do saldo bancário para evitar dupla contagem. Valores ausentes aparecem como indisponíveis.
-- **Transações** permite buscar a descrição, filtrar por conta ou categoria e alterar a classificação. Selecione Automática para devolver uma transação às regras.
+- **Transações** permite buscar a descrição, filtrar por conta ou categoria e alterar a classificação. O filtro de período é opcional: escolha **Todos os meses** para listar o histórico inteiro na moeda selecionada. Selecione Automática para devolver uma transação às regras.
 - **Cartões** mostra cada conta de crédito com seus lançamentos do mês, saldo usado atual e limite informado.
 - **Categorias e regras** permitem criar categorias personalizadas e associá-las a trechos da descrição. A classificação manual precede a primeira regra correspondente e depois a categoria reconhecida da Pluggy. Classifique transferências próprias, pagamentos de fatura e movimentações de investimentos nas categorias internas para excluí-los do fluxo mensal.
 

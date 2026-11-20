@@ -57,6 +57,7 @@ function table(headers, rows, empty) {
   return wrap;
 }
 const periodRows = () => data.transactions.filter(t => t.date.startsWith(month.value || 'invalid') && t.currency === currency.value);
+const allMonths = () => $('#ledger-period').value === 'all';
 const sum = (list, value) => list.reduce((total,row) => total + value(row),0);
 function report() {
   const loaded = data.sources.length > 0 || data.accounts.some(a => a.type === 'CASH' && a.currency === currency.value);
@@ -148,7 +149,7 @@ let ledgerLimit = 100;
 function ledger() {
   const query = $('#search').value.trim().toLocaleLowerCase();
   const selected = $('#filter-category').value;
-  let transactions = periodRows();
+  let transactions = allMonths() ? data.transactions.filter(t => t.currency === currency.value) : periodRows();
   if (ledgerScope) {
     const summary = summarize(data,month.value,currency.value);
     transactions = ledgerScope === 'faturas' ? summary.invoiceRows : [...summary.expenses,...summary.invoiceRows];
@@ -408,7 +409,7 @@ export function navigate() {
   $('#page-title').textContent = document.querySelector('nav a[aria-current=page]').lastChild.textContent;
   $('.toolbar').hidden = !['relatorio','transacoes','cartoes','carteira','conexoes'].includes(page);
   $('#current-month').hidden = page !== 'relatorio';
-  $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab);
+  $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab) || (page === 'transacoes' && allMonths());
   if (!data) return;
   if (page !== 'transacoes' || !search) {
     ledgerScope = ledgerLink = null;
@@ -418,8 +419,12 @@ export function navigate() {
   if (page === 'transacoes' && search && search !== ledgerLink) {
     ledgerLink = search;
     const params = new URLSearchParams(search);
-    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mes'))) month.value = params.get('mes');
-    ledgerScope =['despesas','faturas'].includes(params.get('origem')) ? params.get('origem') : null;
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mes'))) {
+      month.value = params.get('mes');
+      $('#ledger-period').value = 'month';
+      $('#period').hidden = false;
+    }
+    ledgerScope = ['despesas','faturas'].includes(params.get('origem')) ? params.get('origem') : null;
     const category = $('#filter-category');
     if (params.get('categoria') === 'invoice' && ![...category.options].some(o => o.value === 'invoice'))
       category.add(new Option('Fatura sem detalhamento','invoice'));
@@ -531,6 +536,12 @@ export function initializeFinance(api, message) {
   for (const id of ['month','account','filter-category','card','search','rule-search']) {
     $('#'+id).oninput = () => {ledgerLimit=100; navigate();};
   }
+  // Os recortes vindos do relatório dependem do mês; ao ver todos os meses, volta à lista completa.
+  $('#ledger-period').oninput = () => {
+    ledgerLimit = 100;
+    if (ledgerScope && allMonths()) location.hash = 'transacoes';
+    else navigate();
+  };
   const dialog = $('#apply-dialog');
   const apply = $('#apply-rules');
   apply.onclick = () => dialog.showModal();
