@@ -55,6 +55,7 @@ const assets = new Map([
   ['/web-app-manifest-192x192.png', ['image/png', 'web-app-manifest-192x192.png']],
   ['/web-app-manifest-512x512.png', ['image/png', 'web-app-manifest-512x512.png']],
   ['/site.webmanifest', ['application/manifest+json', 'site.webmanifest']],
+  ['/fonts/GoudyBookletter1911.ttf', ['font/ttf', 'fonts/GoudyBookletter1911.ttf']],
 ]);
 function fail(status, message) {
   throw Object.assign(new Error(message), { status });
@@ -106,7 +107,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && assets.has(req.url)) {
       const [type, file] = assets.get(req.url);
-      res.setHeader('Content-Type', /^image\/(?:png|x-icon)$/.test(type) ? type : type + '; charset=utf-8');
+      res.setHeader('Content-Type', /^(?:image\/(?:png|x-icon)|font\/ttf)$/.test(type) ? type : type + '; charset=utf-8');
       res.end(readFileSync(new URL('public/' + file, import.meta.url)));
       return;
     }
