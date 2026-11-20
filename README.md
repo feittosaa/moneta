@@ -43,6 +43,14 @@ curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.
 
 O comando baixa a versão mais recente, confere o arquivo e cria o atalho **Moneta** no menu de aplicativos, sem pedir senha de administrador. Depois, abra pelo menu ou rode `moneta`.
 
+Para que o Moneta ligue sozinho, em segundo plano, sempre que você entrar no computador (na porta 4173, sem abrir o navegador):
+
+```sh
+curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.sh | sh -s -- --iniciar-com-o-sistema
+```
+
+Isso cria um serviço de usuário do systemd. Para desligar o início automático, rode `systemctl --user disable --now moneta`.
+
 Prefere não usar o terminal? Baixe o [Moneta-x86_64.AppImage](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-x86_64.AppImage), marque como executável (nas propriedades do arquivo, **Permitir executar como programa**) e abra com dois cliques.
 
 Para remover, mantendo os seus dados:
@@ -61,7 +69,8 @@ O instalador não tem assinatura digital paga, por isso o Windows pode mostrar "
 
 - Ao abrir, o Moneta liga o servidor local e abre o navegador em http://127.0.0.1:4173. Abrir de novo, com ele já ligado, só abre o navegador.
 - No Windows, uma janela de terminal fica aberta enquanto o Moneta roda. Fechar essa janela encerra o Moneta.
-- Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta**.
+- Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta**. Com o início automático do Linux, ele volta a ligar no próximo login, ou na hora com `systemctl --user start moneta`.
+- Quem já usava o Moneta pelo Docker pode levar os dados: pare o container (`docker compose down`) e copie `data/moneta.sqlite` e `data/pluggy.json` para a pasta de dados do app instalado.
 - Os dados ficam em `~/.local/share/moneta` no Linux e em `%LOCALAPPDATA%\Moneta` no Windows. Atualizar ou remover o app não apaga os dados.
 - Para atualizar, rode o comando de instalação de novo ou baixe e abra o instalador mais recente.
 

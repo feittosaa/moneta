@@ -4,7 +4,9 @@ import { join } from 'node:path';
 
 // --desktop: modo dos instaladores (AppImage e Windows). Guarda os dados na pasta do usuário,
 // abre o navegador ao iniciar e, se o Moneta já estiver aberto, só abre o navegador.
-const desktop = process.argv.includes('--desktop');
+// --background: igual, mas sem abrir o navegador; é o modo do serviço que inicia com o sistema.
+const background = process.argv.includes('--background');
+const desktop = background || process.argv.includes('--desktop');
 const port = Number(process.env.PORT || 4173);
 const url = 'http://127.0.0.1:' + port;
 if (desktop) {
@@ -42,7 +44,7 @@ function start() {
   child.on('message', message => {
     if (message === 'restart') restarting = true;
     if (message === 'shutdown') stopping = true;
-    if (message === 'ready' && desktop && !opened) {
+    if (message === 'ready' && desktop && !background && !opened) {
       opened = true;
       console.log('Para encerrar, feche esta janela ou use Configuração → Encerrar o Moneta.');
       openBrowser();
@@ -62,5 +64,5 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 }
 if (desktop && await running()) {
   console.log('O Moneta já está aberto em ' + url + '.');
-  openBrowser();
+  if (!background) openBrowser();
 } else start();
