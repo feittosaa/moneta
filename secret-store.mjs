@@ -101,6 +101,9 @@ export function createSecret(dataDir, { name, base, sealer = detectSealer() }) {
       writePrivate(sealed, result.stdout);
       if (existsSync(plain)) wipe(plain);
     },
+    remove() {
+      for (const file of [sealed, plain]) if (file && existsSync(file)) wipe(file);
+    },
   };
 }
 

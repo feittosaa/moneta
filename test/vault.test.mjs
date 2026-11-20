@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync, statSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { openVault, recoverVault, dumpDatabase, restoreDatabase, fingerprint, seal, unseal, recoveryCode, keyFromRecoveryCode } from '../vault.mjs';
+import { openVault, recoverVault, dumpDatabase, restoreDatabase, fingerprint, seal, unseal, recoveryCode, keyFromRecoveryCode, openBackup, backupHeader, passwordSecret } from '../vault.mjs';
 import { createSecret, detectSealer } from '../secret-store.mjs';
 import { initFinance, editFinance, overview } from '../finance.mjs';
 
@@ -133,4 +133,76 @@ test('chave em arquivo comum é lacrada quando o lacre fica disponível', { skip
   assert.ok(!existsSync(join(dir, 'banco.key')), 'arquivo comum apagado');
   assert.ok(existsSync(join(dir, 'banco.' + (process.platform === 'win32' ? 'dpapi' : 'cred'))));
   assert.equal(openVault(dir, createSecret(dir, { name: 'moneta-banco-teste', base: 'banco' }), quiet).fingerprint(), content);
+});
+
+test('backup cifrado, testado e preso à chave do dia', t => {
+  const dir = tempDir(t);
+  const vault = openVault(dir, secretIn(dir), quiet);
+  initFinance(vault.db);
+  editFinance(vault.db, '/api/categories', { name: 'Pets', color: '#123456', internal: false });
+  const code = vault.recoveryCode();
+  const { data, manifest } = vault.backup({ transactions: 0 });
+  for (const word of ['Pets', 'CREATE', 'SQLite']) assert.ok(!data.includes(word), word);
+  assert.equal(backupHeader(data).created, manifest.created, 'data legível sem a chave');
+  assert.equal(vault.openBackup(data).manifest.fingerprint, vault.fingerprint());
+  // Qualquer byte alterado, inclusive no cabeçalho legível, impede a abertura.
+  for (const position of [20, data.indexOf('"created"') + 12, data.length - 30, data.length - 1]) {
+    const tampered = Buffer.from(data); tampered[position] ^= 1;
+    assert.throws(() => vault.openBackup(tampered), position === 20 ? /danificado|desconhecid|backup/ : undefined);
+  }
+  assert.throws(() => vault.openBackup(Buffer.from('qualquer coisa')), /não é um backup/);
+
+  // Trocar a chave deixa o backup baixado preso à chave antiga, que ainda o abre.
+  vault.rotate();
+  assert.throws(() => vault.openBackup(data), { code: 'OTHER_KEY' });
+  assert.equal(vault.openBackup(data, code).manifest.fingerprint, manifest.fingerprint);
+
+  // Restaurar troca todo o conteúdo do banco aberto.
+  editFinance(vault.db, '/api/categories', { name: 'Depois do backup', color: '#654321', internal: false });
+  vault.restore(vault.openBackup(data, code).dump);
+  assert.equal(vault.fingerprint(), manifest.fingerprint);
+  assert.equal(openVault(dir, secretIn(dir), quiet).fingerprint(), manifest.fingerprint, 'restauração já gravada no cofre');
+});
+
+test('backups automáticos: um por dia, os 7 mais recentes, recifrados na troca de chave', t => {
+  const dir = tempDir(t);
+  const vault = openVault(dir, secretIn(dir), quiet);
+  initFinance(vault.db);
+  vault.persist();
+  const first = vault.autoBackup({});
+  assert.match(first, /^moneta-.+\.monetabackup$/);
+  assert.equal(vault.autoBackup({}), null, 'só um por dia');
+  for (let i = 0; i < 8; i++) vault.autoBackup({}, { every: 0 });
+  const list = vault.listBackups();
+  assert.equal(list.length, 7);
+  if (process.platform !== 'win32') {
+    assert.equal((statSync(join(dir, 'backups')).mode & 0o777).toString(8), '700');
+    assert.equal((statSync(join(dir, 'backups', list[0].name)).mode & 0o777).toString(8), '600');
+  }
+  vault.rotate();
+  for (const { name } of vault.listBackups()) assert.ok(vault.openBackup(vault.readBackup(name)), name);
+  assert.throws(() => vault.readBackup('../moneta.cofre'), /desconhecido/);
+});
+
+test('modo cofre: a chave só abre com a senha certa', t => {
+  const dir = tempDir(t);
+  const store = createSecret(dir, { name: 'moneta-banco-senha-teste', base: 'banco-senha', sealer: null });
+  const vault = openVault(dir, secretIn(dir), quiet);
+  initFinance(vault.db);
+  vault.persist();
+  const content = vault.fingerprint();
+  const secret = passwordSecret(store, 'senha correta', { idle: 15 });
+  vault.useSecret(secret);
+  rmSync(join(dir, 'banco.key'));
+  vault.rotate();
+  const stored = readFileSync(join(dir, 'banco-senha.key'), 'utf8');
+  assert.ok(!stored.includes(vault.recoveryCode().slice(7, 12)));
+  assert.throws(() => openVault(dir, passwordSecret(store, 'senha errada'), quiet), { code: 'BAD_PASSWORD' });
+  const unlocked = passwordSecret(store, 'senha correta');
+  assert.equal(openVault(dir, unlocked, quiet).fingerprint(), content);
+  assert.equal(unlocked.settings.idle, 15);
+  // Senha com acento digitada em outra forma Unicode continua valendo.
+  const accented = passwordSecret(store, 'ação'.normalize('NFC'));
+  vault.useSecret(accented);
+  assert.equal(openVault(dir, passwordSecret(store, 'ação'.normalize('NFD')), quiet).fingerprint(), content);
 });

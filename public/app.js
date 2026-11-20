@@ -6,6 +6,8 @@ async function request(path, body) {
   const response = await fetch('/api/' + path, options);
   // Sem o cookie de acesso, mostra como entrar em vez de uma tela vazia.
   if (response.status === 401) $('#locked').hidden = false;
+  // Trancado (por senha ou sem a chave): a tela certa cobre os dados.
+  if (response.status === 423) showLock();
   const data = await response.json();
   if (!response.ok) throw new Error(data.error);
   return data;
@@ -131,19 +133,158 @@ $('#connect').onclick = async () => {
   }
 };
 const shutdown = $('#shutdown');
+let unlocked = false;
+async function showLock() {
+  const { lock } = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
+  if (lock === 'senha') { $('#unlock').hidden = false; $('#unlock-form').elements.password.focus(); }
+  else if (lock) $('#recovery').hidden = false;
+}
 request('status').then(({ desktop, locked }) => {
   shutdown.hidden = !desktop;
-  if (locked) $('#recovery').hidden = false;
-  else return loadVault();
+  if (locked) return showLock();
+  unlocked = true;
+  return loadVault();
 }).catch(() => {});
+// Se o Moneta trancar por inatividade, a página recarrega e some com os dados da tela.
+setInterval(async () => {
+  if (!unlocked) return;
+  try { if ((await fetch('/api/status').then(r => r.json())).locked) location.reload(); } catch {}
+}, 20_000);
+// No modo cofre, mexer na página conta como uso (no máximo um aviso por minuto ao servidor).
+let passwordMode = false, lastPing = Date.now();
+for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  addEventListener(type, () => {
+    if (!passwordMode || Date.now() - lastPing < 60_000) return;
+    lastPing = Date.now();
+    fetch('/api/vault').catch(() => {});
+  }, { passive: true });
+}
+async function waitRestart(instance, ready = status => !status.locked) {
+  for (let attempt = 0; attempt < 80; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    try { const status = await fetch('/api/status').then(r => r.json()); if (status.instance !== instance && ready(status)) return true; } catch {}
+  }
+  return false;
+}
 
 // Cofre do banco: situação, chave de recuperação e troca da chave.
+const when = iso => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+const size = bytes => bytes < 1024 * 1024 ? Math.ceil(bytes / 1024) + ' KB' : (bytes / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
 async function loadVault() {
-  const { protection, pending } = await request('vault');
+  const { protection, pending, password, idle, backups } = await request('vault');
+  passwordMode = password;
   $('#vault-status').textContent = 'O banco fica cifrado com AES-256-GCM no arquivo moneta.cofre. A chave está ' +
-    (keyProtections[protection] || 'num arquivo que só o seu usuário consegue ler') + '.';
+    (password ? 'cifrada com a sua senha e ' : '') + (keyProtections[protection] || 'num arquivo que só o seu usuário consegue ler') + '.';
   $('#vault-pending').hidden = !pending;
+  $('#password-status').textContent = password
+    ? 'Ligado. O Moneta sobe trancado e tranca de novo depois de ' + $('#password-idle').querySelector(`option[value="${idle}"]`)?.textContent + ' sem uso. Enquanto estiver trancado, a sincronização automática fica parada.'
+    : 'Desligado. Com o modo cofre, o Moneta pede uma senha para abrir e tranca sozinho depois de um tempo sem uso. Enquanto estiver trancado, o banco fica protegido até de programas rodando com o seu usuário; em troca, a sincronização automática só acontece com ele aberto.';
+  $('#password-on').hidden = password;
+  $('#password-settings').hidden = !password;
+  $('#password-idle').value = String(idle);
+  $('#backup-list').replaceChildren(...backups.map(backup => {
+    const row = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = 'Automático de ' + when(backup.created) + ' ';
+    const small = document.createElement('small');
+    small.textContent = size(backup.size);
+    label.append(small);
+    const get = document.createElement('button');
+    get.type = 'button'; get.textContent = 'Baixar';
+    get.onclick = () => saveFile('/api/backups/' + backup.name);
+    const put = document.createElement('button');
+    put.type = 'button'; put.textContent = 'Restaurar';
+    put.onclick = () => restore({ name: backup.name });
+    row.append(label, get, put);
+    return row;
+  }));
 }
+function saveFile(href) {
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = '';
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+$('#backup-download').onclick = () => {
+  saveFile('/api/backup');
+  message('Backup gerado e testado. Guarde o arquivo fora deste computador.');
+};
+// Restauração em duas etapas: o servidor abre e testa o arquivo, mostra o resumo e só troca o banco
+// depois da confirmação.
+async function restore(source) {
+  try {
+    let response = await fetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(source) });
+    let data = await response.json();
+    if (response.status === 409 && data.needsCode) {
+      $('#backup-code').hidden = false;
+      $('#backup-code').querySelector('input').focus();
+      return message(data.error);
+    }
+    if (!response.ok) throw new Error(data.error);
+    const { created, summary = {} } = data.manifest;
+    const counts = [summary.transactions != null && summary.transactions + ' transações', summary.categories != null && summary.categories + ' categorias', summary.connections != null && summary.connections + ' conexões'].filter(Boolean).join(', ');
+    if (!confirm('Restaurar o backup de ' + when(created) + (counts ? ' (' + counts + ')' : '') + '? O banco atual é substituído; antes disso, o Moneta guarda um backup automático dele.')) return;
+    message('Restaurando o backup…');
+    const { instance } = await request('backup/restore', { ...source, confirm: true });
+    if (await waitRestart(instance)) location.reload();
+    else message('O backup foi restaurado, mas o servidor ainda não voltou. Atualize a página em instantes.');
+  } catch (error) { message(error.message); }
+}
+$('#backup-restore').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget, file = form.elements.file.files[0];
+  if (!file) return;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  await restore({ data: btoa(binary), code: form.elements.code.value.trim() || undefined });
+};
+$('#password-on').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget, { password, repeat, idle } = form.elements;
+  if (password.value !== repeat.value) return message('As senhas não são iguais.');
+  if (!confirm('Ligar o modo cofre? A chave do banco é trocada, e a chave de recuperação atual deixa de valer: anote a nova que vai aparecer. Sem a senha e sem a chave de recuperação, não há como abrir o banco.')) return;
+  try {
+    const { code } = await request('vault/password', { password: password.value, idle: Number(idle.value) });
+    form.reset();
+    await loadVault();
+    showCode(code);
+    message('Modo cofre ligado. Anote a nova chave de recuperação.');
+  } catch (error) { message(error.message); }
+};
+$('#password-idle').onchange = async event => {
+  try { await request('vault/password/idle', { idle: Number(event.target.value) }); await loadVault(); message('Tempo de inatividade salvo.'); }
+  catch (error) { message(error.message); }
+};
+$('#password-lock').onclick = async () => {
+  try { const { instance } = await request('vault/lock', {}); await waitRestart(instance, () => true); location.reload(); }
+  catch (error) { message(error.message); }
+};
+$('#password-off').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try { await request('vault/password/remove', { password: form.elements.password.value }); form.reset(); await loadVault(); message('Modo cofre desligado.'); }
+  catch (error) { message(error.message); }
+};
+$('#unlock-form').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget, button = form.querySelector('button');
+  button.disabled = true;
+  $('#unlock-error').textContent = 'Abrindo o cofre…';
+  try {
+    const response = await fetch('/api/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: form.elements.password.value }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    location.reload();
+  } catch (error) { $('#unlock-error').textContent = error.message; form.elements.password.select(); button.disabled = false; }
+};
+$('#unlock-forgot').onclick = () => {
+  $('#recovery-text').textContent = 'Sem a senha, a chave de recuperação que você anotou também abre o cofre. Ao usá-la, o modo cofre é desligado; você pode ligá-lo de novo, com uma senha nova, em Configuração.';
+  $('#unlock').hidden = true;
+  $('#recovery').hidden = false;
+};
 function showCode(code) {
   $('#vault-code-text').textContent = code;
   $('#vault-code').hidden = false;
