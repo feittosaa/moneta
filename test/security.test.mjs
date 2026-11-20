@@ -55,7 +55,7 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
 
   // Sem cookie: status mínimo e API fechada.
   const status = await (await fetch(base + '/api/status')).json();
-  assert.deepEqual(Object.keys(status).sort(), ['desktop', 'instance', 'lock', 'locked']);
+  assert.deepEqual(Object.keys(status).sort(), ['api', 'desktop', 'instance', 'lock', 'locked']);
   assert.equal((await fetch(base + '/api/finance')).status, 401);
   assert.equal((await fetch(base + '/api/connections')).status, 401);
   const anonymousPost = await fetch(base + '/api/settings/currency', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: '{"currency":"USD"}' });
@@ -96,6 +96,9 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
   const own = await fetch(base + '/api/settings/currency', { method: 'POST', headers: { Cookie: session, 'Content-Type': 'application/json', Origin: base }, body: '{"currency":"USD"}' });
   assert.equal(own.status, 200);
   assert.equal((await fetch(base + '/api/finance', { headers: { Cookie: 'moneta_acesso=' + 'x'.repeat(43) } })).status, 401);
+  // Programas locais usam a mesma chave em Authorization: Bearer.
+  assert.equal((await fetch(base + '/api/finance', { headers: { Authorization: 'Bearer ' + key } })).status, 200);
+  assert.equal((await fetch(base + '/api/finance', { headers: { Authorization: 'Bearer ' + 'x'.repeat(43) } })).status, 401);
 
   // Host diferente (DNS rebinding) é recusado mesmo com o cookie.
   const rebinding = await new Promise(resolve => {

@@ -62,7 +62,12 @@ if (!/^[A-Za-z0-9_-]{43}$/.test(accessKey ?? '')) {
 const digest = value => createHash('sha256').update(String(value)).digest();
 const sameKey = value => timingSafeEqual(digest(value), digest(accessKey));
 const cookieName = 'moneta_acesso';
+// Programas locais (a janela nativa do Moneta, a Ayla) mandam a mesma chave em
+// Authorization: Bearer. Um site não consegue enviar esse cabeçalho para cá sem CORS, que o
+// Moneta não libera, então isso não abre caminho para CSRF.
 function authorized(req) {
+  const bearer = /^Bearer ([A-Za-z0-9_-]{1,100})$/.exec(req.headers.authorization || '')?.[1];
+  if (bearer) return sameKey(bearer);
   const cookie = (req.headers.cookie || '').split(';').map(part => part.trim().split('='))
     .find(([key]) => key === cookieName)?.[1];
   return Boolean(cookie) && sameKey(cookie);
@@ -268,9 +273,10 @@ const server = http.createServer(async (req, res) => {
     const allowed = authorized(req);
     if (req.method === 'GET' && req.url === '/api/status') {
       // Público só o necessário para o atalho saber se o Moneta já está aberto.
-      if (!allowed) return json(200, {instance,desktop,locked:Boolean(locked),lock:lockReason});
+      // api: versão do contrato com programas locais (docs/integracao.md).
+      if (!allowed) return json(200, {api:1,instance,desktop,locked:Boolean(locked),lock:lockReason});
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
-      return json(200, {instance,updated,desktop,locked:Boolean(locked),lock:lockReason,authorized:true});
+      return json(200, {api:1,instance,updated,desktop,locked:Boolean(locked),lock:lockReason,authorized:true});
     }
     // Entrada pelo atalho: troca a chave da URL por um cookie e tira a chave do endereço.
     const entry = req.method === 'GET' && /^\/entrar\?chave=([A-Za-z0-9_-]{1,100})$/.exec(req.url);

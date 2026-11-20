@@ -31,6 +31,8 @@ O Moneta guarda dados financeiros e a chave de acesso à Pluggy. Este documento 
 
 No Docker e no Node direto não há atalho: o endereço de entrada sai no log ao iniciar (`docker compose logs moneta`).
 
+Programas locais (a janela nativa do Windows, a Ayla) mandam a mesma chave em `Authorization: Bearer`. Um site aberto no navegador não consegue enviar esse cabeçalho ao Moneta, porque o servidor não libera CORS. A chave continua exigindo acesso à pasta de dados, ou seja, o mesmo usuário do sistema.
+
 Para invalidar todos os navegadores autorizados, apague `acesso.key` e reinicie o Moneta.
 
 ## Banco cifrado (o cofre)

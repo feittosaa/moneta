@@ -61,15 +61,15 @@ curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.
 
 ### Windows
 
-Baixe e abra o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe). Ele instala só para o seu usuário, sem pedir administrador, e cria atalhos no menu Iniciar e na área de trabalho. Para remover, use **Configurações → Aplicativos**.
+Baixe e abra o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe). Ele instala só para o seu usuário, sem pedir administrador, e cria atalhos no menu Iniciar e na área de trabalho. Na instalação, a opção **Iniciar com o Windows, em segundo plano** deixa o Moneta ligado na bandeja desde o login. O Moneta usa o Microsoft Edge WebView2, que já vem no Windows 11 e no Windows 10 atualizado. Para remover, use **Configurações → Aplicativos**.
 
 O instalador não tem assinatura digital paga, por isso o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e depois em **Executar assim mesmo**.
 
 ### Como o app instalado funciona
 
-- Ao abrir, o Moneta liga o servidor local e abre o navegador em http://127.0.0.1:4173. Abrir de novo, com ele já ligado, só abre o navegador.
-- No Windows, uma janela de terminal fica aberta enquanto o Moneta roda. Fechar essa janela encerra o Moneta.
-- Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta**. Com o início automático do Linux, ele volta a ligar no próximo login, ou na hora com `systemctl --user start moneta`.
+- **Linux:** ao abrir, o Moneta liga o servidor local e abre o navegador em http://127.0.0.1:4173. Abrir de novo, com ele já ligado, só abre o navegador.
+- **Windows:** o Moneta abre numa janela própria, sem terminal. Fechar a janela deixa o Moneta na bandeja, sincronizando. Para voltar, clique no ícone da bandeja ou abra pelo menu Iniciar. A janela é feita com [Tauri](https://tauri.app) e fica em `desktop/`.
+- Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta** ou, no Windows, **Encerrar o Moneta** no ícone da bandeja. Com o início automático do Linux, ele volta a ligar no próximo login, ou na hora com `systemctl --user start moneta`.
 - Quem já usava o Moneta pelo Docker pode levar os dados: pare o container (`docker compose down`) e copie o conteúdo de `data/` para a pasta de dados do app instalado. Na primeira abertura, as chaves que estavam em arquivo comum são lacradas pelo sistema.
 - Os dados ficam em `~/.local/share/moneta` no Linux e em `%LOCALAPPDATA%\Moneta` no Windows. Atualizar ou remover o app não apaga os dados.
 - Para atualizar, rode o comando de instalação de novo ou baixe e abra o instalador mais recente.
@@ -235,7 +235,7 @@ Com o **modo cofre** (em Configuração), o Moneta pede uma senha para abrir e t
 
 A API só responde a navegadores autorizados pela chave de acesso. O servidor também recusa cabeçalhos `Host` diferentes de `localhost` e `127.0.0.1` e escritas vindas de outra origem, e envia uma política de segurança de conteúdo restrita. Os únicos dados que saem da máquina são as chamadas à API da Pluggy. O documento [Segurança](docs/seguranca.md) detalha o modelo de ameaças, as proteções e os riscos que ainda ficam.
 
-Outras aplicações locais podem ler a lista de conexões em JSON por `GET /api/connections`, enviando o cookie `moneta_acesso` com o conteúdo de `acesso.key`.
+Outros programas locais podem ler os dados pela API, enviando `Authorization: Bearer` com o conteúdo de `acesso.key`. O contrato está em [Integração](docs/integracao.md).
 
 ## Desenvolvimento
 
@@ -269,6 +269,8 @@ Estrutura do projeto:
 | `packaging/` | Scripts que geram o AppImage, o instalador do Windows e o comando de instalação para Linux. |
 | `.github/workflows/` | Publicação automática da release ao enviar uma tag de versão. |
 | `docs/guia/` | Guia de conexão (Markdown e imagens), exibido no app e no GitHub. |
+| `desktop/` | Janela nativa (Tauri, Rust): sobe o servidor escondido, abre o painel autorizado e fica na bandeja. |
+| `docs/integracao.md` | Contrato para programas locais, como a Ayla: como encontrar o Moneta, autenticar e ler os dados. |
 | `docs/seguranca.md` | Modelo de ameaças, proteções, riscos aceitos e próximos passos de segurança. |
 | `test/` | Testes automatizados. |
 

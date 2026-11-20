@@ -12,10 +12,28 @@ permissions:
   contents: write
 
 jobs:
+  # Janela nativa do Windows (Tauri): compilada no próprio Windows e embutida no instalador.
+  janela-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar moneta.exe
+        run: cargo build --release --locked --manifest-path desktop/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moneta-windows
+          path: desktop/target/release/moneta.exe
+
   release:
+    needs: janela-windows
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: moneta-windows
+          path: janela-windows
 
       - uses: actions/setup-node@v4
         with:
@@ -28,6 +46,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y nsis
 
       - name: Instaladores
+        env:
+          MONETA_DESKTOP_EXE: janela-windows/moneta.exe
         run: packaging/build.sh "$GITHUB_REF_NAME"
 
       - name: Publicar a release
