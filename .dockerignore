@@ -11,3 +11,4 @@
 !docs/
 !docs/guia/
 !docs/guia/**
+!secret-store.mjs

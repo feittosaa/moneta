@@ -1,6 +1,10 @@
 import { fork, spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+
+// Tudo o que o Moneta cria (banco, credenciais, chave de acesso) nasce visível só para o dono.
+process.umask(0o077);
 
 // --desktop: modo dos instaladores (AppImage e Windows). Guarda os dados na pasta do usuário,
 // abre o navegador ao iniciar e, se o Moneta já estiver aberto, só abre o navegador.
@@ -17,9 +21,12 @@ if (desktop) {
     : join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'moneta');
 }
 
+// Abre o navegador já com a chave de acesso, que o servidor troca por um cookie e tira da URL.
 function openBrowser() {
-  const [command, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
-    : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+  let target = url;
+  try { target = url + '/entrar?chave=' + readFileSync(join(process.env.MONETA_DATA_DIR || 'data', 'acesso.key'), 'utf8').trim(); } catch {}
+  const [command, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', target]]
+    : process.platform === 'darwin' ? ['open', [target]] : ['xdg-open', [target]];
   try {
     const opener = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true });
     opener.on('error', () => console.log('Abra ' + url + ' no navegador.'));
