@@ -171,6 +171,4 @@ Estrutura do projeto:
 
 ### Fontes
 
-Os títulos usam a [Goudy Bookletter 1911](https://github.com/theleagueof/goudy-bookletter-1911), de Barry Schwartz, distribuída em `public/fonts/` sob a SIL Open Font License 1.1 (veja [`public/fonts/OFL.txt`](public/fonts/OFL.txt)).
-
-O nome Moneta, na barra lateral, usa a fonte comercial GC Troja Pro, da Glyphonic, quando ela está instalada no computador que abre a página. Ela não acompanha o projeto. Sem ela, o nome aparece na Goudy Bookletter 1911.
+O nome Moneta e os títulos das páginas usam a [Goudy Bookletter 1911](https://github.com/theleagueof/goudy-bookletter-1911), de Barry Schwartz, distribuída em `public/fonts/` sob a SIL Open Font License 1.1 (veja [`public/fonts/OFL.txt`](public/fonts/OFL.txt)). O restante da interface usa a fonte sem serifa do sistema. O projeto só usa fontes gratuitas.
