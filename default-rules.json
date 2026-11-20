@@ -478,7 +478,7 @@
       {
         "field": "description",
         "op": "regex",
-        "value": "\\b(farmacia|drogaria|droga ?raia|drogasil|pague menos|panvel|ultrafarma|drogao)\\b"
+        "value": "\\b(farmacias?|drogarias?|droga ?raia|drogasil|pague menos|panvel|ultrafarma|drogao)\\b"
       }
     ],
     "actions": [
@@ -665,6 +665,11 @@
     "name": "Impostos e licenciamento",
     "conditions_op": "and",
     "conditions": [
+      {
+        "field": "type",
+        "op": "equals",
+        "value": "debit"
+      },
       {
         "field": "description",
         "op": "regex",
