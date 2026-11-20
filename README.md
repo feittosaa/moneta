@@ -140,6 +140,8 @@ Define a moeda padrão, o tema (escuro, claro ou igual ao sistema, guardado nest
 
 Nas páginas que dependem do mês (Visão geral, Transações, Carteira, Cartões e Vales), a barra superior tem os mesmos controles e no mesmo lugar: ano e mês anterior, o seletor de mês, mês e ano seguinte e **Mês atual**, que volta ao mês corrente. O botão com o ícone de olho oculta os valores da tela.
 
+Datas aparecem e são digitadas no padrão dia, mês e ano (`dd/mm/aaaa`), e o seletor de mês usa `mm/aaaa`, qualquer que seja o idioma do navegador. Basta digitar os números, que as barras entram sozinhas. O botão com o ícone de calendário abre o calendário do navegador.
+
 ## Como uma transação é classificada
 
 A Moneta usa a primeira fonte disponível, nesta ordem:
@@ -193,7 +195,7 @@ Estrutura do projeto:
 | `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
-| `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio), ícones e fontes. |
+| `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio, campos de data), ícones e fontes. |
 | `test/` | Testes automatizados. |
 
 ### Fontes
