@@ -512,13 +512,51 @@ export function navigate() {
   if (page === 'carteira') {
     const id = 'wallet-'+currency.value;
     const account = data.accounts.find(a => a.id === id);
-    $('#wallet-balance').replaceChildren(metrics([['Saldo em dinheiro',account?.balance ?? 0]]));
+    const grid = metrics([['Saldo em dinheiro',account?.balance ?? 0]]);
+    grid.append(bankBalance(data.accounts.filter(a => a.type === 'BANK' && a.currency === currency.value)));
+    $('#wallet-balance').replaceChildren(grid);
     $('#wallet-list').replaceChildren(table(['Data','Descrição','Valor'],periodRows().filter(t => t.account === id)
       .map(t => [formatDate(t.date),t.description,money(t.amount)]),'Nenhuma movimentação neste mês.'));
   }
   if (page === 'cartoes') cards();
   if (page === 'transacoes') ledger();
   if (['categorias','regras'].includes(page)) manage(page);
+}
+// Total nas contas bancárias, com as maiores abaixo e a lista completa ao passar o mouse.
+function bankBalance(accounts) {
+  const box = tag('article'), shown = 3;
+  box.className = 'bank-metric';
+  const known = accounts.filter(a => a.balance != null);
+  const label = a => [a.institution,a.kind || (a.name && a.name.toLocaleLowerCase() !== a.institution?.toLocaleLowerCase() ? a.name : ''),
+    !a.kind && a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  const ordered = [...accounts].sort((a,b) => (b.balance ?? -Infinity)-(a.balance ?? -Infinity) || compare(label(a),label(b)));
+  const list = rows => {
+    const items = tag('ul');
+    for (const a of rows) {
+      const item = tag('li');
+      item.append(tag('span',label(a)),tag('b',money(a.balance)));
+      items.append(item);
+    }
+    return items;
+  };
+  box.append(tag('span','Saldo nos bancos'),tag('strong',accounts.length ? money(sum(known,a => a.balance)) : '—'));
+  if (!accounts.length) {
+    box.append(tag('small','Nenhuma conta bancária sincronizada nesta moeda.'));
+    return box;
+  }
+  const preview = list(ordered.slice(0,shown));
+  preview.className = 'account-breakdown';
+  box.append(preview);
+  if (accounts.length > shown) box.append(tag('small','e mais '+(accounts.length-shown)+' conta'+(accounts.length-shown > 1 ? 's' : '')+' · passe o mouse para ver todas'));
+  const tip = tag('div'), id = 'bank-balance-detail';
+  tip.id = id;
+  tip.setAttribute('role','tooltip');
+  tip.append(tag('p','Saldos informados pelas instituições na última sincronização'),list(ordered));
+  if (known.length < accounts.length) tip.append(tag('p','O total considera apenas as contas com saldo informado.'));
+  box.tabIndex = 0;
+  box.setAttribute('aria-describedby',id);
+  box.append(tip);
+  return box;
 }
 async function showPortfolio() {
   const target = $('#portfolio-content');
