@@ -165,13 +165,12 @@ function ledger() {
   const rows = transactions.filter(t => (!$('#account').value || t.account === $('#account').value) &&
     (!selected || String(t.category ?? 'none') === selected) && t.description.toLocaleLowerCase().includes(query));
   const accounts = new Map(data.accounts.map(a => [a.id,accountName(a)]));
-  const credit = new Set(data.accounts.filter(a => a.type === 'CREDIT').map(a => a.id));
   const records = rows.slice(0,ledgerLimit).map(t => {
     const open = tag('button',t.description);
     open.className = 'transaction-link';
     open.onclick = () => openTransaction(t);
     const value = tag('span',money(t.amount));
-    value.className = t.amount < 0 ? ((t.category === 'invoice' || credit.has(t.account)) ? 'amount-invoice' : 'amount-expense') : t.amount > 0 ? 'amount-income' : '';
+    if (t.amount > 0) value.className = 'amount-income';
     return [t.category === 'invoice' || t.projected ? '—' : formatDate(t.date),t.projected ? t.description : open,
       accounts.get(t.account) || '—',categoryLabel(t.category),t.projected ? (t.category === 'invoice' ? 'Sem detalhamento' : 'Prevista') : t.pending?'Pendente':'Efetivada',value];
   });
