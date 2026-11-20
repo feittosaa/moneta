@@ -67,7 +67,7 @@ O instalador não tem assinatura digital paga, por isso o Windows pode mostrar "
 
 ### Como o app instalado funciona
 
-- **Linux:** ao abrir, o Moneta liga o servidor local e abre o navegador em http://127.0.0.1:4173. Abrir de novo, com ele já ligado, só abre o navegador.
+- **Linux:** pelo menu, pela barra de tarefas ou com `moneta`, o painel abre numa janela própria. Ela usa o servidor que já estiver ligado (o serviço do systemd, por exemplo) ou sobe um, e fechar a janela não desliga o serviço. A janela usa o WebKitGTK 4.1 do sistema (`webkit2gtk4.1` no Fedora, `libwebkit2gtk-4.1-0` no Debian e no Ubuntu); sem ele, o Moneta abre no navegador.
 - **Windows:** o Moneta abre numa janela própria, sem terminal. Fechar a janela deixa o Moneta na bandeja, sincronizando. Para voltar, clique no ícone da bandeja ou abra pelo menu Iniciar. A janela é feita com [Tauri](https://tauri.app) e fica em `desktop/`.
 - Para encerrar em qualquer sistema, use **Configuração → Encerrar o Moneta** ou, no Windows, **Encerrar o Moneta** no ícone da bandeja. Com o início automático do Linux, ele volta a ligar no próximo login, ou na hora com `systemctl --user start moneta`.
 - Quem já usava o Moneta pelo Docker pode levar os dados: pare o container (`docker compose down`) e copie o conteúdo de `data/` para a pasta de dados do app instalado. Na primeira abertura, as chaves que estavam em arquivo comum são lacradas pelo sistema.

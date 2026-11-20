@@ -84,6 +84,7 @@ Exec=$bin/moneta
 Icon=moneta
 Terminal=false
 Categories=Office;Finance;
+StartupWMClass=moneta
 DESKTOP
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$(dirname "$desktop")" >/dev/null 2>&1 || true
 

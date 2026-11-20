@@ -29,13 +29,22 @@ jobs:
         with:
           name: moneta-windows
           path: janela-windows
+      - name: Janela nativa do Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+          cargo build --release --locked --manifest-path desktop/Cargo.toml
+
       - name: Ferramentas de empacotamento
         run: sudo apt-get update && sudo apt-get install -y nsis
       - name: Instaladores
         env:
           MONETA_DESKTOP_EXE: janela-windows/moneta.exe
+          MONETA_DESKTOP_LINUX: desktop/target/release/moneta
         run: packaging/build.sh 0.0.0
       - uses: actions/upload-artifact@v4
         with:
-          name: Moneta-Setup-teste
-          path: dist/Moneta-Setup.exe
+          name: instaladores-teste
+          path: |
+            dist/Moneta-Setup.exe
+            dist/Moneta-x86_64.AppImage
