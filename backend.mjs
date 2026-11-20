@@ -48,6 +48,10 @@ const assets = new Map([
   ['/report.mjs', ['text/javascript', 'report.mjs']],
   ['/finance.js', ['text/javascript', 'finance.js']],
   ['/style.css', ['text/css', 'style.css']],
+  ['/logo.svg', ['image/svg+xml', 'logo.svg']],
+  ['/favicon.svg', ['image/svg+xml', 'favicon.svg']],
+  ['/favicon.png', ['image/png', 'favicon.png']],
+  ['/apple-touch-icon.png', ['image/png', 'apple-touch-icon.png']],
 ]);
 function fail(status, message) {
   throw Object.assign(new Error(message), { status });
@@ -99,7 +103,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && assets.has(req.url)) {
       const [type, file] = assets.get(req.url);
-      res.setHeader('Content-Type', type + '; charset=utf-8');
+      res.setHeader('Content-Type', type.startsWith('image/png') ? type : type + '; charset=utf-8');
       res.end(readFileSync(new URL('public/' + file, import.meta.url)));
       return;
     }
