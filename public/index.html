@@ -33,7 +33,7 @@
 <label>Categoria<select name="category"></select></label>
 <label>Nota<textarea name="note" maxlength="2000" rows="3"></textarea></label>
 <label class="check"><input name="createRule" type="checkbox"> Criar regra com esta categoria</label>
-<label id="tx-term" hidden>Quando a descrição contiver<input name="term" maxlength="100"></label>
+<fieldset id="tx-rule" hidden><label>Aplicar quando<select name="ruleMode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label><div id="tx-conditions" class="conditions"></div></fieldset>
 <p id="tx-error" role="alert"></p>
 <div class="dialog-actions"><button type="button" id="tx-cancel">Cancelar</button><button>Salvar</button></div>
 </form></dialog></section>
@@ -79,7 +79,7 @@
 <div id="edit-options"><label>Prioridade<input name="priority" type="number" step="1"></label>
 <label>Aplicar quando<select name="mode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label>
 <label class="check"><input type="checkbox" name="active"> Regra ativa</label></div>
-<div id="edit-conditions"></div><p role="alert" id="edit-error"></p>
+<div id="edit-conditions" class="conditions"></div><p role="alert" id="edit-error"></p>
 <div class="dialog-actions"><button type="button" id="edit-cancel">Cancelar</button><button type="submit">Salvar</button></div>
 </form></dialog></section>
 <section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul>

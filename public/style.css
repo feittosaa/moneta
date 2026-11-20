@@ -141,7 +141,7 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #categorias input[type=color] { width:44px; height:32px; padding:2px; cursor:pointer }
 #rule-editor { width:min(32rem,92vw); max-height:85vh; overflow:auto; padding:24px; border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--text) }
 #rule-editor::backdrop { background:var(--backdrop) }
-#edit-rule-form,#edit-options,#edit-conditions { display:grid; gap:12px; align-items:stretch; margin:0 }
+#edit-rule-form,#edit-options,.conditions { display:grid; gap:12px; align-items:stretch; margin:0 }
 #edit-error:empty { display:none }
 .rule-actions { display:flex; gap:6px }
 
@@ -174,8 +174,10 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #month-metrics .result-positive span::before { background:var(--positive) }
 #month-metrics .result-negative span::before { background:var(--accent) }
 .amount-income { font-weight:700 }
-#edit-conditions fieldset { min-width:0; display:grid; gap:8px; padding:10px; border:1px solid var(--line) }
-#edit-conditions fieldset div { display:grid; gap:8px }
+#tx-rule { display:grid; gap:12px; min-width:0; margin:0; padding:0; border:0 }
+#tx-rule[hidden] { display:none }
+.conditions fieldset { min-width:0; display:grid; gap:8px; padding:10px; border:1px solid var(--line) }
+.conditions fieldset div { display:grid; gap:8px }
 #category-editor { max-width:min(32rem,92vw); background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:14px }
 #category-editor::backdrop { background:var(--backdrop) }
 #edit-category-form { display:grid; border:0; margin:0 }
@@ -312,3 +314,9 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 .backup-list button { padding:4px 10px; font-size:13px; background:var(--panel); color:var(--accent-ink); border:1px solid var(--line) }
 .backup-restore,.password-form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin:12px 0 }
 .backup-restore label,.password-form label { display:grid; gap:4px }
+.guide-widget { display:grid; gap:10px; margin:18px 0 24px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--panel) }
+.guide-widget p { margin:0 }
+.guide-widget-fields { display:flex; flex-wrap:wrap; gap:10px; align-items:end }
+.guide-widget-fields label { display:grid; gap:4px; flex:1 1 14rem; font-weight:650 }
+.guide-widget-next a { font-weight:700 }
+.guide-widget-alt { font-size:14px }
