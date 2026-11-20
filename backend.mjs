@@ -38,7 +38,7 @@ initFinance(db);
 restoreBankNames(db);
 let syncJob;
 let restarting = false;
-const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment'];
+const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment','/api/vouchers','/api/vouchers/remove'];
 const assets = new Map([
   ['/', ['text/html', 'index.html']],
   ['/app.js', ['text/javascript', 'app.js']],

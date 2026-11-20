@@ -91,6 +91,19 @@ Ao lado do saldo em dinheiro, **Saldo nos bancos** soma as contas bancárias na 
 
 Mostra cada cartão de crédito com as compras do ciclo (inclusive parcelas), a situação da fatura (fechada, em aberto ou estimada), o limite total e o limite utilizado. Faturas fechadas continuam disponíveis mesmo depois que saem da janela de histórico da Pluggy.
 
+#### Vales
+
+Vale-transporte, vale-alimentação e outros benefícios não chegam pela Pluggy. Em **Cartões → Vales**, clique em **Adicionar vale** e informe o nome, o valor de cada crédito, a categoria do gasto e a recorrência:
+
+- **Mensal:** todo mês no dia do primeiro crédito. Nos meses sem esse dia (31, por exemplo), cai no último dia do mês;
+- **Semanal:** toda semana no mesmo dia da semana do primeiro crédito;
+- **Diária:** todos os dias, ou só de segunda a sexta com **Só dias úteis**, como num vale-transporte;
+- **Uso único:** um crédito só, como um bônus.
+
+Cada crédito, até a data de hoje, entra no mês como receita na categoria **Benefícios** e, na mesma data, como despesa na categoria do vale. O total de despesas passa a incluir o que foi pago com vale, com um item próprio, **Vales**, e o resultado do mês não muda. Os vales também aparecem no seletor de cartões, com os créditos do mês.
+
+Para parar um vale recorrente sem perder o histórico, edite-o e informe o **Último crédito**. Editar o valor ou a recorrência recalcula todos os créditos do vale. Para mudar só daqui em diante, encerre o vale atual e crie outro. **Excluir** remove o vale e todos os créditos já lançados por ele.
+
 ### Categorias
 
 Crie, renomeie, recolora ou remova categorias. Uma categoria marcada como **interna** fica fora do fluxo mensal. Use esse tipo para movimentos que não são receita nem despesa, como pagamentos de fatura e aplicações e resgates de investimentos.
@@ -143,7 +156,7 @@ Para importar um arquivo nesse formato, vá em **Regras**, selecione o arquivo e
 
 Tudo fica na pasta `data/`, que está no `.gitignore`:
 
-- `data/moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, categorias, regras, notas e histórico de patrimônio;
+- `data/moneta.sqlite`: conexões, saldos, investimentos, lançamentos, faturas, vales, categorias, regras, notas e histórico de patrimônio;
 - `data/pluggy.json`: credenciais salvas pela interface, acessível apenas pelo dono do arquivo. **O segredo fica em texto simples**, então proteja backups e cópias dessa pasta.
 
 O servidor recusa requisições cujo cabeçalho `Host` não seja `localhost` ou `127.0.0.1`, e recusa escritas vindas de outra origem. Os únicos dados que saem da máquina são as chamadas à API da Pluggy.
