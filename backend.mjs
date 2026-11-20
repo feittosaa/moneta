@@ -46,6 +46,7 @@ const assets = new Map([
   ['/card-periods.mjs', ['text/javascript','card-periods.mjs']],
   ['/portfolio.js', ['text/javascript', 'portfolio.js']],
   ['/report.mjs', ['text/javascript', 'report.mjs']],
+  ['/guide.js', ['text/javascript', 'guide.js']],
   ['/date-field.mjs', ['text/javascript', 'date-field.mjs']],
   ['/finance.js', ['text/javascript', 'finance.js']],
   ['/style.css', ['text/css', 'style.css']],
@@ -106,6 +107,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/status') {
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
       return json(200, {instance,updated});
+    }
+    // Guia de conexão: o Markdown e as imagens ficam em docs/guia, lidos também pelo GitHub.
+    const guide = req.method === 'GET' && /^\/guia\/([a-z0-9-]+\.(md|svg|png))$/.exec(req.url);
+    if (guide) {
+      const types = { md:'text/markdown; charset=utf-8', svg:'image/svg+xml', png:'image/png' };
+      let file;
+      try { file = readFileSync(new URL('docs/guia/' + guide[1], import.meta.url)); }
+      catch { fail(404, 'Arquivo do guia não encontrado.'); }
+      res.writeHead(200, { 'Content-Type': types[guide[2]] });
+      res.end(file);
+      return;
     }
     if (req.method === 'GET' && assets.has(req.url)) {
       const [type, file] = assets.get(req.url);

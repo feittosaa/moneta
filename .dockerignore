@@ -8,3 +8,6 @@
 !public/**
 !category-rules.mjs
 !default-rules.json
+!docs/
+!docs/guia/
+!docs/guia/**
