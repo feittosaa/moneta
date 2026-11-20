@@ -56,6 +56,47 @@ function table(headers, rows, empty) {
   }
   return wrap;
 }
+// Ordenação por coluna: crescente, decrescente e de volta à ordem padrão a cada clique.
+const sorting = new Map();
+const collator = new Intl.Collator('pt-BR',{numeric:true,sensitivity:'base'});
+const compare = (a,b) => typeof a === 'number' && typeof b === 'number' ? a-b : collator.compare(String(a ?? ''),String(b ?? ''));
+function sortableTable(id, columns, items, empty, render) {
+  const state = sorting.get(id);
+  const key = state && columns[state.column]?.sort;
+  const ordered = key ? [...items].sort((a,b) => compare(key(a),key(b))*state.direction) : items;
+  const wrap = table(columns.map(c => c.title),ordered.map(item => columns.map(c => c.cell(item))),empty);
+  const heading = wrap.querySelector('thead tr');
+  if (!heading) return wrap;
+  wrap.dataset.table = id;
+  columns.forEach((column,index) => {
+    if (!column.sort) return;
+    const th = heading.children[index], active = state?.column === index;
+    const direction = active ? (state.direction > 0 ? 'ascending' : 'descending') : 'none';
+    th.setAttribute('aria-sort',direction);
+    const control = tag('button',column.title), arrow = tag('span',{ascending:'↑',descending:'↓',none:'↕'}[direction]);
+    arrow.setAttribute('aria-hidden','true');
+    control.type = 'button';
+    control.className = 'sort';
+    control.title = !active ? 'Ordenar por '+column.title.toLocaleLowerCase('pt-BR') : state.direction > 0 ? 'Ordenar de forma decrescente' : 'Voltar à ordem padrão';
+    control.append(arrow);
+    control.onclick = () => {
+      if (!active) sorting.set(id,{column:index,direction:1});
+      else if (state.direction > 0) sorting.set(id,{column:index,direction:-1});
+      else sorting.delete(id);
+      render();
+      document.querySelector(`[data-table="${id}"] th:nth-child(${index+1}) .sort`)?.focus();
+    };
+    th.replaceChildren(control);
+  });
+  return wrap;
+}
+function hue(color) {
+  const [r,g,b] = [1,3,5].map(i => parseInt(color.slice(i,i+2),16)/255);
+  const max = Math.max(r,g,b), range = max-Math.min(r,g,b);
+  if (!range) return -1;
+  const h = max === r ? (g-b)/range : max === g ? (b-r)/range+2 : (r-g)/range+4;
+  return (h*60+360)%360;
+}
 const periodRows = () => data.transactions.filter(t => t.date.startsWith(month.value || 'invalid') && t.currency === currency.value);
 const allMonths = () => $('#ledger-period').value === 'all';
 const sum = (list, value) => list.reduce((total,row) => total + value(row),0);
@@ -362,44 +403,70 @@ function editCategory(category) {
   };
   dialog.showModal();
 }
+const mine = 'Criada por mim';
+function originCell(label, detail) {
+  const cell = tag('span',label);
+  if (detail) cell.append(' ',tag('small',detail));
+  return cell;
+}
 function manage(page) {
+  const render = () => manage(page);
   if (page === 'categorias') {
-    $('#category-list').replaceChildren(table(['Categoria','Cor','Modelo','Participa do fluxo mensal','Ações'],data.categories.map(c => {
-      const picker = tag('input');
-      picker.type = 'color'; picker.value = c.color;
-      picker.setAttribute('aria-label','Cor de '+c.name);
-      picker.onchange = async () => {
-        picker.disabled = true;
-        try { await save('/categories/color',{id:c.id,color:picker.value}); }
-        finally { picker.disabled = false; }
-      };
-      const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
-      actions.className = 'rule-actions';
-      edit.onclick = () => editCategory(c);
-      remove.onclick = () => {
-        if (confirm('Excluir a categoria '+c.name+'? As classificações e regras locais associadas serão removidas.')) save('/categories/remove',{id:c.id});
-      };
-      actions.append(edit,remove);
-      return [categoryLabel(c.id),picker,c.custom?'Personalizada':'Padrão',c.internal?'Não':'Sim',actions];
-    }),'Nenhuma categoria.'));
+    const origin = $('#category-origin').value;
+    const categories = data.categories.filter(c => !origin || (origin === 'mine') === Boolean(c.custom));
+    $('#category-list').replaceChildren(sortableTable('categorias',[
+      {title:'Categoria',sort:c => c.name,cell:c => categoryLabel(c.id)},
+      {title:'Cor',sort:c => hue(c.color),cell:c => {
+        const picker = tag('input');
+        picker.type = 'color'; picker.value = c.color;
+        picker.setAttribute('aria-label','Cor de '+c.name);
+        picker.onchange = async () => {
+          picker.disabled = true;
+          try { await save('/categories/color',{id:c.id,color:picker.value}); }
+          finally { picker.disabled = false; }
+        };
+        return picker;
+      }},
+      {title:'Origem',sort:c => c.custom ? mine : 'Moneta',cell:c => c.custom ? mine : 'Moneta'},
+      {title:'Participa do fluxo mensal',sort:c => c.internal ? 'Não' : 'Sim',cell:c => c.internal ? 'Não' : 'Sim'},
+      {title:'Ações',cell:c => {
+        const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+        actions.className = 'rule-actions';
+        edit.onclick = () => editCategory(c);
+        remove.onclick = () => {
+          if (confirm('Excluir a categoria '+c.name+'? As classificações e regras locais associadas serão removidas.')) save('/categories/remove',{id:c.id});
+        };
+        actions.append(edit,remove);
+        return actions;
+      }},
+    ],categories,origin ? 'Nenhuma categoria com esta origem.' : 'Nenhuma categoria.',render));
   } else {
     const normalize = value => value.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
     const query = normalize($('#rule-search').value.trim());
+    const origin = $('#rule-origin').value;
     const matches = (...values) => normalize(values.join(' ')).includes(query);
-    const rules = [...data.rules.map(r => ({...r,name:r.name || r.term,pack:'Criada por mim',status:r.active === false ? 'Desativada' : 'Ativa'})),...data.catalogRules];
-    const rows = rules.flatMap((r,index) => {
-      if (!matches(r.name,r.pack,categoryName(r.category),r.status,r.terms)) return [];
-      const actions = tag('div'), edit = tag('button','Editar');
-      edit.onclick = () => editRule(r);
-      actions.className = 'rule-actions'; actions.append(edit);
-      const remove = tag('button','Excluir');
-      remove.onclick = () => {
-        if (confirm('Excluir a regra '+r.name+'?')) save('/rules/remove',{id:r.id,key:r.key});
-      };
-      actions.append(remove);
-      return [[index+1,r.name,r.pack,categoryName(r.category),r.status,actions]];
-    });
-    $('#rule-list').replaceChildren(table(['Ordem','Regra','Origem','Categoria','Situação','Ações'],rows,'Nenhuma regra encontrada.'));
+    // Regras importadas também são do usuário; só o catálogo padrão é da Moneta.
+    const rules = [...data.rules.map(r => ({...r,name:r.name || r.term,mine:true,status:r.active === false ? 'Desativada' : 'Ativa'})),
+      ...data.catalogRules.map(r => ({...r,mine:r.imported}))].map((r,index) => ({...r,order:index+1}));
+    const visible = rules.filter(r => (!origin || (origin === 'mine') === r.mine) &&
+      matches(r.name,r.mine ? mine : 'Moneta',r.imported ? 'importada' : '',categoryName(r.category),r.status,r.terms ?? ''));
+    $('#rule-list').replaceChildren(sortableTable('regras',[
+      {title:'Ordem',sort:r => r.order,cell:r => r.order},
+      {title:'Regra',sort:r => r.name,cell:r => r.name},
+      {title:'Origem',sort:r => r.mine ? mine : 'Moneta',cell:r => r.mine ? originCell(mine,r.imported && 'importada') : 'Moneta'},
+      {title:'Categoria',sort:r => categoryName(r.category),cell:r => categoryName(r.category)},
+      {title:'Situação',sort:r => r.status,cell:r => r.status},
+      {title:'Ações',cell:r => {
+        const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+        actions.className = 'rule-actions';
+        edit.onclick = () => editRule(r);
+        remove.onclick = () => {
+          if (confirm('Excluir a regra '+r.name+'?')) save('/rules/remove',{id:r.id,key:r.key});
+        };
+        actions.append(edit,remove);
+        return actions;
+      }},
+    ],visible,'Nenhuma regra encontrada.',render));
   }
 }
 export function navigate() {
@@ -534,7 +601,7 @@ export function initializeFinance(api, message) {
       month.dispatchEvent(new Event('input'));
     };
   }
-  for (const id of ['month','account','filter-category','card','search','rule-search']) {
+  for (const id of ['month','account','filter-category','card','search','rule-search','rule-origin','category-origin']) {
     $('#'+id).oninput = () => {ledgerLimit=100; navigate();};
   }
   // Os recortes vindos do relatório dependem do mês; ao ver todos os meses, volta à lista completa.

@@ -167,3 +167,9 @@ tbody tr:hover,tbody tr:focus-within { background:#ffffff05 }
 .portfolio-investments label { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); cursor:pointer }
 .portfolio-investments label:hover,.portfolio-investments label:focus-within { background:#ffffff08 }
 .portfolio-investments strong { color:var(--text); font-size:13px; text-align:right }
+
+th .sort { display:inline-flex; align-items:center; gap:6px; padding:0; border:0; border-radius:4px; background:none; color:inherit; font-weight:inherit; text-align:left }
+th .sort span { color:var(--accent); opacity:.4 }
+th .sort:hover,th[aria-sort=ascending] .sort,th[aria-sort=descending] .sort { color:var(--text) }
+th .sort:hover span,th[aria-sort=ascending] .sort span,th[aria-sort=descending] .sort span { opacity:1 }
+td small { font-size:12px }

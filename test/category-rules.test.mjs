@@ -30,6 +30,9 @@ test('catálogo completo, prioridade pessoal e reimportação sem duplicatas', (
   editFinance(db,'/api/assignment',{id:later.id,category:initial.categories.find(c => c.name === 'Compras').id});
   assert.throws(() => editFinance(db,'/api/rules/apply',{}), /Confirme/);
   assert.equal(category(overview(db)),'Assinaturas');
+  const imported = overview(db).catalogRules;
+  assert.equal(imported.find(r => r.name === 'Streaming pessoal').imported,true);
+  assert.equal(imported.filter(r => r.imported).length,1);
   assert.deepEqual(editFinance(db,'/api/rules/apply',{confirmed:true}),{total:2,changed:1});
   assert.equal(category(overview(db)),'Cinema em casa');
   assert.deepEqual(editFinance(db,'/api/rules/apply',{confirmed:true}),{total:2,changed:0});
