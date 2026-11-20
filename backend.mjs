@@ -46,6 +46,7 @@ const assets = new Map([
   ['/card-periods.mjs', ['text/javascript','card-periods.mjs']],
   ['/portfolio.js', ['text/javascript', 'portfolio.js']],
   ['/report.mjs', ['text/javascript', 'report.mjs']],
+  ['/date-field.mjs', ['text/javascript', 'date-field.mjs']],
   ['/finance.js', ['text/javascript', 'finance.js']],
   ['/style.css', ['text/css', 'style.css']],
   ['/favicon.svg', ['image/svg+xml', 'favicon.svg']],

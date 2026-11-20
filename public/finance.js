@@ -1,5 +1,6 @@
 import {cardPeriod} from './card-periods.mjs';
 import { renderPortfolio } from './portfolio.js';
+import { localDateField } from './date-field.mjs';
 import { summarize } from './report.mjs';
 const $ = selector => document.querySelector(selector);
 const month = $('#month'), currency = $('#currency');
@@ -365,7 +366,6 @@ function editVoucher(voucher) {
     $('#voucher-weekdays').hidden = frequency !== 'daily';
     $('#voucher-end').hidden = frequency === 'once';
     $('#voucher-start-label').textContent = frequency === 'once' ? 'Data do crédito' : 'Primeiro crédito';
-    field('end').min = field('start').value;
   };
   field('frequency').onchange = field('start').onchange = update;
   update();
@@ -691,6 +691,8 @@ export async function syncFinance() {
 }
 export function initializeFinance(api, message) {
   request = api; notify = message;
+  localDateField(month,'month');
+  for (const input of document.querySelectorAll('input[type=date]')) localDateField(input);
   $('#expense-scope').onchange = navigate;
   $('#monthly-tab').onclick = () => { portfolioTab = false; navigate(); };
   $('#portfolio-tab').onclick = () => { portfolioTab = true; navigate(); };
