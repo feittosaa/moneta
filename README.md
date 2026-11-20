@@ -10,6 +10,19 @@ Moneta é um painel de finanças pessoais que roda no seu próprio computador. E
 - **Sem dependências externas:** usa só Node.js 22 (servidor HTTP e `node:sqlite` nativos) e HTML, CSS e JavaScript puros no navegador.
 - **Interface em português**, com valores em várias moedas mantidos separados.
 
+## Capturas de tela
+
+As imagens usam uma base de demonstração com dados fictícios e o modo que oculta os valores.
+
+![Visão geral com o resumo do mês, o fluxo mensal e as despesas por categoria](docs/screenshots/visao-geral.png)
+
+| | |
+| --- | --- |
+| ![Visão geral no tema claro](docs/screenshots/visao-geral-claro.png) | ![Evolução do patrimônio e dos investimentos ao longo do ano](docs/screenshots/patrimonio.png) |
+| ![Lista de transações com conta, categoria e situação](docs/screenshots/transacoes.png) | ![Fatura do cartão de crédito e vales cadastrados](docs/screenshots/cartoes.png) |
+
+![Regras de categorização com filtro de origem, ordenação e exportação](docs/screenshots/regras.png)
+
 ## Requisitos
 
 - Docker com Docker Compose **ou** Node.js 22.16 ou superior.
