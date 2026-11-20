@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { initFinance, overview, editFinance } from '../finance.mjs';
+import { initFinance, overview, editFinance, ruleChanges } from '../finance.mjs';
 
 const catalogSize = JSON.parse(readFileSync(new URL('../default-rules.json', import.meta.url))).length;
 
@@ -33,7 +33,14 @@ test('catálogo completo, prioridade pessoal e reimportação sem duplicatas', (
   const imported = overview(db).catalogRules;
   assert.equal(imported.find(r => r.name === 'Streaming pessoal').imported,true);
   assert.equal(imported.filter(r => r.imported).length,1);
-  assert.deepEqual(editFinance(db,'/api/rules/apply',{confirmed:true}),{total:2,changed:1});
+  const preview = ruleChanges(db);
+  const ids = name => before.categories.find(c => c.name === name).id;
+  assert.equal(preview.total,2);
+  assert.deepEqual(preview.changes.map(c => [c.id,c.from,c.to]),[[tx.id,ids('Assinaturas'),ids('Cinema em casa')]]);
+  assert.throws(() => editFinance(db,'/api/rules/apply',{confirmed:true,token:'outra prévia'}), e => e.status === 409);
+  assert.equal(category(overview(db)),'Assinaturas');
+  assert.deepEqual(editFinance(db,'/api/rules/apply',{confirmed:true,token:preview.token}),{total:2,changed:1});
+  assert.deepEqual(ruleChanges(db).changes,[]);
   assert.equal(category(overview(db)),'Cinema em casa');
   assert.deepEqual(editFinance(db,'/api/rules/apply',{confirmed:true}),{total:2,changed:0});
   editFinance(db,'/api/rules/import',{...payload,applyExisting:true});

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 
 import { readJsonObject } from './request-body.mjs';
-import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, synchronize } from './finance.mjs';
+import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, ruleChanges, synchronize } from './finance.mjs';
 
 const port = Number(process.env.PORT || 4173);
 const instance = randomUUID();
@@ -115,6 +115,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
+    if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
     if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/connections/import', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();

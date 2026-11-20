@@ -53,7 +53,8 @@
 <dialog id="apply-dialog" aria-labelledby="apply-title" aria-describedby="apply-description">
 <h2 id="apply-title">Aplicar todas as regras ao histórico?</h2>
 <p id="apply-description">A Moneta vai reavaliar os lançamentos de todas as contas e meses com as regras ativas. As categorias escolhidas manualmente serão preservadas.</p>
-<div class="dialog-actions"><button type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply">Confirmar e aplicar</button></div>
+<p id="apply-summary" role="status"></p><div id="apply-preview"></div>
+<div class="dialog-actions"><button type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply" disabled>Confirmar e aplicar</button></div>
 </dialog><button type="button" id="new-rule">Criar regra</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><div class="filters"><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><label>Origem<select id="rule-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="rule-list"></div>
 <dialog id="rule-editor" aria-labelledby="rule-heading"><form id="edit-rule-form"><h2 id="rule-heading">Editar regra</h2>
 <label id="edit-title-label">Nome<input name="title" required></label>

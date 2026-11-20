@@ -90,9 +90,13 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #period button { background:var(--panel); color:var(--accent); border:1px solid var(--line); font-size:20px; line-height:1; padding:9px }
 #period button:hover { border-color:var(--accent) }
 
-#apply-dialog { max-width:min(28rem,90vw); padding:24px; border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--text) }
+#apply-dialog { max-width:min(60rem,94vw); max-height:88vh; padding:24px; border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--text) }
 #apply-dialog::backdrop { background:#000a }
 #apply-dialog p { margin:12px 0 20px }
+#apply-dialog:has(table) { width:min(60rem,94vw) }
+#apply-dialog #apply-summary { margin-top:0; color:var(--text) }
+#apply-preview .scroll { max-height:min(50vh,26rem); margin:0 0 20px }
+#apply-preview th { position:sticky; top:0 }
 .dialog-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap }
 #cancel-apply { background:var(--canvas); color:var(--text); border-color:var(--line) }
 
