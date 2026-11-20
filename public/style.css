@@ -135,11 +135,10 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #card-detail .invoice-metric span::before { background:var(--invoice) }
 
 #month-metrics .result-positive strong { color:#69CA92 }
-#month-metrics .result-negative strong,.amount-income { color:var(--accent) }
+#month-metrics .result-negative strong { color:var(--accent) }
 #month-metrics .result-positive span::before { background:#69CA92 }
 #month-metrics .result-negative span::before { background:var(--accent) }
-.amount-expense { color:var(--expense) }
-.amount-invoice { color:var(--invoice) }
+.amount-income { font-weight:700 }
 #edit-conditions fieldset { min-width:0; display:grid; gap:8px; padding:10px; border:1px solid var(--line) }
 #edit-conditions fieldset div { display:grid; gap:8px }
 #category-editor { max-width:min(32rem,92vw); background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:14px }
