@@ -48,10 +48,13 @@ const assets = new Map([
   ['/report.mjs', ['text/javascript', 'report.mjs']],
   ['/finance.js', ['text/javascript', 'finance.js']],
   ['/style.css', ['text/css', 'style.css']],
-  ['/logo.svg', ['image/svg+xml', 'logo.svg']],
   ['/favicon.svg', ['image/svg+xml', 'favicon.svg']],
-  ['/favicon.png', ['image/png', 'favicon.png']],
+  ['/favicon.ico', ['image/x-icon', 'favicon.ico']],
+  ['/favicon-96x96.png', ['image/png', 'favicon-96x96.png']],
   ['/apple-touch-icon.png', ['image/png', 'apple-touch-icon.png']],
+  ['/web-app-manifest-192x192.png', ['image/png', 'web-app-manifest-192x192.png']],
+  ['/web-app-manifest-512x512.png', ['image/png', 'web-app-manifest-512x512.png']],
+  ['/site.webmanifest', ['application/manifest+json', 'site.webmanifest']],
 ]);
 function fail(status, message) {
   throw Object.assign(new Error(message), { status });
@@ -103,7 +106,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && assets.has(req.url)) {
       const [type, file] = assets.get(req.url);
-      res.setHeader('Content-Type', type.startsWith('image/png') ? type : type + '; charset=utf-8');
+      res.setHeader('Content-Type', /^image\/(?:png|x-icon)$/.test(type) ? type : type + '; charset=utf-8');
       res.end(readFileSync(new URL('public/' + file, import.meta.url)));
       return;
     }
