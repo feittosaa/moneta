@@ -13,3 +13,4 @@
 !docs/guia/**
 !secret-store.mjs
 !vault.mjs
+!updater.mjs
