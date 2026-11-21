@@ -9,6 +9,7 @@ import { createSecretStore, createSecret, protectionLabel } from './secret-store
 import { openVault, recoverVault, passwordSecret } from './vault.mjs';
 import { createUpdater } from './updater.mjs';
 import { initFinance, restoreBankNames, overview, portfolioHistory, editFinance, ruleChanges, synchronize } from './finance.mjs';
+import { resumo } from './public/resumo.mjs';
 
 const port = Number(process.env.PORT || 4173);
 const instance = randomUUID();
@@ -337,6 +338,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/update') return json(200, await updater.status());
     if (req.method === 'GET' && req.url === '/api/portfolio') return json(200, portfolioHistory(db));
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
+    if (req.method === 'GET' && req.url === '/api/resumo') return json(200, resumo(overview(db)));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
     if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
