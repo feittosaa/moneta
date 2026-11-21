@@ -2,6 +2,9 @@ name: Moneta Web
 
 on:
   workflow_dispatch:
+  # Temporário: publica a Moneta Web a cada push do branch de teste. Remover antes do merge.
+  push:
+    branches: [feature/android-sync-qr]
 
 permissions:
   contents: read
