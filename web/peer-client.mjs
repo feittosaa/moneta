@@ -16,7 +16,7 @@ function to64(bytes) {
 const url64 = value => to64(value).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
 const aes = key => crypto.subtle.importKey('raw',from64(key),'AES-GCM',false,['encrypt','decrypt']);
 const parameters = (iv, context) => ({name:'AES-GCM',iv,additionalData:raw.encode(protocol+context)});
-const lan = host => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)\d{1,3}\.\d{1,3}$/.test(host);
+const lan = host => /^(10\.\d{1,3}|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}$/.test(host);
 
 export function deviceName() {
   const agent = navigator.userAgent;
