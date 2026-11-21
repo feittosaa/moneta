@@ -1,3 +1,4 @@
+import { snapshot, merge, revision, track, prepareMeta } from './peer-data.mjs';
 import { editFinance, initFinance, overview, portfolioHistory, ruleChanges } from './finance.mjs';
 
 export function openFinance(SQL, bytes) {
@@ -27,6 +28,10 @@ export function openFinance(SQL, bytes) {
   };
   try {
     db.exec('PRAGMA trusted_schema=OFF; PRAGMA temp_store=MEMORY;');
+    // Dados só deste aparelho: vínculos e credenciais da Pluggy. Não entram na sincronização.
+    db.exec('CREATE TABLE IF NOT EXISTS web_device (name TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    db.exec('CREATE TABLE IF NOT EXISTS sync_peers (id TEXT PRIMARY KEY, revision TEXT NOT NULL)');
+    prepareMeta(db);
     if (bytes) {
       const reference = openFinance(SQL);
       try {
@@ -38,6 +43,7 @@ export function openFinance(SQL, bytes) {
     } else {
       db.exec('CREATE TABLE connections (id TEXT PRIMARY KEY, institution TEXT NOT NULL, status TEXT NOT NULL)');
       initFinance(db);
+      track(db);
     }
   } catch (error) { raw.close(); throw error; }
 
@@ -46,6 +52,32 @@ export function openFinance(SQL, bytes) {
   }
   return {
     schema,
+    local(name) {
+      const row = db.prepare('SELECT value FROM web_device WHERE name=?').get(name);
+      return row ? JSON.parse(row.value) : null;
+    },
+    saveLocal(name, value) {
+      if (value == null) db.prepare('DELETE FROM web_device WHERE name=?').run(name);
+      else db.prepare('INSERT OR REPLACE INTO web_device VALUES (?,?)').run(name,JSON.stringify(value));
+    },
+    peers() { return this.local('peers') || []; },
+    savePeers(peers) {
+      this.saveLocal('peers',peers.length ? peers : null);
+      const ids = new Set(peers.map(peer => peer.id));
+      for (const {id} of db.prepare('SELECT id FROM sync_peers').all()) if (!ids.has(id)) db.prepare('DELETE FROM sync_peers WHERE id=?').run(id);
+    },
+    agreed(id, value) {
+      if (value === undefined) return db.prepare('SELECT revision FROM sync_peers WHERE id=?').get(id)?.revision;
+      db.prepare('INSERT OR REPLACE INTO sync_peers VALUES (?,?)').run(id,value);
+    },
+    // Tira vínculos e credenciais: usado em backups e cópias para outro aparelho.
+    stripLocal() { db.exec('DELETE FROM web_device; DELETE FROM sync_peers'); },
+    track: () => track(db),
+    changes: () => db.prepare('SELECT total_changes() AS n').get().n,
+    syncState: () => snapshot(db),
+    merge: packet => merge(db,packet),
+    revision: () => revision(track(db).state),
+    db,
     snapshot: () => raw.export(),
     close: () => raw.close(),
     read(path) {

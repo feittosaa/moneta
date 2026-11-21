@@ -4,6 +4,7 @@
 !backend.mjs
 !peer-sync.mjs
 !peer-data.mjs
+!local-ca.mjs
 !finance.mjs
 !request-body.mjs
 !public/

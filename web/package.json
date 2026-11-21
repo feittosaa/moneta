@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test finance.check.mjs"
+    "test": "node --test finance.check.mjs sync.check.mjs"
   },
   "dependencies": {
     "@noble/hashes": "1.8.0",

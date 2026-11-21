@@ -25,7 +25,7 @@ download "node-v$node_version-win-x64.zip"
 stage() {
   local target="$1"
   mkdir -p "$target"
-  cp "$root"/{server.mjs,backend.mjs,peer-sync.mjs,peer-data.mjs,finance.mjs,category-rules.mjs,default-rules.json,request-body.mjs,secret-store.mjs,updater.mjs,vault.mjs,LICENSE} "$target/"
+  cp "$root"/{server.mjs,backend.mjs,peer-sync.mjs,peer-data.mjs,local-ca.mjs,finance.mjs,category-rules.mjs,default-rules.json,request-body.mjs,secret-store.mjs,updater.mjs,vault.mjs,LICENSE} "$target/"
   cp -r "$root/public" "$target/public"
   mkdir -p "$target/docs" && cp -r "$root/docs/guia" "$target/docs/guia"
   printf '{"name":"moneta","version":"%s","type":"module"}\n' "$version" > "$target/package.json"

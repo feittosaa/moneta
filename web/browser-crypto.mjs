@@ -7,6 +7,7 @@ export function createHash(algorithm) {
   return {
     update(text) { hash.update(text); return this; },
     digest(encoding) {
+      if (encoding === 'base64url') return btoa(String.fromCharCode(...hash.digest())).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
       if (encoding !== 'hex') throw Error('Formato desconhecido.');
       return bytesToHex(hash.digest());
     },

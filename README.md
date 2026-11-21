@@ -31,17 +31,19 @@ Os instaladores já trazem tudo o que a Moneta precisa e não pedem senha de adm
 
 A versão de desenvolvimento para Android 9 ou posterior (ARM64) inclui o motor da Moneta e guarda um cofre no próprio celular. Você pode começar pelo celular, conectar os bancos pela Pluggy e registrar lançamentos com o PC desligado.
 
-Para juntar duas instalações, abra a Moneta nos dois aparelhos, na mesma rede, e escolha **Vincular por QR Code** na primeira abertura ou **Configuração → Sincronização entre aparelhos**. Mostre o QR em um deles e leia pelo outro. As alterações passam nos dois sentidos sempre que os dois painéis estão abertos e os cofres destrancados. Cada aparelho mantém sua senha e sua chave de recuperação.
+Cada Moneta funciona sozinha, e você pode vincular quantos aparelhos quiser. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos**. No mesmo Wi-Fi, os aparelhos trocam as alterações enquanto a Moneta está aberta nos dois. Se o mesmo item mudar em dois deles, vale a edição mais recente. Cada aparelho mantém sua senha, sua chave de recuperação e suas credenciais da Pluggy.
 
-O APK desta branch é gerado localmente. As instruções de compilação, o funcionamento do vínculo e o estudo para iPhone estão no [guia de versões móveis](docs/mobile.md).
+O APK desta branch é gerado localmente. As instruções de compilação e o funcionamento do vínculo estão no [guia de versões móveis](docs/mobile.md).
 
 ### iPhone e iPad
 
-**Versão de teste.** O link é temporário. A Moneta funciona offline depois da primeira instalação.
+**Versão de teste.** A Moneta funciona offline depois da primeira abertura e conecta os bancos sozinha, sem computador.
 
-1. No Safari, toque em [Abrir a Moneta no iPhone ou iPad](https://dealer-assessments-prepaid-remix.trycloudflare.com/).
+1. No Safari, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/).
 2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Ative **Abrir como App da Web** e toque em **Adicionar**.
-3. Abra o ícone da **Moneta** na tela inicial, crie sua senha e aguarde aparecer **Disponível offline**. Depois, use **Carteira** para registrar gastos e receitas.
+3. Abra o ícone da **Moneta** na tela inicial, escolha se quer usar uma senha e aguarde aparecer **Disponível offline**.
+
+Na primeira abertura, a Moneta pergunta se você quer sincronizar com a Moneta do computador ou do Android. Para isso, o iPhone ou iPad instala uma vez um perfil com o certificado da Moneta. O passo a passo está em [Sincronizar com o computador ou o Android](docs/mobile.md#sincronizar-com-o-computador-ou-o-android). Para conectar bancos no próprio aparelho, veja [Conectar bancos no iPhone ou iPad](docs/mobile.md#conectar-bancos-no-iphone-ou-ipad).
 
 ### Windows
 
@@ -151,6 +153,9 @@ Todas são opcionais.
 | `MONETA_DATA_DIR` | `./data` | Pasta do banco e das credenciais. O app instalado usa a pasta de dados do usuário. |
 | `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` | vazio | Credenciais da Pluggy. Valem até que outro par seja salvo pela interface. |
 | `MONETA_UID` e `MONETA_GID` | `1000` | Usuário e grupo do container (somente Docker). |
+| `MONETA_DEVICE_NAME` | nome do computador | Nome deste aparelho na lista de vínculos dos outros. |
+| `MONETA_WEB_PORT` | `4175` | Porta HTTPS da sincronização com a Moneta Web. |
+| `MONETA_WEB_ORIGIN` | `https://feittosaa.github.io` | Endereços onde a Moneta Web está publicada, separados por vírgula. Só eles sincronizam. |
 
 ## Telas
 
@@ -289,6 +294,10 @@ Estrutura do projeto:
 | `category-rules.mjs` | Catálogo de regras, importação e avaliação de condições. |
 | `default-rules.json` | Regras padrão do catálogo. |
 | `request-body.mjs` | Leitura e validação do corpo JSON das requisições. |
+| `peer-data.mjs` | Réplica entre aparelhos: hora de cada alteração, a edição mais recente vence e exclusões se propagam. |
+| `peer-sync.mjs` | Vínculos por QR, troca cifrada pela rede local e servidor HTTPS para a Moneta Web. |
+| `local-ca.mjs` | Autoridade de certificados da rede local, restrita a IPs privados, e o perfil para iPhone e iPad. |
+| `web/` | Moneta Web para iPhone e iPad: build estático, cofre no navegador, Pluggy e vínculo pela câmera. |
 | `vault.mjs` | Cofre do banco: SQLite em memória, gravado cifrado com AES-256-GCM em `moneta.cofre`, migração verificada e chave de recuperação. |
 | `secret-store.mjs` | Lacre das credenciais da Pluggy pelo sistema (systemd-creds no Linux, DPAPI no Windows). |
 | `public/` | Interface: HTML, CSS e módulos JavaScript (relatório, ciclos de cartão, patrimônio, campos de data), ícones e fontes. |

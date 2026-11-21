@@ -15,32 +15,59 @@ adb install -r dist/Moneta-Android-arm64.apk
 
 Também é possível copiar o APK para o telefone e abri-lo no gerenciador de arquivos. O build verifica os hashes dos pacotes do runtime e assina o APK com a chave de desenvolvimento em `android/.local/debug.jks`. Guarde essa chave para instalar atualizações locais sobre a mesma instalação. A distribuição pela loja exigirá assinatura de distribuição.
 
-## Vincular celular e computador
+## Vincular aparelhos
 
-1. Abra a versão com suporte a vínculo nos dois aparelhos e destranque os cofres. Use uma rede Wi-Fi que permita comunicação entre os dispositivos.
-2. Na primeira abertura, escolha **Vincular por QR Code** ou siga usando só esse aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos**.
-3. Escolha **Mostrar QR de vínculo** em qualquer um dos dois. O código vale por dois minutos. No outro, use **Ler QR com a câmera** ou selecione uma foto e confirme.
-4. Confira a hora da última troca. Feche um dos painéis, registre lançamentos no outro e abra ambos novamente. O vínculo é lembrado e as alterações entram automaticamente.
+Cada Moneta funciona sozinha: computador, Android, iPhone e iPad têm cofre próprio e conectam os bancos pela Pluggy por conta própria. O vínculo é opcional e aceita vários aparelhos ao mesmo tempo.
 
-O painel verifica o par ao abrir ou voltar ao primeiro plano. O intervalo de nova tentativa é de 15 segundos. Cada lado pode registrar alterações offline. A comunicação usa IPv4 privado e a porta TCP indicada no QR no aparelho que o mostrou. A Moneta tenta a porta 4174 e escolhe uma livre se ela já estiver ocupada. A descoberta após mudança de endereço usa UDP 4174. Em redes com isolamento de clientes, a troca aguarda uma rede que permita comunicação direta. Em Docker, prefira mostrar o QR no celular e lê-lo no painel do contêiner para que a conexão TCP saia do contêiner.
+1. Abra a Moneta nos dois aparelhos, na mesma rede Wi-Fi, e destranque os cofres.
+2. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo**.
+3. Escolha o tipo do outro aparelho e siga as instruções da tela. O QR vale por dois minutos.
+4. Para Android ou outro computador, use **Ler QR de outro aparelho** no outro lado, pela câmera ou por uma foto do QR.
 
-As trocas são autenticadas e cifradas com AES-256-GCM. O convite inicial permite estabelecer uma chave própria do par. A API do painel, os backups e os segredos de acesso continuam locais. Para trocar o aparelho vinculado, use **Desvincular aparelho** em ambas as instalações.
+Depois do vínculo, a lista em **Configuração** mostra cada aparelho e a hora da última troca. Para encerrar um vínculo, toque em **Desvincular** ao lado do aparelho.
 
-A conciliação usa os registros da última troca confirmada. Lançamentos distintos feitos offline são reunidos, e exclusões são propagadas. Se o mesmo registro mudar nos dois lados entre duas trocas, prevalece a edição do aparelho que mostrou o QR. Para uma coleta bancária do mesmo item, prevalece a coleta mais recente. Cada instalação mantém suas credenciais da Pluggy para atualizar bancos por conta própria.
+### Como a sincronização funciona
 
-## Caminho para iOS
+Os aparelhos trocam alterações a cada 15 segundos enquanto a Moneta está aberta e destrancada nos dois. Cada aparelho registra a hora de cada alteração. Se o mesmo item mudar em dois aparelhos antes da troca, vale a edição mais recente. Exclusões também se propagam. Para uma coleta bancária, vale a coleta mais recente. Como o resultado não depende da ordem das trocas, um aparelho vinculado a outros dois repassa as alterações entre eles. Por exemplo, um iPhone e um Android vinculados ao mesmo computador recebem as alterações um do outro através dele.
 
-Para um iPhone que funcione sozinho, a proposta é empacotar a interface local com WKWebView, manter SQLite no aparelho e adaptar as operações que hoje dependem de Node, como arquivos, cofre e rede. As regras JavaScript compartilhadas podem rodar em JavaScriptCore. A primeira prova de conceito deve abrir um cofre offline e trocar dados com esta versão do desktop usando o mesmo protocolo. [JavaScriptCore na documentação da Apple](https://developer.apple.com/documentation/javascriptcore)
+Os relógios dos aparelhos definem qual edição é a mais recente. Mantenha a hora automática ligada em todos.
 
-O app deve explicar o uso da rede local no primeiro vínculo e pedir acesso à câmera ao ler o QR. A descoberta por broadcast precisa ser avaliada com as restrições de multicast da Apple. O teste inicial pode usar o endereço indicado no QR. [Privacidade de rede local no iOS](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)
+As trocas são autenticadas e cifradas com AES-256-GCM, com chave própria para cada vínculo. A API do painel, os backups, a senha, a chave de recuperação e as credenciais da Pluggy não saem do aparelho.
 
-A validação final requer um build assinado em Xcode e teste em iPhone. Para distribuir uma beta, o caminho é enviar o build ao App Store Connect e convidar os testadores no TestFlight. [Distribuição pelo TestFlight](https://developer.apple.com/testflight/)
+### Rede
+
+A comunicação usa IPv4 privado. Entre Monetas com servidor (computador e Android), o padrão é TCP 4174, com descoberta por UDP 4174 quando o endereço muda. A Moneta Web conecta por HTTPS na porta TCP 4175. Se o firewall do computador perguntar, permita conexões na rede privada. Em redes com isolamento de clientes, como Wi-Fi de visitantes, a troca espera até os aparelhos estarem numa rede que permita comunicação direta.
 
 ## Moneta Web no iPhone e iPad
 
-Siga os três passos em [Instalação no iPhone e iPad](../README.md#iphone-e-ipad).
+Siga os passos em [Instalação no iPhone e iPad](../README.md#iphone-e-ipad). Você pode começar sem senha. Em **Configuração → Cofre neste aparelho**, pode ativar ou desativar o modo cofre a qualquer momento.
 
-Para guardar seus lançamentos, abra **Configuração → Backup** e toque em **Baixar backup cifrado**. Guarde o arquivo no app **Arquivos**. Para restaurá-lo, use a senha que você tinha quando baixou o backup.
+### Conectar bancos no iPhone ou iPad
+
+Ative o modo cofre e cadastre o Client ID e o Client Secret em **Configuração → Credenciais Pluggy**. Depois, use **Conexões → Conectar instituição**. As credenciais ficam no cofre cifrado do aparelho. Se você desativar o modo cofre, a Moneta apaga as credenciais.
+
+O iOS não executa sites em segundo plano. Por isso, a Moneta Web atualiza os bancos ao abrir e a cada 6 horas enquanto estiver aberta. Toque em **Sincronizar**, no topo, para atualizar na hora.
+
+### Sincronizar com o computador ou o Android
+
+O Safari só deixa a Moneta Web falar com outra Moneta por HTTPS. Cada computador ou Android cria a própria autoridade de certificados, e o iPhone ou iPad passa a confiar nela uma única vez:
+
+1. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo → iPhone ou iPad**.
+2. No iPhone ou iPad, aponte o app **Câmera** para o primeiro QR e abra o link no Safari. Toque em **Permitir** para baixar o perfil.
+3. Abra **Ajustes → Perfil Baixado → Instalar**.
+4. Em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**, ative a Moneta.
+5. No computador, toque em **Já instalei, mostrar QR de vínculo**.
+6. Na Moneta do iPhone ou iPad, toque em **Sim, ler QR Code** na primeira abertura ou em **Configuração → Sincronização → Ler QR Code**. Permita a câmera e aponte para o QR.
+
+Os passos 2 a 4 são feitos uma vez por aparelho. Para vincular outro iPhone ou iPad ao mesmo computador, eles se repetem só no aparelho novo.
+
+O certificado vale apenas para endereços de rede privada (10.x, 172.16 a 172.31 e 192.168.x). Ele não serve para sites da internet, nem nas mãos de quem copiar a chave do computador. Para removê-lo, apague o perfil em **Ajustes → Geral → VPN e Gerenciamento de Dispositivo**. Se o endereço do computador na rede mudar, ele emite um certificado novo sozinho, mas o iPhone precisa ler o QR de vínculo outra vez.
+
+Dois iPhones ou iPads não sincronizam diretamente entre si, porque o navegador não recebe conexões. Vincule os dois ao mesmo computador ou Android.
+
+### Backup
+
+Para guardar seus lançamentos, abra **Configuração → Backup** e toque em **Baixar backup cifrado**. Guarde o arquivo no app **Arquivos**. Para restaurá-lo, use a senha que você tinha quando baixou o backup. Se o modo cofre estiver desligado, a Moneta pede uma senha só para o arquivo exportado. O backup não leva os vínculos nem as credenciais da Pluggy.
 
 ### Compilar e disponibilizar
 
@@ -50,4 +77,4 @@ npm --prefix web run build
 npm --prefix web test
 ```
 
-O build gera `dist/web`. Para testar no computador, sirva essa pasta em `localhost`. Para instalar pelo iPhone ou iPad, use HTTPS. O workflow manual **Moneta Web** publica os arquivos estáticos quando **GitHub Actions** é selecionado como fonte em **Settings → Pages**. O endereço padrão do repositório pode ser usado sem domínio próprio. [Publicação com GitHub Actions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+O build gera `dist/web`. Para testar no computador, sirva essa pasta em `localhost`. Para instalar pelo iPhone ou iPad, use HTTPS. A Moneta só aceita sincronizar com a Moneta Web publicada em `https://feittosaa.github.io`. Para publicar em outro endereço, inicie a Moneta com `MONETA_WEB_ORIGIN` apontando para ele, sem caminho. O workflow manual **Moneta Web** publica os arquivos estáticos quando **GitHub Actions** é selecionado como fonte em **Settings → Pages**. O endereço padrão do repositório pode ser usado sem domínio próprio. [Publicação com GitHub Actions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
