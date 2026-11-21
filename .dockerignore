@@ -2,6 +2,8 @@
 !Dockerfile
 !server.mjs
 !backend.mjs
+!peer-sync.mjs
+!peer-data.mjs
 !finance.mjs
 !request-body.mjs
 !public/

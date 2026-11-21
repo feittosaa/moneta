@@ -69,6 +69,15 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     child?.kill(signal);
   });
 }
+// O Android pode encerrar a Activity sem entregar onDestroy. O servidor pertence ao app.
+if (process.platform === 'android' && process.env.MONETA_ANDROID_PARENT) {
+  const parent = Number(process.env.MONETA_ANDROID_PARENT);
+  setInterval(() => {
+    if (process.ppid === parent) return;
+    stopping = true;
+    child?.kill('SIGTERM');
+  }, 2000).unref();
+}
 if (desktop && await running()) {
   console.log('A Moneta já está aberta em ' + url + '.');
   if (!background) openBrowser();

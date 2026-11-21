@@ -1,3 +1,4 @@
+import { createPeer } from './peer-sync.mjs';
 import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
@@ -144,6 +145,9 @@ let syncJob;
 let restarting = false;
 const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment','/api/vouchers','/api/vouchers/remove'];
 const assets = new Map([
+  ['/peer-ui.mjs',['text/javascript','peer-ui.mjs']],
+  ['/vendor/qrcode.mjs',['text/javascript','vendor/qrcode.mjs']],
+  ['/vendor/jsQR.js',['text/javascript','vendor/jsQR.js']],
   ['/', ['text/html', 'index.html']],
   ['/app.js', ['text/javascript', 'app.js']],
   ['/theme.js', ['text/javascript', 'theme.js']],
@@ -223,7 +227,7 @@ const securityHeaders = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer',
   'Cross-Origin-Resource-Policy': 'same-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()',
 };
 
 // Rede de segurança: grava o que tiver mudado e ainda não foi para o cofre.
@@ -242,6 +246,7 @@ for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
 // Reinicia ou encerra o processo, gravando o cofre antes. Usado pelas rotas e ao trancar.
 function stop(kind) {
   restarting = true;
+  peer.close();
   server.close(() => {
     clearInterval(syncTimer);
     const close = () => {
@@ -256,6 +261,14 @@ function stop(kind) {
   server.closeAllConnections?.();
 }
 
+let panelSeen = 0;
+const markPeerPanel = () => { panelSeen = Date.now(); };
+const peer = createPeer({
+  database: () => locked || restarting || Date.now() - panelSeen > 25000 ? null : db,
+  persist,
+  store: createSecret(dataDir, {name:'moneta-par',base:'par-local'}),
+  ...(process.env.MONETA_WIFI_IP && {addresses:() => [process.env.MONETA_WIFI_IP]}),
+});
 const updater = createUpdater({ dataDir, desktop, stop });
 
 const server = http.createServer(async (req, res) => {
@@ -278,7 +291,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/status') {
       // Público só o necessário para o atalho saber se a Moneta já está aberta.
       // api: versão do contrato com programas locais (docs/integracao.md).
-      if (!allowed) return json(200, {api:1,instance,desktop,locked:Boolean(locked),lock:lockReason});
+      if (!allowed) return json(200, {api:1,instance,desktop,boot:process.env.MONETA_BOOT_ID,locked:Boolean(locked),lock:lockReason});
       const {updated} = db.prepare('SELECT max(updated) AS updated FROM snapshots').get();
       return json(200, {api:1,instance,updated,desktop,locked:Boolean(locked),lock:lockReason,authorized:true});
     }
@@ -313,7 +326,11 @@ const server = http.createServer(async (req, res) => {
     if (locked && req.url.startsWith('/api/') && !['/api/recovery', '/api/restart', '/api/shutdown', '/api/unlock'].includes(req.url)) {
       fail(423, lockReason === 'senha' ? 'A Moneta está trancada. Digite a senha.' : 'O cofre do banco está trancado. Informe a chave de recuperação.');
     }
-    lastActivity = Date.now();
+    if (!req.url.startsWith('/api/peer')) lastActivity = Date.now();
+    if (req.method === 'GET' && req.url === '/api/peer') {
+      markPeerPanel();
+      return json(200,peer.status());
+    }
     if (req.method === 'GET' && req.url === '/api/vault') {
       return json(200, { protection: protectionLabel(vaultSecret.sealer), pending: existsSync(pendingRecovery),
         password: Boolean(unlockedWith), idle: idleMinutes(), backups: vault.listBackups() });
@@ -340,12 +357,22 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method === 'GET' && req.url === '/api/resumo') return json(200, resumo(overview(db)));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
-    if (req.method !== 'POST' || !['/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
+    if (req.method !== 'POST' || !['/api/peer/invite','/api/peer/join','/api/peer/check','/api/peer/forget','/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
     const body = await readJsonObject(req, req.url.startsWith('/api/rules') ? 2 * 1024 * 1024 : req.url === '/api/backup/restore' ? 64 * 1024 * 1024 : req.url === '/api/transaction' ? 16384 : undefined);
     if (restarting) fail(503, 'O servidor está reiniciando.');
+    if (req.url.startsWith('/api/peer/')) {
+      markPeerPanel();
+      try {
+        if (req.url.endsWith('/invite')) return json(200,await peer.invite());
+        if (req.url.endsWith('/join')) return json(200,await peer.join(body.code));
+        if (req.url.endsWith('/forget')) peer.forget();
+        else await peer.tick();
+        return json(200,peer.status());
+      } catch (error) { fail(400,error.message); }
+    }
     if (req.url === '/api/settings/pluggy') {
       const pair = {};
       for (const field of ['clientId', 'clientSecret']) {

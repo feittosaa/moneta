@@ -4,7 +4,7 @@
 
 <h1 align="center">Moneta</h1>
 
-Moneta é um painel de finanças pessoais que roda no seu próprio computador. Ela se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo num banco local cifrado. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
+Moneta é um painel de finanças pessoais que roda no seu computador ou celular Android. Ela se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo num banco local cifrado. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
 
 <p align="center">
   <a href="https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe"><b>⬇ Baixar para Windows</b></a>
@@ -16,7 +16,7 @@ Moneta é um painel de finanças pessoais que roda no seu próprio computador. E
   <a href="https://github.com/feittosaa/moneta/releases">Todas as versões</a>
 </p>
 
-- **Local e de usuário único:** o servidor escuta apenas em `127.0.0.1` e não tem contas de usuário. O banco fica cifrado em disco, com backups diários testados.
+- **Local e de usuário único:** o painel escuta apenas em `127.0.0.1` e não tem contas de usuário. O banco fica cifrado em disco, com backups diários testados.
 - **Janela própria:** abre como um aplicativo, sem navegador e, no Windows, sem terminal. Fechado, continua sincronizando em segundo plano.
 - **Sem dependências no servidor:** usa só Node.js 22 (servidor HTTP e `node:sqlite` nativos) e HTML, CSS e JavaScript puros na interface. A janela é feita com [Tauri](https://tauri.app).
 - **Interface em português**, com valores em várias moedas mantidos separados.
@@ -26,6 +26,18 @@ Moneta é um painel de finanças pessoais que roda no seu próprio computador. E
 ## Instalação
 
 Os instaladores já trazem tudo o que a Moneta precisa e não pedem senha de administrador.
+
+### Android e sincronização local
+
+A versão de desenvolvimento para Android 9 ou posterior (ARM64) inclui o motor da Moneta e guarda um cofre no próprio celular. Você pode começar pelo celular, conectar os bancos pela Pluggy e registrar lançamentos com o PC desligado.
+
+Para juntar duas instalações, abra a Moneta nos dois aparelhos, na mesma rede, e escolha **Vincular por QR Code** na primeira abertura ou **Configuração → Sincronização entre aparelhos**. Mostre o QR em um deles e leia pelo outro. As alterações passam nos dois sentidos sempre que os dois painéis estão abertos e os cofres destrancados. Cada aparelho mantém sua senha e sua chave de recuperação.
+
+O APK desta branch é gerado localmente. As instruções de compilação, o funcionamento do vínculo e o estudo para iPhone estão no [guia de versões móveis](docs/mobile.md).
+
+### iPhone e iPad
+
+A Moneta Web pode ser instalada pela tela inicial do Safari e funciona offline para lançamentos manuais. O cofre e o backup ficam no aparelho. Veja como gerar a versão web e instalá-la no [guia mobile](docs/mobile.md#moneta-web-no-iphone-e-ipad).
 
 ### Windows
 

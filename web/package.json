@@ -1,0 +1,13 @@
+{
+  "name": "moneta-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test finance.check.mjs"
+  },
+  "dependencies": {
+    "@noble/hashes": "1.8.0",
+    "sql.js": "1.15.2"
+  }
+}

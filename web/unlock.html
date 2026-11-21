@@ -1,0 +1,15 @@
+<div id="unlock">
+<form class="locked-card" id="unlock-form" aria-labelledby="unlock-title">
+<img src="./logo.png" alt="" width="56" height="56">
+<h2 id="unlock-title">Moneta</h2>
+<p id="web-intro">Abrindo armazenamento local…</p>
+<label>Senha do cofre <input type="password" name="password" required minlength="8" maxlength="256" disabled></label>
+<label id="web-repeat" hidden>Repita a senha <input type="password" name="repeat" autocomplete="new-password" minlength="8" maxlength="256" disabled></label>
+<label id="web-import" hidden>Ou escolha um backup <input type="file" name="backup" accept=".monetaweb"></label>
+<button disabled>Continuar</button>
+<p id="unlock-error" role="status"></p>
+</form>
+</div>
+<script src="./sql-wasm-browser.js"></script>
+<script type="module" src="./web-app.mjs"></script>
+</body>
