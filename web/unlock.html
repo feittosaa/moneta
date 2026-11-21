@@ -33,6 +33,15 @@
 <button id="web-peer-no" type="button">Usar só neste aparelho</button>
 </div>
 </dialog>
+<dialog id="web-biometric-offer" aria-labelledby="web-biometric-offer-title">
+<h2 id="web-biometric-offer-title"></h2>
+<p>Na próxima vez, a Moneta abre o cofre com a verificação do aparelho, sem digitar a senha. A senha continua funcionando.</p>
+<p id="web-biometric-offer-feedback" role="status"></p>
+<div class="dialog-actions">
+<button id="web-biometric-offer-yes" type="button"></button>
+<button id="web-biometric-offer-no" type="button">Agora não</button>
+</div>
+</dialog>
 <script src="./sql-wasm-browser.js"></script>
 <script type="module" src="./web-app.mjs"></script>
 </body>

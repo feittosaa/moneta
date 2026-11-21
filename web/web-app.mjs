@@ -79,6 +79,31 @@ function reflectMode() {
   void reflectBiometric();
 }
 
+// Depois de abrir o cofre com a senha, pergunta uma vez se a pessoa quer usar a biometria.
+async function offerBiometric(password) {
+  if (!password || session.saved.unlocked || localStorage.getItem('biometric-offer') === 'no') return;
+  if (!(await biometricSupported()) || await session.store.extra('biometric')) return;
+  const peers = $('#web-peer-dialog');
+  if (peers.open) await new Promise(resolve => peers.addEventListener('close',resolve,{once:true}));
+  const dialog = $('#web-biometric-offer');
+  $('#web-biometric-offer-title').textContent = 'Destravar com '+deviceLabel()+'?';
+  $('#web-biometric-offer-yes').textContent = 'Usar '+deviceLabel();
+  $('#web-biometric-offer-feedback').textContent = '';
+  dialog.showModal();
+  $('#web-biometric-offer-no').onclick = () => { localStorage.setItem('biometric-offer','no'); dialog.close(); };
+  $('#web-biometric-offer-yes').onclick = async () => {
+    const yes = $('#web-biometric-offer-yes');
+    yes.disabled = true;
+    try {
+      await session.store.setExtra('biometric',await enrollBiometric(password));
+      dialog.close();
+      say('Desbloqueio com '+deviceLabel()+' ativado.');
+      void reflectBiometric();
+    } catch (error) { if (!error.cancel) $('#web-biometric-offer-feedback').textContent = error.message; }
+    finally { yes.disabled = false; }
+  };
+}
+
 async function reflectBiometric() {
   const box = $('#web-biometric-settings');
   const supported = !session.saved.unlocked && await biometricSupported();
@@ -93,7 +118,7 @@ async function reflectBiometric() {
   $('#web-biometric-off').hidden = !enrolled;
 }
 
-function start(store,SQL,finance,encrypt,saved) {
+function start(store,SQL,finance,encrypt,saved,password = '') {
   session = {SQL,finance,encrypt,store,saved};
   form.reset();
   $('#unlock').hidden = true;
@@ -106,6 +131,7 @@ function start(store,SQL,finance,encrypt,saved) {
   reflectMode();
   void connections.refresh().catch(() => {});
   startSync();
+  void offerBiometric(password);
   navigator.storage?.persist?.().catch(() => {});
 }
 
@@ -197,7 +223,7 @@ async function prepare() {
         encrypt = await createCipher(password.value);
         record = await store.save(await encrypt(finance.snapshot()));
       }
-      start(store,SQL,finance,encrypt,record);
+      start(store,SQL,finance,encrypt,record,viaDevice ? '' : password.value);
     } catch (error) {
       finance?.close();
       unlockError.textContent = error.message;
@@ -210,6 +236,8 @@ async function prepare() {
       }
     } finally { button.disabled = false; viaDevice = false; }
   };
+  // Pede o Face ID assim que abre. Se o sistema exigir um toque antes, o botão continua lá.
+  if (biometric) void deviceButton.onclick();
 }
 
 $('#web-lock').onclick = () => location.reload();
@@ -260,6 +288,7 @@ $('#web-mode').onsubmit = async event => {
     reflectMode();
     await connections.refresh();
     say(session.saved.unlocked ? 'Modo cofre desativado.' : 'Modo cofre ativado.');
+    if (!session.saved.unlocked) void offerBiometric(secret);
   } catch (error) { say(error.message); }
   finally { mode.reset(); button.disabled = false; }
 };

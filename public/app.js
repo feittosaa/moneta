@@ -360,11 +360,14 @@ $('#password-on').onsubmit = async event => {
   if (password.value !== repeat.value) return message('As senhas não são iguais.');
   if (!confirm('Ligar o modo cofre? A chave do banco é trocada, e a chave de recuperação atual deixa de valer: anote a nova que vai aparecer. Sem a senha e sem a chave de recuperação, não há como abrir o banco.')) return;
   try {
-    const { code } = await request('vault/password', { password: password.value, idle: Number(idle.value) });
+    const secret = password.value;
+    const { code } = await request('vault/password', { password: secret, idle: Number(idle.value) });
     forgetBiometric();
     form.reset();
     await loadVault();
     showCode(code);
+    await offerDevice(secret);
+    reflectBiometric(passwordMode);
     message('Modo cofre ligado. Anote a nova chave de recuperação.');
   } catch (error) { message(error.message); }
 };
@@ -386,7 +389,18 @@ async function unlockWith(password) {
   const response = await fetch('/api/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
   const data = await response.json();
   if (!response.ok) throw Object.assign(new Error(data.error), { status: response.status });
+  await offerDevice(password);
   location.reload();
+}
+// No Android, depois de usar a senha, pergunta uma vez se a pessoa quer usar a biometria.
+async function offerDevice(password) {
+  if (biometricState() !== 'available' || localStorage.getItem('biometric-offer') === 'no') return;
+  if (!confirm('Destrancar a Moneta com a digital, o rosto ou o bloqueio de tela da próxima vez? A senha continua funcionando.')) {
+    localStorage.setItem('biometric-offer', 'no');
+    return;
+  }
+  try { await enrollBiometric(password); message('Desbloqueio pelo aparelho ativado.'); }
+  catch (error) { if (!error.cancel) alert(error.message); }
 }
 $('#unlock-form').onsubmit = async event => {
   event.preventDefault();
