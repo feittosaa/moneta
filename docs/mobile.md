@@ -38,14 +38,9 @@ A validação final requer um build assinado em Xcode e teste em iPhone. Para di
 
 ## Moneta Web no iPhone e iPad
 
-A versão web usa o mesmo painel e as mesmas regras de carteira, categorias, vales e relatórios. O navegador executa SQLite localmente. O banco fica cifrado no armazenamento do app web e a senha é necessária para abrir ou restaurar o cofre. A versão inicial oferece lançamentos manuais e backup local. A conexão com a Pluggy e o vínculo por QR ficam para uma etapa posterior.
+Siga os três passos em [Instalação no iPhone e iPad](../README.md#iphone-e-ipad).
 
-### Instalar no aparelho
-
-1. Abra o endereço HTTPS da Moneta Web no Safari. Escolha **Adicionar à Tela de Início** e habilite **Abrir como App da Web**. [Instruções da Apple](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios)
-2. Abra pelo ícone enquanto ainda estiver online e crie um cofre. Aguarde **Disponível offline** no rodapé do menu. Use o ícone como entrada para o uso diário.
-3. Para conferir, ative o modo avião, abra a carteira e registre um gasto. Feche e abra de novo para verificar o lançamento.
-4. Em **Configuração → Backup**, baixe uma cópia cifrada e guarde fora do navegador. O arquivo `.monetaweb` usa a senha que valia na exportação e pode ser restaurado ao criar um cofre em outro aparelho. Limpar os dados do app web pode remover a cópia local. [Armazenamento do WebKit](https://webkit.org/blog/14403/updates-to-storage-policy/)
+Para guardar seus lançamentos, abra **Configuração → Backup** e toque em **Baixar backup cifrado**. Guarde o arquivo no app **Arquivos**. Para restaurá-lo, use a senha que você tinha quando baixou o backup.
 
 ### Compilar e disponibilizar
 
