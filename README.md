@@ -37,9 +37,9 @@ O APK desta branch é gerado localmente. As instruções de compilação, o func
 
 ### iPhone e iPad
 
-**Em breve.** O link de instalação ficará disponível após a publicação da versão de teste.
+**Versão de teste.** O link é temporário. A Moneta funciona offline depois da primeira instalação.
 
-1. No Safari, toque em [Abrir a Moneta no iPhone ou iPad](https://feittosaa.github.io/moneta/).
+1. No Safari, toque em [Abrir a Moneta no iPhone ou iPad](https://dealer-assessments-prepaid-remix.trycloudflare.com/).
 2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Ative **Abrir como App da Web** e toque em **Adicionar**.
 3. Abra o ícone da **Moneta** na tela inicial, crie sua senha e aguarde aparecer **Disponível offline**. Depois, use **Carteira** para registrar gastos e receitas.
 
