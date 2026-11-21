@@ -92,6 +92,14 @@ Um `pluggy.json` antigo é lacrado automaticamente no primeiro início em que o 
 
 Para forçar o arquivo comum (por exemplo, para testes), use `MONETA_SECRET_STORE=arquivo`.
 
+## Sincronização entre aparelhos
+
+- **Rede:** só aceita conexões de IPv4 privado e só enquanto a Moneta está aberta e destrancada. Cada vínculo tem chave própria, criada no primeiro contato a partir do convite do QR, que vale por dois minutos. Cada troca exige um desafio novo, é autenticada por HMAC-SHA256 e vai cifrada com AES-256-GCM.
+- **Moneta Web:** o servidor HTTPS da porta 4175 só responde a páginas da origem publicada (`https://feittosaa.github.io` ou `MONETA_WEB_ORIGIN`) e só no endereço local do próprio aparelho.
+- **Autoridade de certificados local:** cada instalação cria uma autoridade ECDSA P-256, cuja chave fica lacrada como as credenciais da Pluggy (`autoridade-local`). O certificado dela tem `nameConstraints` crítico: só vale para IPs de 10/8, 172.16/12 e 192.168/16, e nomes DNS, e-mails e URIs ficam presos a `moneta.invalid`. Quem copiar a chave não consegue emitir um certificado aceito para um site da internet. O certificado do servidor dura um ano, é refeito a cada início ou troca de IP e só serve para autenticação de servidor.
+- **Perfil do iPhone:** é entregue em HTTP pela rede local, apenas nos 10 minutos depois de o usuário escolher **iPhone ou iPad** na tela de vínculo. Ele contém só o certificado público.
+- **Credenciais da Pluggy na Moneta Web:** só são aceitas com o modo cofre ligado e ficam dentro do banco cifrado (PBKDF2-SHA256 com 600 mil iterações e AES-256-GCM). Desligar o modo cofre as apaga. Backups exportados não levam credenciais nem vínculos.
+
 ## O que ainda fica exposto
 
 Estes riscos são conhecidos e aceitos por enquanto:
@@ -104,6 +112,8 @@ Estes riscos são conhecidos e aceitos por enquanto:
 - **App aberto pelo menu** (fora do serviço) roda sem o sandbox do systemd.
 - **Root ou o kernel comprometido** quebram qualquer proteção enquanto a Moneta está ligada.
 - **SSD e sistemas copy-on-write** (Btrfs) podem guardar blocos antigos depois que um arquivo é apagado ou sobrescrito, inclusive do `pluggy.json` migrado.
+- **Perfil sem assinatura:** o perfil do iPhone não é assinado, e o iOS o mostra como "Não verificado". Na rede local, alguém mal-intencionado poderia trocar o perfil entregue em HTTP por outro. Mesmo assim, seria preciso que a vítima o instalasse e ativasse a confiança manualmente.
+- **Relógio dos aparelhos:** a edição mais recente vence pela hora de cada aparelho. Um relógio muito adiantado faz as edições daquele aparelho vencerem as dos outros.
 - **Windows:** a proteção por DPAPI foi escrita, mas ainda não foi testada num Windows real. Se o lacre falhar, a Moneta volta ao arquivo `0600`.
 
 ## Próximos passos

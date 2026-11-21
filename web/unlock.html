@@ -7,9 +7,20 @@
 <label id="web-repeat" hidden>Repita a senha <input type="password" name="repeat" autocomplete="new-password" minlength="8" maxlength="256" disabled></label>
 <label id="web-import" hidden>Ou escolha um backup <input type="file" name="backup" accept=".monetaweb"></label>
 <button disabled>Continuar</button>
+<button id="web-skip-password" type="button" hidden>Usar sem senha</button>
 <p id="unlock-error" role="status"></p>
 </form>
 </div>
+<dialog id="web-peer-dialog" aria-labelledby="web-peer-title">
+<h2 id="web-peer-title">Sincronizar com outra Moneta?</h2>
+<p id="web-peer-instructions">Se você já usa a Moneta no computador ou no Android, leia o QR dela uma vez para sincronizar pelo Wi-Fi. A Moneta também funciona sozinha neste aparelho.</p>
+<video id="web-peer-video" hidden autoplay muted playsinline style="width:min(100%,320px)"></video>
+<p id="web-peer-feedback" role="status"></p>
+<div class="dialog-actions">
+<button id="web-peer-yes" type="button">Sim, ler QR Code</button>
+<button id="web-peer-no" type="button">Usar só neste aparelho</button>
+</div>
+</dialog>
 <script src="./sql-wasm-browser.js"></script>
 <script type="module" src="./web-app.mjs"></script>
 </body>

@@ -1,4 +1,6 @@
-import { createPeer } from './peer-sync.mjs';
+import { createPeer, deviceName, lan, localAddresses } from './peer-sync.mjs';
+import { localAuthority } from './local-ca.mjs';
+import { track } from './peer-data.mjs';
 import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
@@ -104,7 +106,10 @@ function openDatabase(opened) {
   restrictPermissions();
 }
 function persist() {
-  if (vault) vault.persist();
+  if (!vault) return;
+  // Marca a hora de cada alteração para a sincronização entre aparelhos.
+  if (!locked) track(db);
+  vault.persist();
 }
 if (passwordStore.exists()) {
   locked = 'A Moneta está trancada. Digite a senha.';
@@ -247,6 +252,7 @@ for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
 function stop(kind) {
   restarting = true;
   peer.close();
+  webPeer.close();
   server.close(() => {
     clearInterval(syncTimer);
     const close = () => {
@@ -263,12 +269,33 @@ function stop(kind) {
 
 let panelSeen = 0;
 const markPeerPanel = () => { panelSeen = Date.now(); };
+// Só sincroniza com a Moneta aberta e destrancada: com a janela fechada, a rede não vê os dados.
+const peerDatabase = () => locked || restarting || Date.now() - panelSeen > 25000 ? null : db;
+const peerAddresses = process.env.MONETA_WIFI_IP ? () => [process.env.MONETA_WIFI_IP] : localAddresses;
+// Perfil com o certificado da autoridade local, entregue ao iPhone ou iPad durante o vínculo.
+let authority, profileUntil = 0;
+const localCa = () => authority ??= localAuthority(createSecret(dataDir, {name:'moneta-autoridade',base:'autoridade-local'}), deviceName());
 const peer = createPeer({
-  database: () => locked || restarting || Date.now() - panelSeen > 25000 ? null : db,
+  database: peerDatabase,
   persist,
   store: createSecret(dataDir, {name:'moneta-par',base:'par-local'}),
-  ...(process.env.MONETA_WIFI_IP && {addresses:() => [process.env.MONETA_WIFI_IP]}),
+  addresses: peerAddresses,
+  profile: () => profileUntil > Date.now() ? localCa().profile() : null,
 });
+// Endereço onde a Moneta Web está publicada. MONETA_WEB_ORIGIN troca por outro, separado por vírgulas.
+const webOrigins = (process.env.MONETA_WEB_ORIGIN || 'https://feittosaa.github.io').split(',').map(origin => origin.trim()).filter(Boolean);
+const webPeer = createPeer({
+  database: peerDatabase,
+  persist,
+  store: createSecret(dataDir, {name:'moneta-par-web',base:'par-web'}),
+  addresses: peerAddresses,
+  port: Number(process.env.MONETA_WEB_PORT || 4175),
+  web: { tls: ips => localCa().issue(ips), origins: () => webOrigins },
+});
+const peerStatus = () => ({name:deviceName(),devices:[
+  ...peer.status().devices.map(device => ({...device,kind:'local'})),
+  ...webPeer.status().devices.map(device => ({...device,kind:'web'})),
+],pending:peer.status().pending || webPeer.status().pending,change:peer.status().change + webPeer.status().change});
 const updater = createUpdater({ dataDir, desktop, stop });
 
 const server = http.createServer(async (req, res) => {
@@ -329,7 +356,7 @@ const server = http.createServer(async (req, res) => {
     if (!req.url.startsWith('/api/peer')) lastActivity = Date.now();
     if (req.method === 'GET' && req.url === '/api/peer') {
       markPeerPanel();
-      return json(200,peer.status());
+      return json(200,peerStatus());
     }
     if (req.method === 'GET' && req.url === '/api/vault') {
       return json(200, { protection: protectionLabel(vaultSecret.sealer), pending: existsSync(pendingRecovery),
@@ -366,11 +393,20 @@ const server = http.createServer(async (req, res) => {
     if (req.url.startsWith('/api/peer/')) {
       markPeerPanel();
       try {
-        if (req.url.endsWith('/invite')) return json(200,await peer.invite());
+        if (req.url.endsWith('/invite')) {
+          if (body.kind !== 'web') return json(200,await peer.invite());
+          // O iPhone baixa o perfil pelo Safari, em HTTP, antes de confiar no HTTPS da Moneta.
+          profileUntil = Date.now() + 10 * 60 * 1000;
+          const port = await peer.share(10 * 60 * 1000);
+          const invite = await webPeer.invite();
+          return json(200,{...invite,profiles:peerAddresses().filter(lan).map(ip => 'http://'+ip+':'+port+'/moneta.mobileconfig')});
+        }
         if (req.url.endsWith('/join')) return json(200,await peer.join(body.code));
-        if (req.url.endsWith('/forget')) peer.forget();
-        else await peer.tick();
-        return json(200,peer.status());
+        if (req.url.endsWith('/forget')) {
+          if (typeof body.id !== 'string') fail(400,'Escolha o aparelho.');
+          (body.kind === 'web' ? webPeer : peer).forget(body.id);
+        } else await Promise.all([peer.tick(),webPeer.tick()]);
+        return json(200,peerStatus());
       } catch (error) { fail(400,error.message); }
     }
     if (req.url === '/api/settings/pluggy') {

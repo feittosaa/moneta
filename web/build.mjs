@@ -19,14 +19,15 @@ function replace(source, pattern, value) {
 }
 
 let html = await read('public/index.html');
-for (const section of ['conexoes','guia']) {
+// O guia de conexão fica no GitHub; o resto do painel é o mesmo do computador.
+for (const section of ['guia']) {
   html = replace(html,new RegExp('<a href="#'+section+'"(?: [^>]+)?>.*?</a>'),'');
   html = replace(html,new RegExp('<section id="'+section+'"[^>]*>[\\s\\S]*?</section>'),'');
 }
-html = replace(html,/<div id="peer-welcome"[^>]*>.*?<\/div>/,'');
 html = replace(html,/<h2>Credenciais Pluggy<\/h2>[\s\S]*?<\/section>/,await read('web/settings.html'));
+html = replace(html,/<dialog id="peer-qr-dialog"[\s\S]*?<\/dialog>/,'');
 html = replace(html,/<div id="recovery" hidden>[\s\S]*?<\/body>/,await read('web/unlock.html'));
-html = replace(html,/<title>/,`<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"><title>`);
+html = replace(html,/<title>/,`<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.pluggy.ai; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.pluggy.ai; connect-src 'self' https:; frame-src https://*.pluggy.ai; object-src 'none'; base-uri 'none'; form-action 'none'"><title>`);
 html = html.replace(/((?:src|href)=")\//g,'$1./');
 html = html.replace('Verificando atualizações…','Preparando acesso offline…');
 html = html.replace('<button id="sync" disabled>','<button id="sync" hidden disabled>');
@@ -50,10 +51,13 @@ await emit('guide.js','export function showGuide() {}\n');
 const finance = replace(await read('finance.mjs'),"'node:crypto'","'./browser-crypto.mjs'")
   .replace("'./public/movement.mjs'","'./movement.mjs'");
 await emit('finance.mjs',finance);
+await emit('peer-data.mjs',replace(await read('peer-data.mjs'),"'node:crypto'","'./browser-crypto.mjs'"));
+await mkdir(join(out,'vendor'),{recursive:true});
+for (const name of ['jsQR.js','jsQR.LICENSE']) await emit('vendor/'+name,await read('public/vendor/'+name));
 let rules = replace(await read('category-rules.mjs'),"import { readFileSync } from 'node:fs';",'');
 rules = replace(rules,/const defaults = .*;\n/,'const defaults = '+JSON.stringify(JSON.parse(await read('default-rules.json')))+';\n');
 await emit('category-rules.mjs',rules);
-for (const name of ['browser-crypto.mjs','local-finance.mjs','vault-web.mjs','web-app.mjs']) await emit(name,await read('web/'+name));
+for (const name of ['browser-crypto.mjs','local-finance.mjs','vault-web.mjs','web-app.mjs','peer-client.mjs','web-pairing.mjs','web-pluggy.mjs','web-connections.mjs']) await emit(name,await read('web/'+name));
 for (const name of ['sql-wasm-browser.js','sql-wasm-browser.wasm']) await emit(name,await readFile(join(web,'node_modules/sql.js/dist',name)));
 await emit('sql.js.LICENSE',await read('web/node_modules/sql.js/LICENSE'));
 const noble = join(web,'node_modules/@noble/hashes');

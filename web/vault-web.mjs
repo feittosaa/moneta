@@ -54,8 +54,8 @@ export function vaultStorage() {
       db.onversionchange = () => db.close();
       resolve({
         read: () => transaction('readonly', store => store.get('local')),
-        save(bytes, expected) {
-          const value = {revision:crypto.randomUUID(),bytes};
+        save(bytes, expected, settings = {}) {
+          const value = {revision:crypto.randomUUID(),bytes,...settings};
           return transaction('readwrite',store => {
             const current = store.get('local');
             current.onsuccess = () => {
