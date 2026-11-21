@@ -1,4 +1,5 @@
-import { initializeFinance, navigate, syncFinance } from './finance.js';
+import { setupPeers } from "./peer-ui.mjs";
+import { refresh as refreshFinance, initializeFinance, navigate, syncFinance } from './finance.js';
 import { registerGuideWidget } from './guide.js';
 const $ = selector => document.querySelector(selector);
 const message = text => { $('#message').textContent = text; };
@@ -447,3 +448,5 @@ refresh().catch(error => message(error.message));
 // Verifica ao abrir e, com o app aberto por muito tempo, de novo a cada 6 horas.
 checkUpdate();
 setInterval(checkUpdate, 6 * 60 * 60_000);
+
+setupPeers(request, () => Promise.all([refreshFinance(),refresh()]));

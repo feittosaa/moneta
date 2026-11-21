@@ -707,7 +707,7 @@ async function showPortfolio() {
     target.textContent = error.message;
   }
 }
-async function refresh() {
+export async function refresh() {
   data = await request('finance');
   historyRequest = null;
   const units = new Set([data.currency,'BRL','USD','EUR',...Intl.supportedValuesOf('currency'),...[...data.accounts,...data.transactions,...data.holdings].map(row => row.currency).filter(Boolean)]);

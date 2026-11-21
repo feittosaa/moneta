@@ -10,6 +10,7 @@
 <button type="button" data-month-step="12" aria-label="Próximo ano" title="Próximo ano">»</button>
 <button type="button" id="current-month" title="Voltar ao mês atual">Mês atual</button></div><button type="button" id="privacy" aria-pressed="false" aria-label="Ocultar valores" title="Ocultar valores"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="M3 3l18 18"/></svg></button><button id="sync" disabled>Sincronizar</button></div></header>
 <section id="relatorio">
+<div id="peer-welcome" hidden><p>Quer usar a Moneta em outro aparelho também?</p><a href="#configuracao" id="peer-config">Vincular por QR Code</a> <button type="button" id="peer-later">Continuar só neste aparelho</button></div>
 <div class="overview-tabs" role="group" aria-label="Visões do painel">
 <button type="button" id="monthly-tab" aria-pressed="true" aria-controls="report">Resumo mensal</button>
 <button type="button" id="portfolio-tab" aria-pressed="false" aria-controls="portfolio">Patrimônio</button></div>
@@ -92,6 +93,16 @@
 <div id="vault-pending" class="vault-alert" hidden><p><strong>Anote a chave de recuperação.</strong> Sem ela, se o TPM do computador for apagado (numa atualização de BIOS, por exemplo) ou se você trocar de computador, não há como abrir o banco. Guarde num gerenciador de senhas ou no papel, longe do computador.</p><button type="button" id="vault-show">Mostrar chave de recuperação</button></div>
 <div id="vault-code" class="vault-alert" hidden><p>Chave de recuperação:</p><code id="vault-code-text"></code><div class="dialog-actions"><button type="button" id="vault-copy">Copiar</button><button type="button" id="vault-confirm">Já guardei num lugar seguro</button></div></div>
 <button type="button" id="vault-rotate">Gerar nova chave de recuperação</button>
+<h2 id="peer-title">Sincronização entre aparelhos</h2>
+<p>Use a Moneta separadamente ou vincule dois aparelhos. Na mesma rede Wi-Fi, eles trocam as alterações enquanto os dois cofres estão abertos.</p>
+<p id="peer-status" role="status"></p>
+<div id="peer-setup"><button type="button" id="peer-show">Mostrar QR de vínculo</button>
+<button type="button" id="peer-camera">Ler QR com a câmera</button>
+<label>Ou selecione uma foto do QR <input id="peer-file" type="file" accept="image/*"></label></div>
+<label hidden id="peer-network">Endereço na rede Wi-Fi <select id="peer-address"></select></label>
+<img hidden id="peer-qr" alt="QR de vínculo válido por dois minutos"><video hidden id="peer-video" autoplay muted playsinline></video>
+<button hidden type="button" id="peer-stop">Fechar câmera</button>
+<button hidden type="button" id="peer-forget">Desvincular aparelho</button>
 <h2>Backups</h2><p>A Moneta guarda sozinha um backup por dia dos últimos 7 dias, cifrado e testado logo depois de criado. Para não perder nada se o computador quebrar, baixe um backup de vez em quando e guarde fora dele (num pen drive ou na nuvem). Ele abre com a chave de recuperação que valia no dia em que foi feito.</p>
 <button type="button" id="backup-download">Baixar backup agora</button>
 <ul id="backup-list" class="backup-list"></ul>

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 import {investmentCategory} from './public/movement.mjs';
 import { initRuleCatalog, editCatalogRule, validPriority, catalogRules, importRuleCatalog, categoryKey, receiverDocument, condition, validateConditions, removeCatalogRule } from './category-rules.mjs';
 const templates = [
@@ -287,7 +287,7 @@ export function editFinance(db, path, body) {
     try {
       db.prepare("INSERT OR IGNORE INTO categories(name,key,custom,internal) VALUES ('Benefícios','beneficios',0,0)").run();
       const fields = Object.keys(voucher);
-      if (body.id == null) db.prepare('INSERT INTO vouchers('+fields+') VALUES ('+fields.map(() => '?')+')').run(...Object.values(voucher));
+      if (body.id == null) db.prepare('INSERT INTO vouchers(id,'+fields+') VALUES (?,'+fields.map(() => '?')+')').run(randomInt(1,2**47),...Object.values(voucher));
       else if (!Number.isSafeInteger(body.id) || !db.prepare('UPDATE vouchers SET '+fields.map(f => f+'=?')+' WHERE id=?').run(...Object.values(voucher),body.id).changes) bad('Vale desconhecido.');
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
@@ -351,7 +351,12 @@ export function editFinance(db, path, body) {
       conditions:validateConditions(body.conditions,body.mode)}) : null;
     if (path === '/api/rules/edit') {
       if (!Number.isSafeInteger(body.id) || !db.prepare('UPDATE rules SET term=?,category=?,definition=?,priority=? WHERE id=?').run(name,category,definition,priority,body.id).changes) bad('Regra desconhecida.');
-    } else db.prepare('INSERT INTO rules(term,category,definition,priority) VALUES(?,?,?,?)').run(name,category,definition,priority);
+    } else {
+      // Desempates usam a ordem de criação. Reserva bits para criações offline nos dois aparelhos.
+      const last = db.prepare('SELECT max(id) AS id FROM rules').get().id || 0;
+      const id = Math.max(last+1,Date.now()*2048+randomInt(2048));
+      db.prepare('INSERT INTO rules(id,term,category,definition,priority) VALUES(?,?,?,?,?)').run(id,name,category,definition,priority);
+    }
     return;
   }
   if (path === '/api/categories/edit') {
