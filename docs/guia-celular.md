@@ -6,6 +6,7 @@ A Moneta funciona sozinha no iPhone, no iPad e no Android. Ela guarda os lançam
 - [Android](#android)
 - [Vincular ao computador](#vincular-ao-computador)
 - [Conectar bancos no celular](#conectar-bancos-no-celular)
+- [Destravar com Face ID ou digital](#destravar-com-face-id-ou-digital)
 - [Backup e troca de aparelho](#backup-e-troca-de-aparelho)
 - [Problemas comuns](#problemas-comuns)
 
@@ -85,6 +86,26 @@ Cada aparelho pode conectar os bancos sozinho, sem depender do computador.
 4. Em **Conexões**, toque em **Conectar instituição** e siga o assistente da Pluggy.
 
 O iPhone não deixa apps da web rodarem em segundo plano. Por isso, a Moneta atualiza os bancos quando você abre o app e a cada 6 horas enquanto ele está aberto. Para atualizar na hora, toque em **Sincronizar**, no topo.
+
+## Destravar com Face ID ou digital
+
+Com o cofre protegido por senha, a Moneta pode abrir com o Face ID, o Touch ID, a digital ou o bloqueio de tela do aparelho. A senha continua funcionando e é a única forma de restaurar backups.
+
+**iPhone e iPad** (iOS 18 ou mais novo, com as Senhas do iCloud ativadas):
+
+1. Abra **Configuração → Cofre neste aparelho → Destravar com Face ID ou Touch ID**.
+2. Digite a senha do cofre e toque em **Ativar**. O iPhone pede para salvar uma passkey da Moneta e confirma com o Face ID.
+3. Nas próximas aberturas, toque em **Usar Face ID ou Touch ID** na tela da senha.
+
+A passkey fica no app **Senhas** do iPhone. Ela só funciona no endereço `feittosaa.github.io`.
+
+**Android:**
+
+1. Abra **Configuração → Modo cofre → Digital ou bloqueio de tela**.
+2. Digite a senha atual e toque em **Ativar desbloqueio pelo aparelho**. Confirme com a digital, o rosto ou o bloqueio de tela.
+3. Nas próximas aberturas, o Android pede a confirmação logo que a Moneta abre.
+
+Se você cadastrar uma digital nova no Android, desligar o modo cofre ou trocar a senha, o desbloqueio pelo aparelho é desativado por segurança. Ative de novo em **Configuração**.
 
 ## Backup e troca de aparelho
 

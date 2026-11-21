@@ -5,6 +5,7 @@ import { createCipher, decryptVault, maxBackupSize, vaultStorage } from './vault
 import { setupPairing } from './web-pairing.mjs';
 import { createPluggy } from './web-pluggy.mjs';
 import { setupConnections } from './web-connections.mjs';
+import { biometricPassword, biometricSupported, deviceLabel, enrollBiometric } from './web-biometric.mjs';
 
 const $ = selector => document.querySelector(selector);
 const say = text => { $('#message').textContent = text; };
@@ -75,6 +76,21 @@ function reflectMode() {
   $('#web-backup-password').hidden = !unlocked;
   $('#web-backup').elements.password.disabled = !unlocked;
   $('#web-backup').elements.password.required = Boolean(unlocked);
+  void reflectBiometric();
+}
+
+async function reflectBiometric() {
+  const box = $('#web-biometric-settings');
+  const supported = !session.saved.unlocked && await biometricSupported();
+  box.hidden = !supported;
+  if (!supported) return;
+  const enrolled = Boolean(await session.store.extra('biometric'));
+  $('#web-biometric-title').textContent = 'Destravar com '+deviceLabel();
+  $('#web-biometric-status').textContent = enrolled ?
+    'Ativado. Ao abrir, toque em Usar '+deviceLabel()+'. A senha continua funcionando.' :
+    'Abra o cofre com '+deviceLabel()+' em vez de digitar a senha. A senha fica cifrada neste aparelho e só abre depois da verificação.';
+  $('#web-biometric-on').hidden = enrolled;
+  $('#web-biometric-off').hidden = !enrolled;
 }
 
 function start(store,SQL,finance,encrypt,saved) {
@@ -113,6 +129,25 @@ async function prepare() {
   }
   const {password,repeat,backup} = form.elements;
   const button = form.querySelector('button');
+  const biometric = saved && !saved.unlocked && await biometricSupported() ? await store.extra('biometric') : null;
+  const deviceButton = $('#web-biometric');
+  let viaDevice = false;
+  if (biometric) {
+    deviceButton.textContent = 'Usar '+deviceLabel();
+    deviceButton.hidden = false;
+    deviceButton.onclick = async () => {
+      if (button.disabled) return;
+      unlockError.textContent = '';
+      try {
+        password.value = await biometricPassword(biometric);
+        viaDevice = true;
+        form.requestSubmit();
+      } catch (error) {
+        if (error.stale) { await store.setExtra('biometric',null); deviceButton.hidden = true; }
+        if (!error.cancel) unlockError.textContent = error.message;
+      }
+    };
+  }
   $('#web-intro').textContent = saved ? 'Digite sua senha para abrir o cofre deste aparelho.' :
     'Crie uma senha para guardar os lançamentos neste aparelho ou restaure um backup.';
   password.autocomplete = saved ? 'current-password' : 'new-password';
@@ -166,11 +201,38 @@ async function prepare() {
     } catch (error) {
       finance?.close();
       unlockError.textContent = error.message;
-    } finally { button.disabled = false; }
+      // A senha guardada para a biometria não abre mais o cofre: apaga e volta para a senha.
+      if (viaDevice) {
+        await store.setExtra('biometric',null).catch(() => {});
+        deviceButton.hidden = true;
+        password.value = '';
+        unlockError.textContent = 'A senha guardada no aparelho não vale mais. Digite a senha e ative o desbloqueio de novo em Configuração.';
+      }
+    } finally { button.disabled = false; viaDevice = false; }
   };
 }
 
 $('#web-lock').onclick = () => location.reload();
+$('#web-biometric-on').onsubmit = async event => {
+  event.preventDefault();
+  const target = event.currentTarget;
+  const button = target.querySelector('button');
+  button.disabled = true;
+  try {
+    const secret = target.elements.password.value;
+    await decryptVault(secret,session.saved.bytes);
+    await session.store.setExtra('biometric',await enrollBiometric(secret));
+    say('Desbloqueio com '+deviceLabel()+' ativado.');
+  } catch (error) { if (!error.cancel) say(error.message); }
+  finally { target.reset(); button.disabled = false; void reflectBiometric(); }
+};
+$('#web-biometric-off').onclick = async () => {
+  try {
+    await session.store.setExtra('biometric',null);
+    say('Desbloqueio com '+deviceLabel()+' desativado. Para apagar a passkey, use o app Senhas do aparelho.');
+  } catch (error) { say(error.message); }
+  void reflectBiometric();
+};
 $('#web-mode').onsubmit = async event => {
   event.preventDefault();
   const mode = event.currentTarget;
@@ -193,6 +255,7 @@ $('#web-mode').onsubmit = async event => {
       const encrypt = unlocked ? plain : await createCipher(secret);
       session.saved = await store.save(await encrypt(finance.snapshot()),saved.revision,{...settings(saved),unlocked});
       session.encrypt = encrypt;
+      await store.setExtra('biometric',null);
     });
     reflectMode();
     await connections.refresh();
@@ -237,7 +300,10 @@ $('#web-restore').onsubmit = async event => {
     for (const name of localData) {
       if (name !== 'pluggy' || !saved.unlocked) finance.saveLocal(name,session.finance.local(name));
     }
-    try { await store.save(await (saved.unlocked ? plain : encrypt)(finance.snapshot()),saved.revision,settings(saved)); }
+    try {
+      await store.save(await (saved.unlocked ? plain : encrypt)(finance.snapshot()),saved.revision,settings(saved));
+      await store.setExtra('biometric',null);
+    }
     finally { finance.close(); }
     location.reload();
   });

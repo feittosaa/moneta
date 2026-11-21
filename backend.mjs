@@ -384,7 +384,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method === 'GET' && req.url === '/api/resumo') return json(200, resumo(overview(db)));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
-    if (req.method !== 'POST' || !['/api/peer/invite','/api/peer/join','/api/peer/check','/api/peer/forget','/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
+    if (req.method !== 'POST' || !['/api/peer/invite','/api/peer/join','/api/peer/check','/api/peer/forget','/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/check', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
@@ -464,6 +464,20 @@ const server = http.createServer(async (req, res) => {
       vault.useSecret(vaultSecret);
       passwordStore.remove();
       unlockedWith = null;
+      return json(200, { ok: true });
+    }
+    // Confere a senha sem mudar nada: o Android só guarda a senha para a biometria depois disso.
+    if (req.url === '/api/vault/password/check') {
+      if (!unlockedWith) fail(409, 'O modo cofre está desligado.');
+      if (Date.now() < retryAt) fail(429, 'Muitas tentativas. Espere ' + Math.ceil((retryAt - Date.now()) / 1000) + ' segundos.');
+      try { passwordSecret(passwordStore, password).load(); }
+      catch (error) {
+        if (error.code !== 'BAD_PASSWORD') fail(500, error.message);
+        failures++;
+        if (failures >= 3) retryAt = Date.now() + Math.min(2 ** (failures - 2), 300) * 1000;
+        fail(403, 'Senha errada.');
+      }
+      failures = 0;
       return json(200, { ok: true });
     }
     if (req.url === '/api/unlock') {

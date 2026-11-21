@@ -108,7 +108,10 @@
 <h2>Modo cofre</h2><p id="password-status"></p>
 <form id="password-on" class="password-form"><label>Senha da Moneta<input type="password" name="password" required minlength="8" autocomplete="new-password"></label><label>Repita a senha<input type="password" name="repeat" required minlength="8" autocomplete="new-password"></label><label>Trancar depois de<select name="idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button>Ligar modo cofre</button></form>
 <div id="password-settings" hidden><div class="password-form"><label>Trancar depois de<select id="password-idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button type="button" id="password-lock">Trancar agora</button></div>
-<form id="password-off" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button>Desligar modo cofre</button></form></div>
+<form id="password-off" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button>Desligar modo cofre</button></form>
+<div id="biometric" hidden><h3>Digital ou bloqueio de tela</h3><p id="biometric-status"></p>
+<form id="biometric-on" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button>Ativar desbloqueio pelo aparelho</button></form>
+<button type="button" id="biometric-off" hidden>Desativar desbloqueio pelo aparelho</button></div></div>
 <h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button> <button id="shutdown" type="button" hidden>Encerrar a Moneta</button></section>
 <section id="guia" hidden><article id="guide" class="guide"></article></section>
 <p id="message" role="status"></p></main>
@@ -139,6 +142,7 @@
 <p>O modo cofre está ligado. Digite a senha da Moneta para abrir o banco.</p>
 <label>Senha<input type="password" name="password" required autocomplete="current-password"></label>
 <p id="unlock-error" role="alert"></p><button>Destrancar</button>
+<button type="button" id="unlock-biometric" hidden>Usar digital ou bloqueio de tela</button>
 <button type="button" id="unlock-forgot" class="link-button">Esqueci a senha</button></form></div>
 <div id="locked" hidden><div class="locked-card" role="alertdialog" aria-labelledby="locked-title" aria-describedby="locked-text">
 <img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso à Moneta</h2>

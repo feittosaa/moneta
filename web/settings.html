@@ -6,6 +6,15 @@
 <button></button>
 </form>
 <button id="web-lock" type="button">Trancar cofre</button>
+<div id="web-biometric-settings" hidden>
+<h3 id="web-biometric-title"></h3>
+<p id="web-biometric-status"></p>
+<form id="web-biometric-on" class="password-form">
+<label>Senha do cofre <input type="password" name="password" required maxlength="256" autocomplete="current-password"></label>
+<button>Ativar</button>
+</form>
+<button id="web-biometric-off" type="button" hidden>Desativar</button>
+</div>
 <h2>Credenciais Pluggy</h2><p id="config"></p><p class="guide-link">Não sabe onde encontrar o Client ID e o Client Secret? Siga o <a href="https://github.com/feittosaa/moneta/blob/main/docs/guia/conectar-bancos.md" target="_blank" rel="noopener noreferrer">Guia de conexão</a>.</p>
 <form id="credentials-form">
 <label>Client ID<input name="clientId" required spellcheck="false" autocapitalize="none" autocomplete="off"></label>

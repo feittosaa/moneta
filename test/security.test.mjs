@@ -181,6 +181,9 @@ test('backup baixado e restaurado; modo cofre tranca e só abre com a senha', as
   const { code } = await (await post('vault/password', { password: 'senha do moneta', idle: 15 })).json();
   assert.match(code, /^MONETA-/);
   assert.ok(existsSync(join(dir, 'banco-senha.key')) && !existsSync(join(dir, 'banco.key')));
+  // Conferir a senha (usado antes de guardá-la para a biometria do Android) não muda nada.
+  assert.equal((await post('vault/password/check', { password: 'errada' })).status, 403);
+  assert.equal((await post('vault/password/check', { password: 'senha do moneta' })).status, 200);
   const downloaded = await (await post('backup/restore', { data: file.toString('base64') })).json();
   assert.equal(downloaded.needsCode, true, 'backup antigo pede a chave antiga');
 

@@ -20,6 +20,20 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.*;
 import org.json.JSONObject;
+import android.hardware.biometrics.BiometricManager;
+import android.hardware.biometrics.BiometricPrompt;
+import android.os.Build;
+import android.os.CancellationSignal;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyPermanentlyInvalidatedException;
+import android.security.keystore.KeyProperties;
+import android.util.Base64;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 
 public class MainActivity extends Activity {
     private WebView panel;
@@ -153,9 +167,102 @@ public class MainActivity extends Activity {
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             ((DownloadManager)getSystemService(DOWNLOAD_SERVICE)).enqueue(request);
         });
+        panel.addJavascriptInterface(new Device(),"MonetaDevice");
         CookieManager.getInstance().setCookie(origin,"moneta_acesso="+key+"; Path=/; HttpOnly; SameSite=Strict");
         panel.loadUrl(origin+"/");
     }
+    // ---- Biometria ------------------------------------------------------------------------------
+    // A senha do modo cofre fica cifrada por uma chave do Android Keystore que só funciona depois da
+    // digital, do rosto ou do bloqueio de tela. Nada sai do aparelho, e a chave nunca é exportável.
+    private static final String KEY_ALIAS = "moneta-biometria";
+    private android.content.SharedPreferences stored() { return getSharedPreferences("biometria",MODE_PRIVATE); }
+    private boolean panelReady() { return panel != null && panel.getUrl() != null && panel.getUrl().startsWith(origin+"/"); }
+
+    private final class Device {
+        @JavascriptInterface public String biometric() {
+            if (!available()) return "unavailable";
+            return stored().contains("data") ? "enrolled" : "available";
+        }
+        @JavascriptInterface public void enroll(String password,String id) { runOnUiThread(() -> startEnroll(password,id)); }
+        @JavascriptInterface public void unlock(String id) { runOnUiThread(() -> startUnlock(id)); }
+        @JavascriptInterface public void forget() { forgetBiometric(); }
+    }
+    private boolean available() {
+        if (!((android.app.KeyguardManager)getSystemService(KEYGUARD_SERVICE)).isDeviceSecure()) return false;
+        if (Build.VERSION.SDK_INT >= 30)
+            return getSystemService(BiometricManager.class).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG|BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS;
+        if (Build.VERSION.SDK_INT == 29)
+            return getSystemService(BiometricManager.class).canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS;
+        android.hardware.fingerprint.FingerprintManager f = getSystemService(android.hardware.fingerprint.FingerprintManager.class);
+        return f != null && f.isHardwareDetected() && f.hasEnrolledFingerprints();
+    }
+    private void forgetBiometric() {
+        stored().edit().clear().apply();
+        try { KeyStore ks = KeyStore.getInstance("AndroidKeyStore"); ks.load(null); ks.deleteEntry(KEY_ALIAS); } catch (Exception ignored) {}
+    }
+    private SecretKey createKey() throws Exception {
+        forgetBiometric();
+        KeyGenParameterSpec.Builder spec = new KeyGenParameterSpec.Builder(KEY_ALIAS,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256).setUserAuthenticationRequired(true).setInvalidatedByBiometricEnrollment(true);
+        if (Build.VERSION.SDK_INT >= 30) spec.setUserAuthenticationParameters(0,KeyProperties.AUTH_BIOMETRIC_STRONG|KeyProperties.AUTH_DEVICE_CREDENTIAL);
+        KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
+        generator.init(spec.build());
+        return generator.generateKey();
+    }
+    private void reply(String id,boolean ok,String value) {
+        if (!panelReady()) return;
+        try {
+            String detail = new JSONObject().put("id",id).put("ok",ok).put("value",value == null ? "" : value).toString();
+            panel.evaluateJavascript("window.dispatchEvent(new CustomEvent('moneta-device',{detail:"+JSONObject.quote(detail)+"}))",null);
+        } catch (org.json.JSONException ignored) {}
+    }
+    private interface Done { void run(Cipher cipher) throws Exception; }
+    private void prompt(String id,String subtitle,Cipher cipher,Done done) {
+        BiometricPrompt.Builder builder = new BiometricPrompt.Builder(this).setTitle("Moneta").setSubtitle(subtitle);
+        if (Build.VERSION.SDK_INT >= 30) builder.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG|BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+        else builder.setNegativeButton("Usar a senha",getMainExecutor(),(dialog,which) -> reply(id,false,"cancel"));
+        builder.build().authenticate(new BiometricPrompt.CryptoObject(cipher),new CancellationSignal(),getMainExecutor(),new BiometricPrompt.AuthenticationCallback() {
+            @Override public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                try { done.run(result.getCryptoObject().getCipher()); }
+                catch (Exception e) { reply(id,false,"Não foi possível usar a biometria. Use a senha."); }
+            }
+            @Override public void onAuthenticationError(int code,CharSequence message) {
+                boolean cancel = code == BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED || code == BiometricPrompt.BIOMETRIC_ERROR_CANCELED;
+                reply(id,false,cancel ? "cancel" : message.toString());
+            }
+        });
+    }
+    private void startEnroll(String password,String id) {
+        if (!panelReady()) return;
+        if (!available()) { reply(id,false,"Configure a digital, o rosto ou um bloqueio de tela no Android."); return; }
+        try {
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE,createKey());
+            prompt(id,"Ativar o desbloqueio do cofre",cipher,ready -> {
+                byte[] data = ready.doFinal(password.getBytes(StandardCharsets.UTF_8));
+                stored().edit().putString("iv",Base64.encodeToString(ready.getIV(),Base64.NO_WRAP))
+                    .putString("data",Base64.encodeToString(data,Base64.NO_WRAP)).apply();
+                reply(id,true,null);
+            });
+        } catch (Exception e) { forgetBiometric(); reply(id,false,"Não foi possível ativar a biometria neste aparelho."); }
+    }
+    private void startUnlock(String id) {
+        if (!panelReady()) return;
+        String iv = stored().getString("iv",null), data = stored().getString("data",null);
+        if (iv == null || data == null) { reply(id,false,"missing"); return; }
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore"); ks.load(null);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE,(SecretKey)ks.getKey(KEY_ALIAS,null),new GCMParameterSpec(128,Base64.decode(iv,Base64.NO_WRAP)));
+            prompt(id,"Destrancar o cofre",cipher,ready ->
+                reply(id,true,new String(ready.doFinal(Base64.decode(data,Base64.NO_WRAP)),StandardCharsets.UTF_8)));
+        } catch (KeyPermanentlyInvalidatedException e) {
+            forgetBiometric();
+            reply(id,false,"A biometria do aparelho mudou. Digite a senha e ative o desbloqueio de novo em Configuração.");
+        } catch (Exception e) { forgetBiometric(); reply(id,false,"missing"); }
+    }
+
     private void allowCamera() { if (camera!=null) camera.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE}); camera=null; }
     @Override public void onRequestPermissionsResult(int code,String[] perms,int[] results) {
         super.onRequestPermissionsResult(code,perms,results);

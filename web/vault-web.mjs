@@ -54,6 +54,9 @@ export function vaultStorage() {
       db.onversionchange = () => db.close();
       resolve({
         read: () => transaction('readonly', store => store.get('local')),
+        // Registros deste aparelho fora do cofre, como o desbloqueio pela biometria.
+        extra: name => transaction('readonly', store => store.get('extra:'+name)),
+        setExtra: (name, value) => transaction('readwrite', store => value == null ? store.delete('extra:'+name) : store.put(value,'extra:'+name)),
         save(bytes, expected, settings = {}) {
           const value = {revision:crypto.randomUUID(),bytes,...settings};
           return transaction('readwrite',store => {

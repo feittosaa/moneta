@@ -74,6 +74,15 @@ Opcional, em **Configuração → Modo cofre**. Com ele ligado:
 
 A senha é do própria Moneta, não a do sistema. O artigo usa o Polkit para pedir a senha do sistema, mas o Polkit só autoriza: não gera uma chave, então o banco continuaria abrindo sem a senha para quem conseguisse falar com o lacre. A senha da Moneta participa da cifra, funciona igual no Linux e no Windows e não depende de um agente do Polkit na sessão.
 
+### Desbloqueio pela biometria
+
+Opcional, no Android e na Moneta Web, só com o modo cofre ligado. A senha continua participando da cifra: o aparelho guarda uma cópia dela, cifrada por uma chave que só funciona depois da verificação do usuário.
+
+- **Android:** chave AES-256-GCM no Android Keystore, não exportável, exigida a cada uso (digital ou rosto de classe forte; no Android 11 ou mais novo, também o bloqueio de tela). A chave é invalidada quando uma digital nova é cadastrada. Antes de guardar, o servidor confere a senha em `/api/vault/password/check`, com o mesmo limite de tentativas de `/api/unlock`. A ponte com o JavaScript só responde à página da própria Moneta.
+- **Moneta Web:** passkey do aparelho com a extensão PRF do WebAuthn e verificação do usuário obrigatória. O segredo PRF passa por HKDF-SHA-256 e vira a chave AES-GCM que cifra a senha. O registro fica no IndexedDB, fora do cofre e dos backups. A passkey fica presa ao domínio da Moneta Web.
+- Desligar o modo cofre, trocar a senha, usar a chave de recuperação ou restaurar um backup na Moneta Web apaga o registro. Uma senha guardada que não abre mais o cofre também é apagada na primeira tentativa.
+- Quem desbloqueia o aparelho consegue abrir a Moneta. Use um código do aparelho forte.
+
 ## Serviço do systemd
 
 O comando de instalação extrai o AppImage em `~/.local/lib/moneta`, o que dispensa o FUSE, e o serviço `moneta.service` roda em sandbox:

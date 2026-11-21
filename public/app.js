@@ -1,6 +1,7 @@
 import { setupPeers } from "./peer-ui.mjs";
 import { refresh as refreshFinance, initializeFinance, navigate, syncFinance } from './finance.js';
 import { registerGuideWidget } from './guide.js';
+import { biometricState, biometricPassword, enrollBiometric, forgetBiometric } from './device-unlock.mjs';
 const $ = selector => document.querySelector(selector);
 const message = text => { $('#message').textContent = text; };
 async function request(path, body) {
@@ -242,7 +243,12 @@ const shutdown = $('#shutdown');
 let unlocked = false;
 async function showLock() {
   const { lock } = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
-  if (lock === 'senha') { $('#unlock').hidden = false; $('#unlock-form').elements.password.focus(); }
+  if (lock === 'senha') {
+    $('#unlock').hidden = false;
+    // No Android com o desbloqueio ativado, pede a digital logo ao abrir; a senha continua valendo.
+    if (biometricState() === 'enrolled') { $('#unlock-biometric').hidden = false; void unlockByDevice(); }
+    else $('#unlock-form').elements.password.focus();
+  }
   else if (lock) $('#recovery').hidden = false;
 }
 request('status').then(({ desktop, locked }) => {
@@ -287,6 +293,7 @@ async function loadVault() {
     : 'Desligado. Com o modo cofre, a Moneta pede uma senha para abrir e tranca sozinha depois de um tempo sem uso. Enquanto estiver trancada, o banco fica protegido até de programas rodando com o seu usuário; em troca, a sincronização automática só acontece com ele aberto.';
   $('#password-on').hidden = password;
   $('#password-settings').hidden = !password;
+  reflectBiometric(password);
   $('#password-idle').value = String(idle);
   $('#backup-list').replaceChildren(...backups.map(backup => {
     const row = document.createElement('li');
@@ -354,6 +361,7 @@ $('#password-on').onsubmit = async event => {
   if (!confirm('Ligar o modo cofre? A chave do banco é trocada, e a chave de recuperação atual deixa de valer: anote a nova que vai aparecer. Sem a senha e sem a chave de recuperação, não há como abrir o banco.')) return;
   try {
     const { code } = await request('vault/password', { password: password.value, idle: Number(idle.value) });
+    forgetBiometric();
     form.reset();
     await loadVault();
     showCode(code);
@@ -371,20 +379,69 @@ $('#password-lock').onclick = async () => {
 $('#password-off').onsubmit = async event => {
   event.preventDefault();
   const form = event.currentTarget;
-  try { await request('vault/password/remove', { password: form.elements.password.value }); form.reset(); await loadVault(); message('Modo cofre desligado.'); }
+  try { await request('vault/password/remove', { password: form.elements.password.value }); forgetBiometric(); form.reset(); await loadVault(); message('Modo cofre desligado.'); }
   catch (error) { message(error.message); }
 };
+async function unlockWith(password) {
+  const response = await fetch('/api/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+  const data = await response.json();
+  if (!response.ok) throw Object.assign(new Error(data.error), { status: response.status });
+  location.reload();
+}
 $('#unlock-form').onsubmit = async event => {
   event.preventDefault();
   const form = event.currentTarget, button = form.querySelector('button');
   button.disabled = true;
   $('#unlock-error').textContent = 'Abrindo o cofre…';
+  try { await unlockWith(form.elements.password.value); }
+  catch (error) { $('#unlock-error').textContent = error.message; form.elements.password.select(); button.disabled = false; }
+};
+let unlocking = false;
+async function unlockByDevice() {
+  if (unlocking) return;
+  unlocking = true;
+  const button = $('#unlock-biometric');
+  button.disabled = true;
   try {
-    const response = await fetch('/api/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: form.elements.password.value }) });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
-    location.reload();
-  } catch (error) { $('#unlock-error').textContent = error.message; form.elements.password.select(); button.disabled = false; }
+    const password = await biometricPassword();
+    $('#unlock-error').textContent = 'Abrindo o cofre…';
+    await unlockWith(password);
+  } catch (error) {
+    // Senha guardada que não abre mais (trocada em outro lugar): apaga e volta para a senha.
+    if (error.status === 403) { forgetBiometric(); error.message = 'A senha guardada no aparelho não vale mais. Digite a senha e ative o desbloqueio de novo em Configuração.'; }
+    if (error.status === 403 || error.missing) button.hidden = true;
+    $('#unlock-error').textContent = error.cancel ? '' : error.message;
+    $('#unlock-form').elements.password.focus();
+  } finally { unlocking = false; button.disabled = false; }
+}
+$('#unlock-biometric').onclick = () => unlockByDevice();
+function reflectBiometric(password) {
+  if (!password && biometricState() === 'enrolled') forgetBiometric();
+  const state = biometricState();
+  $('#biometric').hidden = !password || state === 'unavailable';
+  $('#biometric-on').hidden = state === 'enrolled';
+  $('#biometric-off').hidden = state !== 'enrolled';
+  $('#biometric-status').textContent = state === 'enrolled'
+    ? 'Ativado. Ao abrir, a Moneta pede a digital, o rosto ou o bloqueio de tela deste aparelho. A senha continua funcionando.'
+    : 'Destranque a Moneta com a digital, o rosto ou o bloqueio de tela deste aparelho. A senha fica guardada pelo Android e só sai depois da confirmação.';
+}
+$('#biometric-on').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget, button = form.querySelector('button');
+  button.disabled = true;
+  try {
+    const password = form.elements.password.value;
+    await request('vault/password/check', { password });
+    await enrollBiometric(password);
+    form.reset();
+    message('Desbloqueio pelo aparelho ativado.');
+  } catch (error) { if (!error.cancel) message(error.message); }
+  finally { button.disabled = false; reflectBiometric(passwordMode); }
+};
+$('#biometric-off').onclick = () => {
+  forgetBiometric();
+  reflectBiometric(passwordMode);
+  message('Desbloqueio pelo aparelho desativado.');
 };
 $('#unlock-forgot').onclick = () => {
   $('#recovery-text').textContent = 'Sem a senha, a chave de recuperação que você anotou também abre o cofre. Ao usá-la, o modo cofre é desligado; você pode ligá-lo de novo, com uma senha nova, em Configuração.';
@@ -422,6 +479,8 @@ $('#recovery-form').onsubmit = async event => {
   $('#recovery-error').textContent = 'Abrindo o cofre…';
   try {
     const { instance } = await request('recovery', { code: form.elements.code.value });
+    // A chave de recuperação desliga o modo cofre: a senha guardada para a biometria deixa de valer.
+    forgetBiometric();
     form.reset();
     for (let attempt = 0; attempt < 60; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 500));

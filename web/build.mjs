@@ -57,7 +57,7 @@ for (const name of ['jsQR.js','jsQR.LICENSE']) await emit('vendor/'+name,await r
 let rules = replace(await read('category-rules.mjs'),"import { readFileSync } from 'node:fs';",'');
 rules = replace(rules,/const defaults = .*;\n/,'const defaults = '+JSON.stringify(JSON.parse(await read('default-rules.json')))+';\n');
 await emit('category-rules.mjs',rules);
-for (const name of ['browser-crypto.mjs','local-finance.mjs','vault-web.mjs','web-app.mjs','peer-client.mjs','web-pairing.mjs','web-pluggy.mjs','web-connections.mjs']) await emit(name,await read('web/'+name));
+for (const name of ['browser-crypto.mjs','local-finance.mjs','vault-web.mjs','web-app.mjs','peer-client.mjs','web-pairing.mjs','web-pluggy.mjs','web-connections.mjs','web-biometric.mjs']) await emit(name,await read('web/'+name));
 for (const name of ['sql-wasm-browser.js','sql-wasm-browser.wasm']) await emit(name,await readFile(join(web,'node_modules/sql.js/dist',name)));
 await emit('sql.js.LICENSE',await read('web/node_modules/sql.js/LICENSE'));
 const noble = join(web,'node_modules/@noble/hashes');
