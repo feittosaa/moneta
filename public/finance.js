@@ -3,6 +3,8 @@ import { renderPortfolio } from './portfolio.js';
 import { localDateField } from './date-field.mjs';
 import { showGuide } from './guide.js';
 import { summarize } from './report.mjs';
+import { setupDrawer } from './drawer.mjs';
+setupDrawer();
 const $ = selector => document.querySelector(selector);
 const month = $('#month'), currency = $('#currency');
 function currentMonth() {

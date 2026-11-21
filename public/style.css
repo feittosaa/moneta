@@ -24,6 +24,13 @@ nav a { color:var(--muted); display:flex; align-items:center; gap:13px; border-r
 nav a:hover,nav a[aria-current=page] { background:var(--nav-active); color:var(--accent-ink); text-decoration:none }
 nav i { width:20px; text-align:center; font:normal 22px/1 system-ui }
 nav hr { border:0; border-top:1px solid var(--line); margin:14px 8px }
+.drawer { display:contents }
+#menu-toggle { display:none; place-content:center; gap:5px; width:44px; height:44px; padding:0; border-radius:10px; background:transparent; border:1px solid var(--line); color:var(--text) }
+#menu-toggle span { display:block; width:20px; height:2px; border-radius:2px; background:currentColor; transition:transform .2s ease,opacity .2s ease }
+aside.open #menu-toggle span:nth-child(1) { transform:translateY(7px) rotate(45deg) }
+aside.open #menu-toggle span:nth-child(2) { opacity:0 }
+aside.open #menu-toggle span:nth-child(3) { transform:translateY(-7px) rotate(-45deg) }
+@media (prefers-reduced-motion:reduce) { .drawer,#menu-toggle span { transition:none !important } }
 #fresh { margin-top:auto; padding:16px 8px 0; color:var(--muted); font-size:12px; border-top:1px solid var(--line); display:grid; gap:8px }
 #app-update { justify-self:start; padding:6px 10px; font-size:12px }
 main { width:100%; max-width:1580px; margin-inline:auto; padding:clamp(20px,2.5vw,40px); min-width:0 }
@@ -88,8 +95,16 @@ section:not(#relatorio)>p,section:not(#relatorio)>h2 { margin:14px 0 }
 #message:not(:empty) { position:sticky; bottom:12px; margin:18px 0 0; background:var(--toast); border:1px solid var(--toast-line); color:var(--text); border-radius:8px; padding:10px 15px; width:fit-content }
 @media(max-width:1050px) { body { grid-template-columns:175px minmax(0,1fr) } aside { padding-inline:10px } .toolbar label { display:grid; gap:2px } }
 @media(max-width:780px) {
-  body { display:block } aside { position:static; height:auto; padding:14px 18px; border:0; border-bottom:1px solid var(--line) }
-  .brand { margin:0 0 10px; padding:0 } nav { display:flex; overflow-x:auto } nav a { white-space:nowrap; padding:7px 9px } nav hr,nav i,#fresh { display:none }
+  body { display:block }
+  aside { position:sticky; top:0; z-index:40; height:auto; flex-direction:row; align-items:center; justify-content:space-between; padding:calc(env(safe-area-inset-top) + 10px) 16px 10px; border:0; border-bottom:1px solid var(--line) }
+  .brand { margin:0; padding:0; font-size:24px } .brand img { width:32px; height:32px }
+  #menu-toggle { display:inline-grid }
+  .drawer { position:fixed; inset:0 auto 0 0; z-index:50; width:min(82vw,300px); display:flex; flex-direction:column; overflow-y:auto;
+    padding:calc(env(safe-area-inset-top) + 24px) 14px calc(env(safe-area-inset-bottom) + 18px); background:var(--sidebar); border-right:1px solid var(--line);
+    box-shadow:0 0 32px rgba(0,0,0,.35); transform:translateX(-105%); visibility:hidden; transition:transform .25s ease,visibility 0s .25s }
+  aside.open .drawer { transform:none; visibility:visible; transition:transform .25s ease }
+  #drawer-backdrop { position:fixed; inset:0; z-index:45; background:rgba(0,0,0,.45) }
+  :root.drawer-open { overflow:hidden }
   .dashboard-grid { grid-template-columns:1fr } .topbar { align-items:end } main { padding:18px }
 }
 @media(max-width:520px) { .metrics { gap:6px } .metrics article { padding:11px 8px } .metrics span { font-size:12px; gap:4px } .metrics strong { font-size:16px } .toolbar { gap:8px } .toolbar button { align-self:end } .panel { padding:16px } .balance { padding:20px } }
@@ -346,3 +361,4 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 }
 #peer-qr-dialog::backdrop, #web-peer-dialog::backdrop { background: var(--backdrop); }
 #peer-qr { display: block; margin-inline: auto; width: min(100%, 284px); }
+@media(max-width:780px) { .brand { font-size:24px } }
