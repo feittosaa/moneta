@@ -37,7 +37,11 @@ O APK desta branch é gerado localmente. As instruções de compilação, o func
 
 ### iPhone e iPad
 
-A Moneta Web pode ser instalada pela tela inicial do Safari e funciona offline para lançamentos manuais. O cofre e o backup ficam no aparelho. Veja como gerar a versão web e instalá-la no [guia mobile](docs/mobile.md#moneta-web-no-iphone-e-ipad).
+**Em breve.** O link de instalação ficará disponível após a publicação da versão de teste.
+
+1. No Safari, toque em [Abrir a Moneta no iPhone ou iPad](https://feittosaa.github.io/moneta/).
+2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Ative **Abrir como App da Web** e toque em **Adicionar**.
+3. Abra o ícone da **Moneta** na tela inicial, crie sua senha e aguarde aparecer **Disponível offline**. Depois, use **Carteira** para registrar gastos e receitas.
 
 ### Windows
 
