@@ -1,5 +1,7 @@
 # Moneta no celular
 
+Detalhes técnicos das versões móveis. Para o passo a passo de uso, veja o [guia para celular e tablet](guia-celular.md).
+
 ## Android
 
 O APK para Android 9 ou posterior em ARM64 inclui a interface, Node.js para Android, SQLite e as regras financeiras. A tela inicial já permite usar a carteira offline. Para consultar saldos bancários atualizados, configure a Pluggy no aparelho e siga o guia de conexão. Credenciais, senha e chave de recuperação pertencem à instalação. A cópia do cofre fica no armazenamento privado do aplicativo. Baixe um backup e guarde a chave de recuperação antes de desinstalar.

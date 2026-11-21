@@ -23,6 +23,18 @@ Moneta é um painel de finanças pessoais que roda no seu computador ou celular 
 
 > **Primeira vez?** Instale pelo link acima e siga o [Guia de conexão](docs/guia/conectar-bancos.md): ele mostra, passo a passo e com imagens, como criar as contas gratuitas na Pluggy e conectar seus bancos. Não é preciso saber programar. O mesmo guia abre dentro da Moneta, no menu **Guia**.
 
+## Capturas de tela
+
+As imagens usam uma base de demonstração com dados fictícios e o modo que oculta os valores.
+
+![Visão geral com o resumo do mês, o fluxo mensal e as despesas por categoria](docs/screenshots/visao-geral.png)
+
+| | |
+| --- | --- |
+| ![Visão geral no tema claro](docs/screenshots/visao-geral-claro.png) | ![Evolução do patrimônio e dos investimentos ao longo do ano](docs/screenshots/patrimonio.png) |
+| ![Lista de transações com conta, categoria e situação](docs/screenshots/transacoes.png) | ![Fatura do cartão de crédito com as compras do ciclo](docs/screenshots/cartoes.png) |
+| ![Vales cadastrados e créditos do mês](docs/screenshots/vales.png) | ![Regras de categorização com filtro de origem, ordenação e exportação](docs/screenshots/regras.png) |
+
 ## Instalação
 
 Os instaladores já trazem tudo o que a Moneta precisa e não pedem senha de administrador.
@@ -33,17 +45,19 @@ A versão de desenvolvimento para Android 9 ou posterior (ARM64) inclui o motor 
 
 Cada Moneta funciona sozinha, e você pode vincular quantos aparelhos quiser. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos**. No mesmo Wi-Fi, os aparelhos trocam as alterações enquanto a Moneta está aberta nos dois. Se o mesmo item mudar em dois deles, vale a edição mais recente. Cada aparelho mantém sua senha, sua chave de recuperação e suas credenciais da Pluggy.
 
-O APK desta branch é gerado localmente. As instruções de compilação e o funcionamento do vínculo estão no [guia de versões móveis](docs/mobile.md).
+O APK desta branch é gerado localmente. O uso no celular está no [guia para celular e tablet](docs/guia-celular.md), e as instruções de compilação, nos [detalhes técnicos](docs/mobile.md).
 
 ### iPhone e iPad
 
-**Versão de teste.** A Moneta funciona offline depois da primeira abertura e conecta os bancos sozinha, sem computador.
+**Versão de teste.** A Moneta funciona offline e conecta os bancos sozinha, sem computador. O passo a passo completo, com o vínculo ao computador, está no [guia para celular e tablet](docs/guia-celular.md).
 
-1. No Safari, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/).
-2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Ative **Abrir como App da Web** e toque em **Adicionar**.
-3. Abra o ícone da **Moneta** na tela inicial, escolha se quer usar uma senha e aguarde aparecer **Disponível offline**.
+1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/).
+2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Se aparecer **Abrir como App da Web**, deixe ativado, e toque em **Adicionar**.
+3. Abra a **Moneta** pelo ícone na Tela de Início e só então crie a senha. O Safari e o app guardam dados separados, então o que for criado numa aba do Safari não aparece no app.
+4. Espere aparecer **Disponível offline** no rodapé.
+5. Na primeira abertura, escolha **Usar só neste aparelho** ou **Sim, ler QR Code** para sincronizar com a Moneta do computador. O vínculo pede, uma única vez, a instalação de um perfil com o certificado da Moneta. Veja [Vincular ao computador](docs/guia-celular.md#vincular-ao-computador).
 
-Na primeira abertura, a Moneta pergunta se você quer sincronizar com a Moneta do computador ou do Android. Para isso, o iPhone ou iPad instala uma vez um perfil com o certificado da Moneta. O passo a passo está em [Sincronizar com o computador ou o Android](docs/mobile.md#sincronizar-com-o-computador-ou-o-android). Para conectar bancos no próprio aparelho, veja [Conectar bancos no iPhone ou iPad](docs/mobile.md#conectar-bancos-no-iphone-ou-ipad).
+Para conectar bancos no próprio aparelho, veja [Conectar bancos no celular](docs/guia-celular.md#conectar-bancos-no-celular).
 
 ### Windows
 
@@ -95,18 +109,6 @@ O [Guia de conexão](docs/guia/conectar-bancos.md) detalha cada passo abaixo, in
 5. De vez em quando, em **Configuração → Backups**, baixe um backup e guarde fora do computador.
 
 A sincronização lê todo o histórico disponível na Pluggy e só grava o resultado depois de ler todas as conexões. Se algo falhar no meio do caminho, a cópia anterior é mantida.
-
-## Capturas de tela
-
-As imagens usam uma base de demonstração com dados fictícios e o modo que oculta os valores.
-
-![Visão geral com o resumo do mês, o fluxo mensal e as despesas por categoria](docs/screenshots/visao-geral.png)
-
-| | |
-| --- | --- |
-| ![Visão geral no tema claro](docs/screenshots/visao-geral-claro.png) | ![Evolução do patrimônio e dos investimentos ao longo do ano](docs/screenshots/patrimonio.png) |
-| ![Lista de transações com conta, categoria e situação](docs/screenshots/transacoes.png) | ![Fatura do cartão de crédito com as compras do ciclo](docs/screenshots/cartoes.png) |
-| ![Vales cadastrados e créditos do mês](docs/screenshots/vales.png) | ![Regras de categorização com filtro de origem, ordenação e exportação](docs/screenshots/regras.png) |
 
 ## Rodar pelo código
 
@@ -304,6 +306,7 @@ Estrutura do projeto:
 | `packaging/` | Scripts que geram o AppImage, o instalador do Windows e o comando de instalação para Linux. |
 | `.github/workflows/` | Publicação automática da release ao enviar uma tag de versão. |
 | `docs/guia/` | Guia de conexão (Markdown e imagens), exibido no app e no GitHub. |
+| `docs/guia-celular.md` | Guia de uso no iPhone, iPad e Android: instalação, vínculo com o computador, bancos e backup. |
 | `desktop/` | Janela nativa (Tauri, Rust): sobe o servidor escondido, abre o painel autorizado e fica na bandeja. |
 | `docs/integracao.md` | Contrato para programas locais, como a Ayla: como encontrar a Moneta, autenticar e ler os dados. |
 | `docs/seguranca.md` | Modelo de ameaças, proteções, riscos aceitos e próximos passos de segurança. |

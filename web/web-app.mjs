@@ -101,6 +101,16 @@ async function prepare() {
   ]);
   const saved = await store.read();
   if (saved?.unlocked) return start(store,SQL,openFinance(SQL,saved.bytes),plain,saved);
+  // No iOS, o Safari e o app da Tela de Início têm armazenamentos separados: o cofre criado
+  // numa aba do Safari não aparece no app. Antes de criar o cofre, orienta a instalar.
+  if (!saved && navigator.standalone === false && !sessionStorage.getItem('web-install-skip')) {
+    form.hidden = true;
+    $('#web-install').hidden = false;
+    await new Promise(resolve => { $('#web-install-skip').onclick = resolve; });
+    sessionStorage.setItem('web-install-skip','1');
+    $('#web-install').hidden = true;
+    form.hidden = false;
+  }
   const {password,repeat,backup} = form.elements;
   const button = form.querySelector('button');
   $('#web-intro').textContent = saved ? 'Digite sua senha para abrir o cofre deste aparelho.' :
