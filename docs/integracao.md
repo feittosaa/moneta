@@ -14,6 +14,7 @@ Versão do contrato: **1**. Ela aparece no campo `api` de `GET /api/status`.
 
 - No Windows, `moneta.exe` é a janela nativa (Tauri). Rodar de novo com ela aberta só mostra a janela existente (instância única), então a Ayla pode usar o mesmo comando para "abrir a Moneta". Com `--background`, ele sobe o servidor e fica só na bandeja.
 - No Linux, o servidor normalmente já roda como serviço do systemd. Rodar `moneta` abre o painel no navegador.
+- Atualização pela página da Moneta mostrada na Ayla: como o pedido chega com `Authorization: Bearer`, a Moneta atualizada volta só em segundo plano (pelo serviço do systemd, se houver, ou com `--background`; no Windows, na bandeja), sem abrir uma janela separada. Pela janela ou pelo navegador, ela reabre a janela.
 - Para saber se a Moneta está no ar: `GET /api/status`, sem autenticação, responde `{ "api": 1, "instance": "…", "desktop": true, "locked": false, "lock": null }`.
 
 ## Autenticação

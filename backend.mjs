@@ -586,7 +586,10 @@ const server = http.createServer(async (req, res) => {
       req.url = '/api/restart';
     }
     if (req.url === '/api/update/install') {
-      try { return json(202, { ...(await updater.install()), instance }); }
+      // A janela e o navegador entram com o cookie; a Ayla e outros programas locais, com a chave
+      // no cabeçalho. Para eles, a Moneta atualizada volta sem abrir uma janela separada.
+      const window = !/^Bearer /.test(req.headers.authorization || '');
+      try { return json(202, { ...(await updater.install({ window })), instance }); }
       catch (error) { fail(error.status || 502, error.message); }
     }
     if (req.url === '/api/restart' || req.url === '/api/shutdown') {

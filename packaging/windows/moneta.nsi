@@ -105,7 +105,8 @@ SectionEnd
 !endif
 
 ; Atualização pelo próprio app: a Moneta roda este instalador com /S /abrir. Em silêncio, mantém a escolha
-; anterior de iniciar com o Windows e, ao terminar, abre a Moneta de novo.
+; anterior de iniciar com o Windows e, ao terminar, abre a Moneta de novo. Com /fundo (atualização pedida
+; por outro programa, como a Ayla), liga a Moneta só na bandeja, sem janela.
 Function .onInit
 !ifdef DESKTOP
   Call CheckWebView2
@@ -122,8 +123,16 @@ Function .onInstSuccess
   ${GetParameters} $0
   ClearErrors
   ${GetOptions} $0 "/abrir" $1
-  IfErrors done
+  IfErrors background
   Call OpenMoneta
+  Goto done
+  background:
+!ifdef DESKTOP
+  ClearErrors
+  ${GetOptions} $0 "/fundo" $1
+  IfErrors done
+  Exec '"$INSTDIR\moneta.exe" --background'
+!endif
   done:
 FunctionEnd
 

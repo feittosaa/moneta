@@ -73,7 +73,9 @@ export function createUpdater({ dataDir, desktop, stop, android = Boolean(proces
     return { supported, platform, current, latest, available: supported && newer(latest, current), installing, error };
   }
 
-  async function install() {
+  // window: abrir a janela da Moneta depois de atualizar. Falso quando outro programa (a Ayla)
+  // pediu a atualização: a Moneta volta só em segundo plano, e quem pediu continua mostrando a página.
+  async function install({ window = true } = {}) {
     if (!supported) throw Object.assign(new Error('A atualização pelo app existe só nas instalações para Linux, Windows e Android.'), { status: 409 });
     if (installing) throw Object.assign(new Error('A atualização já está em andamento.'), { status: 409 });
     await check(true);
@@ -95,16 +97,19 @@ export function createUpdater({ dataDir, desktop, stop, android = Boolean(proces
         return { version: latest, android: true };
       }
       if (platform === 'windows') {
-        // O instalador encerra a Moneta (gravando o cofre), atualiza em silêncio e abre a versão nova.
-        spawn(path, ['/S', '/abrir'], { detached: true, stdio: 'ignore' }).unref();
+        // O instalador encerra a Moneta (gravando o cofre), atualiza em silêncio e liga a versão nova.
+        spawn(path, ['/S', window ? '/abrir' : '/fundo'], { detached: true, stdio: 'ignore' }).unref();
       } else if (insideService()) {
         // Fora do sandbox e do grupo do serviço, que o instalador reinicia ao terminar.
         await run('systemd-run', ['--user', '--collect', '--quiet', '--unit=moneta-atualizacao-' + Date.now(), 'sh', path]);
       } else {
-        // Aberto pela janela ou pelo atalho: instala, encerra esta Moneta e abre a nova.
+        // Aberto pela janela, pelo atalho ou por outro programa: instala, encerra esta Moneta e liga
+        // a nova. Sem janela, usa o serviço do systemd quando ele existe.
         await run('sh', [path]);
         const moneta = join(process.env.XDG_BIN_HOME || join(homedir(), '.local', 'bin'), 'moneta');
-        spawn('sh', ['-c', 'sleep 3; exec "$0"', moneta], { detached: true, stdio: 'ignore' }).unref();
+        const relaunch = window ? 'sleep 3; exec "$0"'
+          : 'sleep 3; systemctl --user is-enabled --quiet moneta.service 2>/dev/null && systemctl --user start moneta.service && exit 0; exec "$0" --background';
+        spawn('sh', ['-c', relaunch, moneta], { detached: true, stdio: 'ignore' }).unref();
         setTimeout(() => stop('shutdown'), 500);
       }
       return { version: latest };
