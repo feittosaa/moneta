@@ -153,6 +153,12 @@
 <p id="unlock-error" role="alert"></p><button>Destrancar</button>
 <button class="secondary" type="button" id="unlock-biometric" hidden>Usar digital ou bloqueio de tela</button>
 <button type="button" id="unlock-forgot" class="link-button">Esqueci a senha</button></form></div>
+<div id="updating" hidden><div class="locked-card" role="alertdialog" aria-labelledby="updating-title" aria-describedby="updating-text" aria-busy="true">
+<img src="/logo.png" alt="" width="56" height="56"><h2 id="updating-title">Atualizando a Moneta</h2>
+<p id="updating-text" role="status">Baixando e instalando a nova versão…</p>
+<div class="updating-bar" aria-hidden="true"><span></span></div>
+<p class="locked-hint">A Moneta fecha por alguns instantes e abre de novo sozinha. Seus dados não são alterados.</p>
+<button type="button" id="updating-close" class="secondary" hidden>Voltar para a Moneta</button></div></div>
 <div id="locked" hidden><div class="locked-card" role="alertdialog" aria-labelledby="locked-title" aria-describedby="locked-text">
 <img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso à Moneta</h2>
 <p id="locked-text">Abra a Moneta pelo menu de aplicativos, ou rode <code>moneta</code> no terminal. Ela abre o navegador já com o acesso liberado, e depois disso este endereço passa a funcionar direto.</p>
