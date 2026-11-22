@@ -87,7 +87,7 @@ Opcional, no Android e na Moneta Web, só com o modo cofre ligado. A senha conti
 
 O comando de instalação extrai o AppImage em `~/.local/lib/moneta`, o que dispensa o FUSE, e o serviço `moneta.service` roda em sandbox:
 
-`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só em `~/.local/share/moneta`, `PrivateTmp`, `PrivateDevices`, `ProtectKernelTunables`, `ProtectKernelModules`, `ProtectKernelLogs`, `ProtectControlGroups`, `ProtectClock`, `ProtectHostname`, `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6`, `RestrictNamespaces`, `RestrictRealtime`, `RestrictSUIDSGID`, `LockPersonality`, `SystemCallArchitectures=native`, `SystemCallFilter=@system-service`, `LimitCORE=0` e `UMask=0077`.
+`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only` com escrita só em `~/.local/share/moneta`, `PrivateTmp`, `PrivateDevices`, `ProtectKernelTunables`, `ProtectKernelModules`, `ProtectKernelLogs`, `ProtectControlGroups`, `ProtectClock`, `ProtectHostname`, `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK` (o netlink só serve para listar os IPs da máquina, que o QR de vínculo precisa), `RestrictNamespaces`, `RestrictRealtime`, `RestrictSUIDSGID`, `LockPersonality`, `SystemCallArchitectures=native`, `SystemCallFilter=@system-service`, `LimitCORE=0` e `UMask=0077`.
 
 O `systemd-creds` continua funcionando de dentro do sandbox, porque fala com o serviço de credenciais do systemd por um socket local. A nota do `systemd-analyze --user security moneta` é 4,1 (OK). `MemoryDenyWriteExecute` fica de fora porque o JIT do Node.js precisa dele.
 
