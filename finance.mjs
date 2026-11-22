@@ -463,7 +463,7 @@ function accountRecord(itemId, institution, a) {
     used, type:a.type, currency:a.currencyCode, balance, limit,
     // Cartões do mesmo contrato na mesma conexão informam o mesmo limite e o mesmo saldo.
     // O patrimônio conta essa dívida uma vez só.
-    shared:a.type === 'CREDIT' && limit != null && balance ? JSON.stringify([itemId,a.currencyCode,limit,balance]) : undefined,
+    shared:a.type === 'CREDIT' && limit != null && (balance || used) ? JSON.stringify([itemId,a.currencyCode,limit,balance,used]) : undefined,
     // Valor aplicado automaticamente, como a instituição o informa (nulo quando ela não informa).
     auto:cents(a.bankData?.automaticallyInvestedBalance) || 0};
 }

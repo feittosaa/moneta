@@ -239,3 +239,20 @@ test('pendente repetido pela Pluggy conta uma vez na fatura aberta', async () =>
   assert.equal(dec.amount,3*37519);
   assert.ok(dec.rows.some(t => t.description.includes('PETROPOLIS')));
 });
+
+test('patrimônio desconta o limite usado do cartão, mesmo com a fatura atual zerada', async () => {
+  const {portfolio} = await import('../public/report.mjs');
+  const accounts = [
+    {id:'b',type:'BANK',currency:'BRL',balance:50000,auto:0},
+    {id:'w',type:'CASH',currency:'BRL',balance:160579,auto:0},
+    {id:'c',type:'CREDIT',currency:'BRL',balance:0,used:794667},
+    {id:'d',type:'CREDIT',currency:'BRL',balance:3000},
+  ];
+  const result = portfolio({holdings:[],accounts},'BRL');
+  assert.deepEqual([result.cash,result.credit,result.net],[210579,797667,210579-797667]);
+  // Aplicado automaticamente fica na conta, salvo quando aparece também como posição.
+  accounts[0].auto = 50000;
+  assert.equal(portfolio({holdings:[],accounts},'BRL').cash,210579);
+  const holdings = [{currency:'BRL',net:50000,gross:50000}];
+  assert.deepEqual([portfolio({holdings,accounts},'BRL').cash,portfolio({holdings,accounts},'BRL').invested],[160579,50000]);
+});
