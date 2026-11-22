@@ -12,19 +12,6 @@ work=${MONETA_ANDROID_BUILD:-"$root/build/android"}
 mkdir -p "$work"/{assets,res/drawable-nodpi,classes,dex} "$root/dist"
 "$root/android/runtime.sh" "$work"
 cp "$root/public/web-app-manifest-192x192.png" "$work/res/drawable-nodpi/moneta.png"
-python3 - "$root" "$work" <<'PY'
-from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED
-import sys
-root,work=map(Path,sys.argv[1:])
-with ZipFile(work/'assets/app.zip','w',ZIP_DEFLATED) as out:
-    for p in [*root.glob('*.mjs'), root/'default-rules.json', root/'LICENSE', *(root/'public').rglob('*'), *(root/'docs/guia').rglob('*')]:
-        if p.is_file(): out.write(p,p.relative_to(root))
-    out.write(work/'assets/runtime/ca.pem','ca.pem')
-PY
-"$JAVA_HOME/bin/javac" --release 11 -cp "$platform" -d "$work/classes" "$root/android/src/br/com/moneta/MainActivity.java"
-"$JAVA_HOME/bin/jar" cf "$work/app.jar" -C "$work/classes" .
-"$bt/d8" --min-api 28 --lib "$platform" --output "$work/dex" "$work/app.jar"
 # Versão: 1.4.2 vira versionCode 10402, para que cada release instale por cima da anterior.
 manifest="$work/AndroidManifest.xml"
 cp "$root/android/AndroidManifest.xml" "$manifest"
@@ -34,6 +21,22 @@ if [[ -n "${MONETA_VERSION:-}" ]]; then
   [[ "$major$minor$patch" =~ ^[0-9]+$ ]] || { echo "Versão inválida: $version" >&2; exit 1; }
   sed -i "s/android:versionCode=\"[0-9]*\"/android:versionCode=\"$((major*10000+minor*100+patch))\"/; s/android:versionName=\"[^\"]*\"/android:versionName=\"$version\"/" "$manifest"
 fi
+python3 - "$root" "$work" "${version:-}" <<'PY'
+from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED
+import sys
+root,work=map(Path,sys.argv[1:3])
+version=sys.argv[3]
+with ZipFile(work/'assets/app.zip','w',ZIP_DEFLATED) as out:
+    for p in [*root.glob('*.mjs'), root/'default-rules.json', root/'LICENSE', *(root/'public').rglob('*'), *(root/'docs/guia').rglob('*')]:
+        if p.is_file(): out.write(p,p.relative_to(root))
+    out.write(work/'assets/runtime/ca.pem','ca.pem')
+    # Com a versão, o app sabe qual release está instalada e oferece a atualização.
+    if version: out.writestr('package.json','{"name":"moneta","version":"%s","type":"module"}\n' % version)
+PY
+"$JAVA_HOME/bin/javac" --release 11 -cp "$platform" -d "$work/classes" "$root/android/src/br/com/moneta/MainActivity.java"
+"$JAVA_HOME/bin/jar" cf "$work/app.jar" -C "$work/classes" .
+"$bt/d8" --min-api 28 --lib "$platform" --output "$work/dex" "$work/app.jar"
 "$bt/aapt" package -f -M "$manifest" -I "$platform" -S "$work/res" -A "$work/assets" -F "$work/unsigned.apk"
 (cd "$work/dex" && zip -q "$work/unsigned.apk" classes.dex)
 (cd "$work" && zip -q -9 unsigned.apk lib/arm64-v8a/*.so)

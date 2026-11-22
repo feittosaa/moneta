@@ -1,9 +1,11 @@
-// Atualização da Moneta pelo próprio app (instalações de desktop no Linux e no Windows).
+// Atualização da Moneta pelo próprio app (Linux, Windows e Android).
 //
 // - Consulta a última release no GitHub e compara com a versão empacotada (package.json, escrito
 //   por packaging/build.sh; no checkout ele não existe e a atualização fica desligada).
 // - Baixa o instalador da plataforma, confere o SHA-256 com o SHA256SUMS.txt da mesma release e o
 //   executa fora do processo da Moneta, que é encerrado e volta já na versão nova.
+// - No Android, só baixa e confere o APK; quem instala é o app nativo, que abre a confirmação do
+//   sistema. O Android recusa um APK assinado com outra chave.
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -48,11 +50,11 @@ function insideService() {
   catch { return false; }
 }
 
-export function createUpdater({ dataDir, desktop, stop }) {
+export function createUpdater({ dataDir, desktop, stop, android = Boolean(process.env.MONETA_ANDROID_PARENT) }) {
   const current = packagedVersion();
-  const platform = process.platform === 'win32' ? 'windows' : process.platform === 'linux' ? 'linux' : null;
-  const supported = Boolean(desktop && current && platform);
-  const file = platform === 'windows' ? 'Moneta-Setup.exe' : 'install.sh';
+  const platform = android ? 'android' : process.platform === 'win32' ? 'windows' : process.platform === 'linux' ? 'linux' : null;
+  const supported = Boolean((desktop || android) && current && platform);
+  const file = { windows: 'Moneta-Setup.exe', android: 'Moneta-Android-arm64.apk' }[platform] || 'install.sh';
   let latest = null, checked = 0, checking = null, error = null, installing = false;
 
   async function check(force = false) {
@@ -68,11 +70,11 @@ export function createUpdater({ dataDir, desktop, stop }) {
 
   async function status() {
     await check();
-    return { supported, current, latest, available: supported && newer(latest, current), installing, error };
+    return { supported, platform, current, latest, available: supported && newer(latest, current), installing, error };
   }
 
   async function install() {
-    if (!supported) throw Object.assign(new Error('A atualização pelo app existe só nas instalações para Linux e Windows.'), { status: 409 });
+    if (!supported) throw Object.assign(new Error('A atualização pelo app existe só nas instalações para Linux, Windows e Android.'), { status: 409 });
     if (installing) throw Object.assign(new Error('A atualização já está em andamento.'), { status: 409 });
     await check(true);
     if (!newer(latest, current)) throw Object.assign(new Error('A Moneta já está na versão mais recente.'), { status: 409 });
@@ -86,7 +88,12 @@ export function createUpdater({ dataDir, desktop, stop }) {
       const folder = join(dataDir, 'atualizacao');
       mkdirSync(folder, { recursive: true, mode: 0o700 });
       const path = join(folder, file);
-      writeFileSync(path, content, { mode: 0o700 });
+      writeFileSync(path, content, { mode: platform === 'android' ? 0o600 : 0o700 });
+      if (platform === 'android') {
+        // O app nativo instala o arquivo conferido; a Moneta continua aberta até o sistema confirmar.
+        installing = false;
+        return { version: latest, android: true };
+      }
       if (platform === 'windows') {
         // O instalador encerra a Moneta (gravando o cofre), atualiza em silêncio e abre a versão nova.
         spawn(path, ['/S', '/abrir'], { detached: true, stdio: 'ignore' }).unref();

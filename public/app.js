@@ -1,7 +1,7 @@
 import { setupPeers } from "./peer-ui.mjs";
 import { refresh as refreshFinance, initializeFinance, navigate, syncFinance } from './finance.js';
 import { registerGuideWidget } from './guide.js';
-import { biometricState, biometricPassword, enrollBiometric, forgetBiometric } from './device-unlock.mjs';
+import { biometricState, biometricPassword, enrollBiometric, forgetBiometric, installUpdate } from './device-unlock.mjs';
 const $ = selector => document.querySelector(selector);
 const message = text => { $('#message').textContent = text; };
 async function request(path, body) {
@@ -200,7 +200,7 @@ $('#connect').onclick = async () => {
     $('#connect').disabled = false;
   }
 };
-// Rodapé do menu: versão do app e, quando houver, o botão para instalar a nova (Linux e Windows).
+// Rodapé do menu: versão do app e, quando houver, o botão para instalar a nova (Linux, Windows e Android).
 async function waitForRestart(instance) {
   for (let attempt = 0; attempt < 360; attempt++) {
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -209,12 +209,30 @@ async function waitForRestart(instance) {
   }
   $('#app-version').textContent = 'A atualização está demorando. Abra a Moneta de novo em instantes.';
 }
+// No Android, o servidor baixa e confere o APK, e o instalador do sistema pede a confirmação.
+// Na primeira vez, o Android pede para permitir que a Moneta instale apps.
+async function installOnAndroid(latest, current, label, button) {
+  if (!confirm('Baixar e instalar a Moneta ' + latest + '? O Android pede a confirmação, e seus dados continuam no aparelho.')) return;
+  button.disabled = true;
+  label.textContent = 'Baixando a versão ' + latest + '…';
+  try {
+    await request('update/install', {});
+    await installUpdate();
+    label.textContent = 'Confirme a instalação da versão ' + latest + ' na janela do Android.';
+  } catch (error) {
+    label.textContent = 'Moneta ' + current + ' · nova versão ' + latest;
+    message(error.message === 'permission'
+      ? 'Permita que a Moneta instale apps na tela que abriu, volte e toque em instalar de novo.'
+      : 'Não foi possível atualizar. ' + error.message);
+  } finally { button.disabled = false; }
+}
+addEventListener('moneta-update-failed', () => message('A instalação da atualização não foi concluída. Tente de novo pelo botão no menu.'));
 async function checkUpdate() {
   const label = $('#app-version'), button = $('#app-update');
   let update;
   try { update = await request('update'); }
   catch { label.textContent = 'Moneta'; return; }
-  const { supported, current, latest, available, installing, error } = update;
+  const { supported, platform, current, latest, available, installing, error } = update;
   label.textContent = !current ? 'Moneta (versão de desenvolvimento)'
     : installing ? 'Instalando a atualização…'
     : available ? 'Moneta ' + current + ' · nova versão ' + latest
@@ -224,6 +242,7 @@ async function checkUpdate() {
   button.hidden = !available || installing;
   button.textContent = 'Instalar a versão ' + latest;
   button.onclick = async () => {
+    if (platform === 'android') return installOnAndroid(latest, current, label, button);
     if (!confirm('Instalar a Moneta ' + latest + '? A Moneta fecha por alguns instantes e abre de novo já atualizada. Seus dados não são alterados.')) return;
     button.disabled = true;
     label.textContent = 'Baixando e instalando a versão ' + latest + '…';

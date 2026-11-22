@@ -13,9 +13,9 @@ test('compara versões numericamente', () => {
 });
 
 test('sem versão empacotada ou fora do desktop, não oferece nem instala atualização', async () => {
-  const updater = createUpdater({ dataDir:'.', desktop:false, stop() {} });
+  const updater = createUpdater({ dataDir:'.', desktop:false, android:false, stop() {} });
   const status = await updater.status();
   assert.equal(status.supported,false);
   assert.equal(status.available,false);
-  await assert.rejects(updater.install(),/Linux e Windows/);
+  await assert.rejects(updater.install(),/Linux, Windows e Android/);
 });

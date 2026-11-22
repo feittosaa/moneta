@@ -1,6 +1,14 @@
 // Ponte com o app Android: a senha do modo cofre fica guardada pelo Keystore e só sai depois da
-// digital, do rosto ou do bloqueio de tela. Em outros aparelhos, MonetaDevice não existe.
+// digital, do rosto ou do bloqueio de tela; atualizações passam pelo instalador do sistema.
+// Em outros aparelhos, MonetaDevice não existe.
 const bridge = globalThis.MonetaDevice;
+
+// Mantém a cor atrás da barra de status e da barra de navegação igual ao tema escolhido.
+if (bridge?.setTheme) {
+  const send = () => { try { bridge.setTheme(document.documentElement.dataset.theme || 'dark'); } catch {} };
+  send();
+  new MutationObserver(send).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+}
 
 export function biometricState() {
   try { return bridge ? bridge.biometric() : 'unavailable'; } catch { return 'unavailable'; }
@@ -25,3 +33,5 @@ function call(method, ...args) {
 export const enrollBiometric = password => call('enroll', password);
 export const biometricPassword = () => call('unlock');
 export function forgetBiometric() { try { bridge?.forget(); } catch {} }
+// Instala o APK que o servidor baixou e conferiu; o Android pede a confirmação.
+export const installUpdate = () => call('installUpdate');

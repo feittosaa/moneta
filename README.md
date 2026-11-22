@@ -56,7 +56,7 @@ A Moneta para Android 9 ou posterior (ARM64) inclui o motor da Moneta e guarda u
 
 1. Baixe o [Moneta-Android-arm64.apk](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk) no celular, pelo link ou pelo QR acima.
 2. Abra o arquivo baixado. O app não vem da Play Store, então o Android pede para permitir a instalação de apps dessa fonte. Se o Play Protect avisar que não conhece o app, toque em **Instalar mesmo assim**.
-3. Para atualizar, baixe e abra o APK da versão nova. Ele instala por cima e mantém os dados.
+3. Para atualizar, toque em **Instalar a versão…** no rodapé do menu lateral quando ele aparecer, ou baixe e abra o APK da versão nova. Ela instala por cima e mantém os dados.
 
 Cada Moneta funciona sozinha, e você pode vincular quantos aparelhos quiser. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos**. No mesmo Wi-Fi, os aparelhos trocam as alterações enquanto a Moneta está aberta nos dois. Se o mesmo item mudar em dois deles, vale a edição mais recente. Cada aparelho mantém sua senha, sua chave de recuperação e suas credenciais da Pluggy.
 
@@ -64,7 +64,7 @@ O uso no celular está no [guia para celular e tablet](docs/guia-celular.md), e 
 
 ### iPhone e iPad
 
-**Versão de teste.** A Moneta funciona offline e conecta os bancos sozinha, sem computador. O passo a passo completo, com o vínculo ao computador, está no [guia para celular e tablet](docs/guia-celular.md).
+**Versão de teste.** A Moneta funciona offline, conecta os bancos sozinha, sem computador, e se atualiza sozinha ao abrir. O passo a passo completo, com o vínculo ao computador, está no [guia para celular e tablet](docs/guia-celular.md).
 
 1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/), ou leia o QR acima com o app **Câmera**.
 2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Se aparecer **Abrir como App da Web**, deixe ativado, e toque em **Adicionar**.
@@ -110,6 +110,8 @@ curl -fsSL https://github.com/feittosaa/moneta/releases/latest/download/install.
 
 - **Windows:** baixe e abra o [Moneta-Setup.exe](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe) mais recente. Ele fecha a Moneta aberta, guardando tudo, e instala por cima.
 - **Linux:** rode o comando de instalação de novo. O serviço em segundo plano reinicia com a versão nova.
+- **iPhone e iPad:** nada a fazer. A Moneta Web confere se há versão nova a cada abertura e se atualiza sozinha.
+- **Android:** toque em **Instalar a versão…** no rodapé do menu lateral e confirme na janela do Android, ou baixe e abra o [APK mais recente](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk).
 
 Atualizar ou remover nunca apaga os dados. Eles ficam em `%LOCALAPPDATA%\Moneta` no Windows e em `~/.local/share/moneta` no Linux. As novidades de cada versão ficam em [Releases](https://github.com/feittosaa/moneta/releases), com as somas de verificação dos arquivos.
 

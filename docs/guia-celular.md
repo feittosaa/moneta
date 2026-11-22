@@ -7,6 +7,7 @@ A Moneta funciona sozinha no iPhone, no iPad e no Android. Ela guarda os lançam
 - [Vincular ao computador](#vincular-ao-computador)
 - [Conectar bancos no celular](#conectar-bancos-no-celular)
 - [Destravar com Face ID ou digital](#destravar-com-face-id-ou-digital)
+- [Atualizar a Moneta](#atualizar-a-moneta)
 - [Backup e troca de aparelho](#backup-e-troca-de-aparelho)
 - [Problemas comuns](#problemas-comuns)
 
@@ -48,7 +49,7 @@ A Moneta para Android 9 ou posterior (ARM64, o caso de quase todo celular atual)
 2. Abra o arquivo baixado. O Android pede para permitir a instalação de apps dessa fonte. Se o Play Protect avisar que não conhece o app, toque em **Instalar mesmo assim**.
 3. Abra a Moneta e crie o cofre.
 
-Para atualizar, baixe e abra o APK da versão nova: ele instala por cima e mantém os dados. Depois de instalado, o Android tem os mesmos recursos do computador: cofre próprio, conexão com os bancos e vínculo com outros aparelhos. As instruções para compilar o APK estão em [Moneta no celular: detalhes técnicos](mobile.md#android).
+Para atualizar, veja [Atualizar a Moneta](#atualizar-a-moneta). Depois de instalado, o Android tem os mesmos recursos do computador: cofre próprio, conexão com os bancos e vínculo com outros aparelhos. As instruções para compilar o APK estão em [Moneta no celular: detalhes técnicos](mobile.md#android).
 
 ## Vincular ao computador
 
@@ -112,6 +113,12 @@ A passkey fica no app **Senhas** do iPhone. Ela só funciona no endereço `feitt
 3. Nas próximas aberturas, o Android pede a confirmação logo que a Moneta abre.
 
 Se você cadastrar uma digital nova no Android, desligar o modo cofre ou trocar a senha, o desbloqueio pelo aparelho é desativado por segurança. Ative de novo em **Configuração**.
+
+## Atualizar a Moneta
+
+**iPhone e iPad:** a Moneta se atualiza sozinha, porque é um app da web. Ao abrir, ela confere se há uma versão nova. Se o cofre ainda estiver trancado, a versão nova entra na hora; se você já estiver usando, ela entra na próxima vez que você voltar ao app. Não precisa baixar nada.
+
+**Android:** quando sai uma versão nova, o rodapé do menu lateral mostra **Instalar a versão…**. Toque nele: a Moneta baixa a versão, confere se o arquivo é o publicado e abre a confirmação do Android. Na primeira vez, o Android pede para permitir que a Moneta instale apps; permita, volte e toque de novo. Se preferir, baixe o [APK mais recente](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk) e abra o arquivo. Nos dois casos, a versão nova instala por cima e mantém os dados.
 
 ## Backup e troca de aparelho
 

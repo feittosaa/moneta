@@ -109,6 +109,12 @@ Para forçar o arquivo comum (por exemplo, para testes), use `MONETA_SECRET_STOR
 - **Perfil do iPhone:** é entregue em HTTP pela rede local, apenas nos 10 minutos depois de o usuário escolher **iPhone ou iPad** na tela de vínculo. Ele contém só o certificado público.
 - **Credenciais da Pluggy na Moneta Web:** só são aceitas com o modo cofre ligado e ficam dentro do banco cifrado (PBKDF2-SHA256 com 600 mil iterações e AES-256-GCM). Desligar o modo cofre as apaga. Backups exportados não levam credenciais nem vínculos.
 
+## Atualização pelo app
+
+- **Linux, Windows e Android:** a Moneta consulta a última release do GitHub, baixa o instalador da plataforma e só segue se o SHA-256 bater com o `SHA256SUMS.txt` da mesma release.
+- **Android:** o servidor só baixa e confere o APK. Quem instala é o instalador do sistema, que pede confirmação e recusa um APK assinado com outra chave. A resposta do instalador volta para a tela da Moneta com um código aleatório criado a cada instalação, para que outro app não consiga se passar por ela.
+- **Moneta Web:** o service worker baixa a versão publicada no GitHub Pages ao abrir e a aplica com o cofre trancado ou quando a pessoa volta ao app.
+
 ## O que ainda fica exposto
 
 Estes riscos são conhecidos e aceitos por enquanto:

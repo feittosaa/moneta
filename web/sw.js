@@ -3,9 +3,10 @@ const cacheName = prefix+'BUILD_VERSION';
 const assets = BUILD_ASSETS.map(path => new URL(path,self.registration.scope).href);
 const index = new URL('index.html',self.registration.scope).href;
 
+// A versão nova assume assim que termina de baixar; a página decide quando recarregar.
 self.addEventListener('install',event => {
   event.waitUntil(caches.open(cacheName).then(cache =>
-    cache.addAll(assets.map(url => new Request(url,{cache:'reload'})))));
+    cache.addAll(assets.map(url => new Request(url,{cache:'reload'})))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate',event => {

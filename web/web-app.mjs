@@ -343,12 +343,27 @@ $('#web-restore').onsubmit = async event => {
 };
 
 prepare().catch(error => { unlockError.textContent = error.message; });
+// Atualização sozinha: ao abrir, o navegador confere se há uma versão nova publicada. Com o cofre
+// ainda trancado, ela entra na hora; com o cofre aberto, entra quando a pessoa volta ao app.
 async function prepareOffline() {
   const indicator = $('#app-version');
   try {
-    await navigator.serviceWorker.register('./sw.js');
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    const registration = await navigator.serviceWorker.register('./sw.js');
+    let pending = false;
+    navigator.serviceWorker.addEventListener('controllerchange',() => {
+      if (!hadController) return;
+      if (!session) return location.reload();
+      pending = true;
+      indicator.textContent = 'Versão nova pronta. Ela entra quando você voltar à Moneta.';
+    });
+    document.addEventListener('visibilitychange',() => {
+      if (document.hidden) return;
+      if (pending) location.reload();
+      else registration.update().catch(() => {});
+    });
     await navigator.serviceWorker.ready;
-    indicator.textContent = 'Disponível offline';
+    if (!pending) indicator.textContent = 'Disponível offline';
   } catch { indicator.textContent = 'Acesso offline indisponível'; }
 }
 void prepareOffline();
