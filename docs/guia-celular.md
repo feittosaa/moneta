@@ -27,14 +27,24 @@ A Moneta para iPhone e iPad é um app da web: você instala pelo Safari, sem App
 ### 2. Abra e crie o cofre
 
 1. Abra a **Moneta** pelo ícone na Tela de Início. Ela pergunta se você já usa a Moneta em outro aparelho.
-   - **Ler QR Code:** traz os dados da Moneta do computador ou do Android, sem criar um cofre do zero. Siga [Vincular ao computador](#vincular-ao-computador). Se a outra Moneta tiver senha, digite essa senha: este aparelho passa a usar a mesma. Se ela não tiver senha, a Moneta pede para você criar uma, como no passo seguinte.
+   - **Ler QR Code:** traz os dados da Moneta do computador ou do Android, sem criar um cofre do zero. Antes, instale e confie no certificado (passo 3) e siga [Vincular ao computador](#vincular-ao-computador). Se a outra Moneta tiver senha, digite essa senha: este aparelho passa a usar a mesma. Se ela não tiver senha, a Moneta pede para você criar uma, como no passo seguinte.
    - **Começar do zero:** siga o passo seguinte.
 2. Escolha uma das opções:
    - **Criar cofre:** digite uma senha de pelo menos 8 caracteres e repita. A senha protege os lançamentos neste aparelho. Ela não pode ser recuperada, então guarde num gerenciador de senhas.
    - **Usar sem senha:** a Moneta abre direto. Você pode ativar a senha depois em **Configuração → Cofre neste aparelho**.
 3. Espere aparecer **Disponível offline** no rodapé. A partir daí, a Moneta abre mesmo sem internet.
 
-### 3. Use a Moneta
+### 3. Para vincular ao computador: instale e confie no certificado
+
+Se você vai vincular o iPhone ou o iPad à Moneta do computador, ele precisa confiar no certificado da Moneta antes de ler o QR de vínculo. São três etapas, feitas uma única vez em cada aparelho:
+
+1. **Baixar o perfil:** leia o QR do perfil com o app **Câmera** e toque em **Permitir**.
+2. **Instalar o perfil:** em **Ajustes → Perfil Baixado**, toque em **Instalar**.
+3. **Ativar a confiança:** em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**, ative a **Moneta**.
+
+> **Não pule a terceira etapa.** Com o perfil instalado mas a confiança desligada, o iPhone e o iPad recusam a conexão com o computador, e a Moneta não consegue concluir o vínculo depois de ler o QR. O passo a passo completo está em [iPhone ou iPad com o computador](#iphone-ou-ipad-com-o-computador).
+
+### 4. Use a Moneta
 
 Começando do zero, a Moneta funciona sozinha neste aparelho. Registre gastos em **Carteira** e, se quiser, [conecte seus bancos](#conectar-bancos-no-celular). Para vincular depois, use **Configuração → Sincronização → Ler QR Code**.
 
@@ -56,17 +66,33 @@ Os aparelhos vinculados trocam as alterações pelo Wi-Fi de casa, enquanto a Mo
 
 ### iPhone ou iPad com o computador
 
-O iPhone e o iPad só conversam com o computador por conexão segura. Por isso, na primeira vez, você instala um perfil com o certificado da Moneta do seu computador. O certificado vale só para endereços da rede local e não serve para nenhum site da internet.
+O iPhone e o iPad só conversam com o computador por conexão segura. Por isso, na primeira vez, você instala um perfil com o certificado da Moneta do seu computador e ativa a confiança nele. O certificado vale só para endereços da rede local e não serve para nenhum site da internet.
+
+**Antes de começar**
 
 1. Deixe o computador e o iPhone no mesmo Wi-Fi.
 2. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo** e escolha **iPhone ou iPad**. O primeiro QR instala a Moneta; se ela já está na Tela de Início, clique em **Já instalei, continuar**.
-3. No iPhone, abra o app **Câmera** e aponte para o QR. Toque no link que aparece. O Safari pergunta se quer baixar um perfil: toque em **Permitir**.
-4. Abra **Ajustes**. Logo no topo aparece **Perfil Baixado**. Toque nele e depois em **Instalar**. O iPhone pede o código do aparelho.
-5. Em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**, ative o certificado da **Moneta**.
+
+**Etapa 1: baixar o perfil**
+
+3. No iPhone, abra o app **Câmera**, não a Moneta, e aponte para o QR do perfil. Toque no link que aparece. O Safari pergunta se quer baixar um perfil: toque em **Permitir**.
+
+**Etapa 2: instalar o perfil**
+
+4. Abra **Ajustes**. Logo no topo aparece **Perfil Baixado**. Toque nele e depois em **Instalar**. O iPhone pede o código do aparelho. Se **Perfil Baixado** não aparecer, procure em **Ajustes → Geral → VPN e Gerenciamento de Dispositivos**.
+
+**Etapa 3: confiar no certificado**
+
+5. Abra **Ajustes → Geral → Sobre** e role até o fim. Toque em **Ajustes de Confiança de Certificados** e ative a chave da **Moneta**. Confirme em **Continuar**.
+
+> **Esta etapa é obrigatória.** Instalar o perfil não basta: sem ativar a confiança, o iPhone e o iPad recusam a conexão, e a Moneta mostra que não encontrou a outra Moneta depois de ler o QR.
+
+**Etapa 4: ler o QR de vínculo**
+
 6. No computador, clique em **Já instalei o perfil, continuar**.
 7. Na Moneta do iPhone, toque em **Ler QR Code** na primeira abertura, ou abra **Configuração → Sincronização → Ler QR Code**. Permita o uso da câmera e aponte para o QR. Na primeira abertura, se a Moneta do computador tiver senha, digite essa senha para criar o cofre do iPhone com ela.
 
-Pronto: o computador e o iPhone aparecem um na lista do outro. Os passos 3 a 5 são feitos uma única vez em cada iPhone ou iPad.
+Pronto: o computador e o iPhone aparecem um na lista do outro. As etapas 1 a 3 são feitas uma única vez em cada iPhone ou iPad.
 
 Se o firewall do computador perguntar, permita conexões na rede privada. A Moneta usa as portas 4174 e 4175.
 
@@ -137,8 +163,13 @@ O Safari e o app da Tela de Início não compartilham dados. Para levar o que vo
 
 Se ainda não havia nada importante no Safari, basta criar o cofre de novo no app.
 
+### A Moneta do iPhone ou do iPad lê o QR, mas não conecta
+
+Quase sempre falta ativar a confiança no certificado. Abra **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados** e confira se a chave da **Moneta** está ativada. Se a Moneta não aparecer nessa lista, o perfil não foi instalado: refaça as etapas 1 e 2 de [iPhone ou iPad com o computador](#iphone-ou-ipad-com-o-computador). Depois, leia o QR de vínculo de novo.
+
 ### O iPhone não encontra o computador
 
+- Confira se o certificado da Moneta está ativado em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**.
 - Confira se os dois estão no mesmo Wi-Fi. Redes de visitantes costumam bloquear a comunicação entre aparelhos.
 - Deixe a Moneta aberta nos dois enquanto sincroniza.
 - Se o endereço do computador na rede mudou, mostre o QR de vínculo de novo e leia pelo iPhone. O perfil não precisa ser reinstalado.
