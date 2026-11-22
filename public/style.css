@@ -353,6 +353,14 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 #unlock-form { display:grid; gap:12px; text-align:left }
 #unlock-form h2,#unlock-form img { text-align:center }
 #unlock-error:empty { display:none }
+/* Carregamento do vínculo na Moneta Web: ler o QR, conferir a senha e trazer os dados. */
+.loading { display:grid; justify-items:center; gap:12px; margin:16px 0 }
+.loading p { margin:0; color:var(--muted) }
+.spinner { width:36px; height:36px; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .9s linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+@media (prefers-reduced-motion:reduce) { .spinner { animation-duration:2.4s } }
+#web-loading { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:24px; background:var(--canvas) }
+#web-loading[hidden] { display:none }
 .link-button { background:none; color:var(--accent-ink); font-weight:500; text-decoration:underline; padding:4px; justify-self:center }
 .backup-list { list-style:none; padding:0; margin:12px 0; max-width:48rem }
 .backup-list li { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--line) }
@@ -380,7 +388,7 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 
 
 #peer-qr-dialog, #web-peer-dialog, #peer-inherit-dialog {
-  width: min(440px, calc(100% - 28px));
+  width: min(520px, calc(100% - 28px));
   max-height: calc(100% - 28px);
   padding: 24px;
   border: 1px solid var(--line);
@@ -390,6 +398,12 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 }
 #peer-qr-dialog::backdrop, #web-peer-dialog::backdrop, #peer-inherit-dialog::backdrop { background: var(--backdrop); }
 .peer-inherit-field { display: grid; gap: 4px; margin-block: 12px; }
+/* Em telas estreitas os botões dos passos não cabem numa linha: empilham, cada um na largura toda,
+   em vez de sobrar um sozinho na linha de baixo. */
+@media (max-width: 560px) {
+  #peer-qr-dialog .dialog-actions, #web-peer-dialog .dialog-actions, #peer-inherit-dialog .dialog-actions { flex-direction: column; align-items: stretch; }
+  #peer-qr-next, #peer-inherit-form button:not([type]) { order: -1; }
+}
 #peer-qr { display: block; margin-inline: auto; width: min(100%, 284px); }
 @media(max-width:780px) { .brand { font-size:24px } }
 

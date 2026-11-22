@@ -26,8 +26,17 @@ export function deviceName() {
   return 'Navegador';
 }
 
+// O QR vem como link para a Moneta Web, com o vínculo depois de #vincular= (versões antigas mandam só
+// o vínculo).
+export function readPairCode(code) {
+  const text = String(code);
+  const at = text.indexOf('#vincular=');
+  if (at < 0 || !/^https:\/\//.test(text)) return text;
+  try { return decodeURIComponent(text.slice(at + '#vincular='.length)); } catch { return ''; }
+}
+
 export function preparePair(code) {
-  const [version,origin,invitation,...extra] = String(code).split('|');
+  const [version,origin,invitation,...extra] = readPairCode(code).split('|');
   let url;
   try { url = new URL(origin); } catch {}
   if (version === 'moneta-local-2') throw Error('Este QR é para Android ou computador. No outro aparelho, escolha “iPhone ou iPad”.');

@@ -153,6 +153,9 @@ export function setupPairing(finance, write, refresh) {
   document.addEventListener('visibilitychange',() => { if (document.hidden) stop(); else void sync().catch(() => {}); });
   setInterval(() => void sync().catch(() => {}),15000);
   reflect();
-  if (!finance().peers().length && !localStorage.getItem(pairWelcome)) dialog.showModal();
-  else void sync().catch(() => {});
+  if (!finance().peers().length && !localStorage.getItem(pairWelcome)) { dialog.showModal(); return {first:Promise.resolve(false)}; }
+  // Primeira troca: quem acabou de vincular espera por ela numa tela de carregamento.
+  const first = sync();
+  first.catch(() => {});
+  return {first};
 }

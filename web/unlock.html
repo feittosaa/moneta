@@ -23,11 +23,23 @@
 <label>Senha do cofre <input type="password" name="password" required maxlength="256" autocomplete="current-password"></label>
 <button>Usar esta senha</button>
 </form>
+<div id="web-start-loading" class="loading" hidden role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><p id="web-start-loading-text"></p></div>
 <p id="web-start-feedback" role="status"></p>
-<div class="dialog-actions">
+<div class="dialog-actions" id="web-start-actions">
 <button id="web-start-yes" type="button">Ler QR Code</button>
 <button id="web-start-no" type="button">Começar do zero</button>
 </div>
+</section>
+<section class="locked-card" id="web-pair-hint" hidden aria-labelledby="web-pair-hint-title">
+<img src="./logo.png" alt="" width="56" height="56">
+<h2 id="web-pair-hint-title">Leia este QR pela Moneta</h2>
+<p>O QR de vínculo não abre pelo app Câmera. Ele é lido pela Moneta instalada neste iPhone ou iPad.</p>
+<ol class="peer-steps">
+<li>Feche o Safari e abra a <b>Moneta</b> pelo ícone na Tela de Início. Se ela ainda não está lá, toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>.</li>
+<li>Na primeira abertura, toque em <b>Ler QR Code</b>. Se a Moneta já estiver em uso, abra <b>Configuração → Sincronização → Ler QR Code</b>.</li>
+<li>Aponte a câmera para o QR que está no computador ou no Android.</li>
+</ol>
+<button id="web-pair-hint-skip" type="button">Continuar no Safari</button>
 </section>
 <form class="locked-card" id="unlock-form" aria-labelledby="unlock-title">
 <img src="./logo.png" alt="" width="56" height="56">
@@ -42,6 +54,12 @@
 <p id="unlock-error" role="status"></p>
 </form>
 </div>
+<div id="web-loading" hidden><div class="locked-card loading" role="status" aria-live="polite">
+<img src="./logo.png" alt="" width="56" height="56">
+<span class="spinner" aria-hidden="true"></span>
+<h2 id="web-loading-title">Trazendo seus dados</h2>
+<p id="web-loading-text"></p>
+</div></div>
 <dialog id="web-peer-dialog" aria-labelledby="web-peer-title">
 <h2 id="web-peer-title">Sincronizar com outra Moneta?</h2>
 <p id="web-peer-instructions">Se você já usa a Moneta no computador ou no Android, leia o QR dela uma vez para sincronizar pelo Wi-Fi. A Moneta também funciona sozinha neste aparelho.</p>

@@ -143,6 +143,10 @@ Se ainda não havia nada importante no Safari, basta criar o cofre de novo no ap
 - Deixe a Moneta aberta nos dois enquanto sincroniza.
 - Se o endereço do computador na rede mudou, mostre o QR de vínculo de novo e leia pelo iPhone. O perfil não precisa ser reinstalado.
 
+### O QR de vínculo não faz nada no app Câmera
+
+O QR do passo 3 é lido pela própria Moneta, não pelo app Câmera. Abra a Moneta pelo ícone na Tela de Início e toque em **Ler QR Code**, na primeira abertura, ou em **Configuração → Sincronização → Ler QR Code**. Se você ler pela Câmera, o Safari abre uma página com essas mesmas instruções.
+
 ### O link do primeiro QR não abre o perfil
 
 O QR do perfil vale por 10 minutos. Se o Safari mostrar que o QR expirou, toque em **Voltar** e depois em **Continuar** no computador para gerar outro, e leia com o app **Câmera**, não pela Moneta.

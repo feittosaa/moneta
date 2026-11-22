@@ -102,7 +102,9 @@ export function setupPeers(request, refresh, inherited = async () => {}) {
     if (!invite) return;
     const index = Number(el('address').value) || 0;
     if (step === 'profile') show(invite.profiles[index],'QR para baixar o perfil da Moneta no iPhone ou iPad');
-    else show(invite.codes[index],'QR de vínculo válido por dois minutos');
+    // O QR do iPhone é um link: lido pelo app Câmera por engano, abre uma página que explica como ler
+    // pela Moneta. A Moneta Web tira o vínculo do fim do link.
+    else show(step === 'web' ? installIos+'#vincular='+encodeURIComponent(invite.codes[index]) : invite.codes[index],'QR de vínculo válido por dois minutos');
   }
   async function generate(kind) {
     known = last?.devices.length || 0;
@@ -152,7 +154,8 @@ export function setupPeers(request, refresh, inherited = async () => {}) {
     step = 'web';
     layout({title:'3. Vincular o iPhone ou iPad',
       text:'Use o mesmo Wi-Fi nos dois aparelhos e deixe a Moneta aberta aqui.',
-      list:['Abra a Moneta no iPhone ou iPad. Na primeira abertura, toque em “Sim, ler QR Code”. Depois, use Configuração → Sincronização → Ler QR Code.',
+      list:['Este QR é lido pela própria Moneta, não pelo app Câmera. Abra a Moneta pelo ícone na Tela de Início do iPhone ou iPad.',
+        'Na primeira abertura, toque em “Ler QR Code”. Se a Moneta já estiver em uso, abra Configuração → Sincronização → Ler QR Code.',
         'Permita o uso da câmera e aponte para este QR.']});
     if (invite && Date.now() < invite.until) draw(); else void generate('web');
   }

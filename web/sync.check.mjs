@@ -56,7 +56,10 @@ test('iPhone e computador sincronizam por HTTPS com a autoridade local, nos dois
 
   const {codes} = await host.invite();
   assert.match(codes[0],/^moneta-web-2\|https:\/\//);
-  const {peer:pair,vault} = await confirmPair(preparePair(codes[0]));
+  // O QR mostrado ao iPhone é um link para a Moneta Web com o vínculo no fim.
+  const link = 'https://feittosaa.github.io/moneta/#vincular='+encodeURIComponent(codes[0]);
+  assert.equal(preparePair(link).invitation,preparePair(codes[0]).invitation);
+  const {peer:pair,vault} = await confirmPair(preparePair(link));
   assert.equal(pair.name,'PC');
   // O PC usa senha: o iPhone confere a senha com ele para criar o cofre com a mesma.
   assert.deepEqual(vault,{password:true});

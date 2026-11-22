@@ -49,11 +49,25 @@ async function request(path,body) {
   if (!body) return enqueue(() => session.finance.read(path));
   return writeLocal(finance => finance.edit(path,body));
 }
-function startSync() {
-  setupPairing(() => session.finance, writeLocal, refresh);
+// from: nome da Moneta vinculada na primeira abertura; mostra o carregamento até os dados chegarem.
+function startSync(from) {
+  const {first} = setupPairing(() => session.finance, writeLocal, refresh);
+  if (from) void bringData(from, first);
   const update = async () => { if (await pluggy.maybeSync()) { await refresh(); await connections.refresh(); } };
   void update();
   setInterval(() => { if (!document.hidden) void update(); },60000);
+}
+
+async function bringData(from, first) {
+  const box = $('#web-loading');
+  $('#web-loading-text').textContent = 'Recebendo os lançamentos de '+from+'. Deixe a Moneta aberta nos dois aparelhos; com bastante histórico, isso pode levar alguns minutos.';
+  box.hidden = false;
+  try {
+    if (!(await first)) throw Error();
+    await refresh();
+    say('Dados de '+from+' sincronizados.');
+  } catch { say('Ainda não foi possível trazer os dados de '+from+'. A Moneta tenta de novo a cada 15 segundos, com os dois aparelhos no mesmo Wi-Fi.'); }
+  finally { box.hidden = true; }
 }
 
 async function readBackup(file) {
@@ -119,8 +133,11 @@ async function reflectBiometric() {
   $('#web-biometric-off').hidden = !enrolled;
 }
 
-function start(store,SQL,finance,encrypt,saved,password = '') {
+function start(store,SQL,finance,encrypt,saved,password = '',from = null) {
   session = {SQL,finance,encrypt,store,saved};
+  // O vínculo da primeira abertura já está no cofre.
+  firstRunBusy = false;
+  sessionStorage.removeItem(joinedKey);
   form.reset();
   $('#unlock').hidden = true;
   for (const element of document.querySelectorAll('aside, main')) element.inert = false;
@@ -131,11 +148,16 @@ function start(store,SQL,finance,encrypt,saved,password = '') {
   navigate();
   reflectMode();
   void connections.refresh().catch(() => {});
-  startSync();
+  startSync(from);
   void offerBiometric(password);
   navigator.storage?.persist?.().catch(() => {});
 }
 
+// Enquanto a primeira abertura está em andamento, uma versão nova da Moneta Web não recarrega a
+// página: a recarga jogaria a pessoa de volta ao começo no meio do vínculo.
+let firstRunBusy = false;
+const stageKey = 'moneta-web:primeira-abertura-etapa';
+const joinedKey = 'moneta-web:primeira-abertura-vinculo';
 // Primeira abertura: oferece trazer os dados de uma Moneta que a pessoa já usa. Se ela tem senha,
 // a senha é conferida com ela e o cofre daqui nasce com a mesma. Devolve {started} quando o cofre
 // já foi criado, {peer} quando a origem não usa senha (a pessoa cria uma senha a seguir) ou {}.
@@ -143,32 +165,60 @@ function firstRun(store, SQL) {
   const card = $('#web-start'), video = $('#web-start-video'), ask = $('#web-start-password');
   const yes = $('#web-start-yes'), no = $('#web-start-no');
   const note = text => { $('#web-start-feedback').textContent = text; };
+  // Carregamento no lugar dos passos e botões enquanto conecta ou confere a senha.
+  const loading = text => {
+    $('#web-start-loading').hidden = !text;
+    $('#web-start-loading-text').textContent = text || '';
+    $('#web-start-actions').hidden = Boolean(text);
+    if (text) { ask.hidden = true; note(''); }
+  };
   let scanning = 0;
+  firstRunBusy = true;
   form.hidden = true;
   card.hidden = false;
   const done = value => {
     scanning++;
+    sessionStorage.removeItem(stageKey);
     card.hidden = true;
     form.hidden = false;
     localStorage.setItem(pairWelcome,'done');
     return value;
   };
   return new Promise(resolve => {
-    no.onclick = () => resolve(done({}));
+    // Vínculo feito, mas a página recarregou antes do fim (o iOS pode recarregar o app depois da
+    // câmera): continua dele, que a outra Moneta já guardou este aparelho.
+    const saved = JSON.parse(sessionStorage.getItem(joinedKey) || 'null');
+    const stage = sessionStorage.getItem(stageKey);
+    sessionStorage.removeItem(stageKey);
+    if (saved && Date.now() - saved.at < 10 * 60 * 1000) return void joinedWith(saved);
+    sessionStorage.removeItem(joinedKey);
+    if (stage) note('A Moneta recarregou durante '+stage+'. Toque em Ler QR Code e tente de novo.');
+    no.onclick = () => { firstRunBusy = false; sessionStorage.removeItem(joinedKey); resolve(done({})); };
     yes.onclick = async () => {
       const id = ++scanning;
       yes.disabled = true;
       note('Aponte a câmera para o QR de vínculo.');
       let joined;
       try {
+        sessionStorage.setItem(stageKey,'a leitura do QR');
         const code = await scanCode(video,() => id === scanning);
         if (!code) return;
-        note('Vinculando…');
-        joined = await confirmPair(preparePair(code));
+        const candidate = preparePair(code);
+        $('#web-start-steps').hidden = true;
+        loading('QR lido. Conectando com a outra Moneta…');
+        sessionStorage.setItem(stageKey,'o vínculo com a outra Moneta');
+        joined = await confirmPair(candidate);
+        sessionStorage.setItem(joinedKey,JSON.stringify({...joined,at:Date.now()}));
       } catch (error) {
+        loading(null);
+        $('#web-start-steps').hidden = false;
         note(error.name === 'NotAllowedError' ? 'Permita o acesso à câmera em Ajustes para ler o QR.' : error.offline ? offline : error.message);
         return;
-      } finally { yes.disabled = false; }
+      } finally { yes.disabled = false; sessionStorage.removeItem(stageKey); }
+      loading(null);
+      joinedWith(joined);
+    };
+    function joinedWith(joined) {
       if (!joined.vault?.password) return resolve(done({peer:joined.peer}));
       const name = joined.peer.name;
       $('#web-start-steps').hidden = yes.hidden = no.hidden = true;
@@ -181,7 +231,7 @@ function firstRun(store, SQL) {
         event.preventDefault();
         const button = ask.querySelector('button'), password = ask.elements.password.value;
         button.disabled = true;
-        note('Conferindo a senha com '+name+'…');
+        loading('Conferindo a senha com '+name+'…');
         let finance;
         try {
           const result = await verifyPair(joined.peer,password);
@@ -190,21 +240,36 @@ function firstRun(store, SQL) {
           finance.savePeers([joined.peer]);
           const encrypt = await createCipher(password);
           const record = await store.save(await encrypt(finance.snapshot()));
+          loading(null);
           done();
-          start(store,SQL,finance,encrypt,record,password);
+          start(store,SQL,finance,encrypt,record,password,name);
           resolve({started:true});
         } catch (error) {
           finance?.close();
+          loading(null);
+          ask.hidden = false;
           note(error.offline ? offline : error.message);
           ask.elements.password.select();
         } finally { button.disabled = false; }
       };
-    };
+    }
   });
+}
+
+// QR de vínculo lido pelo app Câmera: o link abre aqui, no Safari, que não é onde a Moneta lê o QR.
+async function explainPairLink() {
+  if (!location.hash.startsWith('#vincular=')) return;
+  history.replaceState(null,'',location.pathname+location.search);
+  form.hidden = true;
+  $('#web-pair-hint').hidden = false;
+  await new Promise(resolve => { $('#web-pair-hint-skip').onclick = resolve; });
+  $('#web-pair-hint').hidden = true;
+  form.hidden = false;
 }
 
 async function prepare() {
   if (!crypto.subtle || !('serviceWorker' in navigator)) throw Error('Abra a Moneta em um endereço HTTPS no Safari.');
+  await explainPairLink();
   const [store,SQL] = await Promise.all([
     vaultStorage(),
     globalThis.initSqlJs({locateFile: name => new URL(name,import.meta.url).href}),
@@ -274,7 +339,7 @@ async function prepare() {
       finance = openFinance(SQL);
       if (pending) finance.savePeers([pending]);
       const record = await store.save(finance.snapshot(),undefined,{unlocked:true});
-      start(store,SQL,finance,plain,record);
+      start(store,SQL,finance,plain,record,'',pending?.name);
     } catch (error) {
       finance?.close();
       unlockError.textContent = error.message;
@@ -301,7 +366,7 @@ async function prepare() {
         encrypt = await createCipher(password.value);
         record = await store.save(await encrypt(finance.snapshot()));
       }
-      start(store,SQL,finance,encrypt,record,viaDevice ? '' : password.value);
+      start(store,SQL,finance,encrypt,record,viaDevice ? '' : password.value,pending?.name);
     } catch (error) {
       finance?.close();
       unlockError.textContent = error.message;
@@ -431,13 +496,13 @@ async function prepareOffline() {
     let pending = false;
     navigator.serviceWorker.addEventListener('controllerchange',() => {
       if (!hadController) return;
-      if (!session) return location.reload();
+      if (!session && !firstRunBusy) return location.reload();
       pending = true;
       indicator.textContent = 'Versão nova pronta. Ela entra quando você voltar à Moneta.';
     });
     document.addEventListener('visibilitychange',() => {
       if (document.hidden) return;
-      if (pending) location.reload();
+      if (pending && !firstRunBusy) location.reload();
       else registration.update().catch(() => {});
     });
     await navigator.serviceWorker.ready;
