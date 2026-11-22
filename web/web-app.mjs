@@ -488,11 +488,15 @@ $('#web-restore').onsubmit = async event => {
 prepare().catch(error => { unlockError.textContent = error.message; });
 // Atualização sozinha: ao abrir, o navegador confere se há uma versão nova publicada. Com o cofre
 // ainda trancado, ela entra na hora; com o cofre aberto, entra quando a pessoa volta ao app.
+const version = 'MONETA_VERSION';
 async function prepareOffline() {
   const indicator = $('#app-version');
   try {
     const hadController = Boolean(navigator.serviceWorker.controller);
-    const registration = await navigator.serviceWorker.register('./sw.js');
+    // O GitHub Pages serve o sw.js com max-age=600: sem 'none', o Safari pode conferir a versão no cache
+    // HTTP. E register() não procura versão nova quando já há registro, então a busca é pedida aqui.
+    const registration = await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+    registration.update().catch(() => {});
     let pending = false;
     navigator.serviceWorker.addEventListener('controllerchange',() => {
       if (!hadController) return;
@@ -506,7 +510,7 @@ async function prepareOffline() {
       else registration.update().catch(() => {});
     });
     await navigator.serviceWorker.ready;
-    if (!pending) indicator.textContent = 'Disponível offline';
+    if (!pending) indicator.textContent = 'Versão '+version+' · disponível offline';
   } catch { indicator.textContent = 'Acesso offline indisponível'; }
 }
 void prepareOffline();
