@@ -427,4 +427,6 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
   #regras > #apply-rules,#regras > #export-rules { grid-column:auto; order:2; height:48px; background:var(--panel); color:var(--accent-ink); border:1px solid var(--line); font-size:14px }
   #regras > #export-rules { order:3 }
   #category-form > button,#rules-import > button,#new-voucher,#connect { width:100%; height:48px }
+  /* Telas de abertura e de cofre trancado: o ícone da Moneta em destaque. */
+  .locked-card img { width:88px; height:88px; margin-bottom:16px }
 }
