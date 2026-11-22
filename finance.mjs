@@ -204,7 +204,7 @@ export function overview(db, {frozen = true} = {}) {
       const description = fold(tx.description);
       const rule = normalizedRules.find(r => r.active !== false && r.matches?.(tx));
       const automatic = history.has(tx.id) ? history.get(tx.id) : inherited.find(r => r.matches?.(tx))?.category;
-      const cardPayment = creditAccounts.has(tx.account) && tx.amount > 0 && /^(?:pagamento (?:efetuado|recebido)|pagamentos validos normais)$/.test(description);
+      const cardPayment = creditAccounts.has(tx.account) && tx.amount > 0 && /^(?:pagamento\b|pagamentos validos normais$)/.test(description);
       const movement = cardPayment ? 'Pagamento de fatura' : investmentCategory(tx);
       const classified = automatic ?? aliases.get(fold(tx.providerCategory));
       const internal = internalCategories.has(classified);

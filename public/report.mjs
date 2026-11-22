@@ -33,7 +33,7 @@ export function summarize(data, month, currency, today = new Date().toLocaleDate
   const institution = new Map(data.accounts.map(a => [a.id,a.institution]));
   const explicitPayment = t => (paymentCategory != null && t.category === paymentCategory) ||
     ['Pagamento de fatura','Credit card payment'].includes(t.providerCategory) ||
-    (cards.has(t.account) && t.amount > 0 && /^(?:pagamento (?:efetuado|recebido)|pagamentos v[aá]lidos normais)\s*$/i.test(t.description));
+    (cards.has(t.account) && t.amount > 0 && /^(?:pagamento\b|pagamentos v[aá]lidos normais\s*$)/i.test(t.description));
   const cardReceipts = data.transactions.filter(t => cards.has(t.account) && t.currency === currency && !t.pending && explicitPayment(t));
   const isPayment = t => explicitPayment(t) || (!cards.has(t.account) && t.amount < 0 &&
     /^pagamento para banco /i.test(t.description) && cardReceipts.some(p =>
