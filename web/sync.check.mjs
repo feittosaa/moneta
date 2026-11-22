@@ -11,7 +11,7 @@ import { createPeer } from '../peer-sync.mjs';
 import { localAuthority } from '../local-ca.mjs';
 import { snapshot, track } from '../peer-data.mjs';
 import { openFinance } from '../dist/web/local-finance.mjs';
-import { preparePair, confirmPair, syncPair } from '../dist/web/peer-client.mjs';
+import { preparePair, confirmPair, syncPair, verifyPair } from '../dist/web/peer-client.mjs';
 
 const memory = () => { let value = null; return {load:() => value,save:v => { value = v; },remove:() => { value = null; }}; };
 
@@ -40,7 +40,8 @@ test('iPhone e computador sincronizam por HTTPS com a autoridade local, nos dois
   pc.exec('CREATE TABLE connections(id TEXT PRIMARY KEY,institution TEXT NOT NULL,status TEXT NOT NULL)');
   initFinance(pc);
   const host = createPeer({database:() => pc,persist:() => track(pc),store:memory(),name:'PC',port:24175,
-    addresses:() => [ip],web:{tls:ips => ca.issue(ips),origins:() => [origin]}});
+    addresses:() => [ip],web:{tls:ips => ca.issue(ips),origins:() => [origin]},
+    vault:() => ({password:true,idle:30}),verify:password => ({valid:password === 'senha do PC',idle:30})});
   t.after(() => host.close());
   const realFetch = globalThis.fetch;
   globalThis.fetch = browserFetch(ca.certificate,origin);
@@ -55,8 +56,12 @@ test('iPhone e computador sincronizam por HTTPS com a autoridade local, nos dois
 
   const {codes} = await host.invite();
   assert.match(codes[0],/^moneta-web-2\|https:\/\//);
-  const pair = await confirmPair(preparePair(codes[0]));
+  const {peer:pair,vault} = await confirmPair(preparePair(codes[0]));
   assert.equal(pair.name,'PC');
+  // O PC usa senha: o iPhone confere a senha com ele para criar o cofre com a mesma.
+  assert.deepEqual(vault,{password:true});
+  assert.deepEqual(await verifyPair(pair,'outra senha'),{valid:false,error:null});
+  assert.deepEqual(await verifyPair(pair,'senha do PC'),{valid:true,error:null});
   phone.savePeers([pair]);
   assert.equal(host.status().devices.length,1);
 

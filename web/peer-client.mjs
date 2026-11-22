@@ -70,12 +70,21 @@ async function exchange(origin, nonce, key, replyKey, body) {
     await aes(replyKey),bytes.subarray(12))));
 }
 
-// Primeiro contato: troca o convite do QR pela chave própria deste vínculo.
+// Primeiro contato: troca o convite do QR pela chave própria deste vínculo. vault diz se a outra
+// Moneta usa senha (nulo nas versões que não informam).
 export async function confirmPair(pair) {
   const nonce = await challenge(pair.origin,identity(pair.invitation));
   const reply = await exchange(pair.origin,nonce,pair.invitation,pair.key,{pairKey:pair.key,name:deviceName()});
   if (!reply.paired) throw Error('A outra Moneta não confirmou o vínculo.');
-  return {id:pair.id,key:pair.key,origin:pair.origin,name:String(reply.name || 'Moneta').slice(0,40)};
+  return {peer:{id:pair.id,key:pair.key,origin:pair.origin,name:String(reply.name || 'Moneta').slice(0,40)},
+    vault:reply.vault && typeof reply.vault === 'object' ? {password:reply.vault.password === true} : null};
+}
+
+// Confere a senha do cofre da outra Moneta, logo depois do vínculo, para usar a mesma aqui.
+export async function verifyPair(pair, password) {
+  const nonce = await challenge(pair.origin,pair.id);
+  const reply = await exchange(pair.origin,nonce,pair.key,pair.key,{verify:String(password)});
+  return {valid:reply.valid === true,error:typeof reply.error === 'string' ? reply.error : null};
 }
 
 // mine: {revision,state,rows} deste aparelho; agreed: última revisão combinada com o par.

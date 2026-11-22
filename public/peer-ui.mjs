@@ -8,7 +8,9 @@ const time = value => new Date(value).toLocaleString('pt-BR',{dateStyle:'short',
 
 // Sincronização entre aparelhos no painel do computador ou do Android: lista os vínculos,
 // mostra o QR (com o perfil do iPhone ou iPad antes, quando é a primeira vez) e lê o QR de outro.
-export function setupPeers(request, refresh) {
+// Numa instalação nova, a primeira abertura oferece trazer os dados de uma Moneta que a pessoa já
+// usa; se ela tiver senha, este cofre passa a usar a mesma. inherited(senha) roda depois disso.
+export function setupPeers(request, refresh, inherited = async () => {}) {
   let stream, decoder, last, change = 0, invite = null, step = null, known = 0, poll;
   const dialog = el('qr-dialog');
   const say = text => { el('status').textContent = text; };
@@ -47,7 +49,7 @@ export function setupPeers(request, refresh) {
       if (invite && info.devices.length > known) finish(info.devices.at(-1));
       else if (invite && Date.now() > invite.until && step !== 'profile') expire();
       if (info.change !== change) { change = info.change; await refresh(); }
-      if (first && !info.devices.length && !localStorage.getItem(welcome)) choose();
+      if (first && !info.devices.length && !localStorage.getItem(welcome)) { if (info.fresh) start(); else choose(); }
     } catch {}
   }
 
@@ -84,6 +86,16 @@ export function setupPeers(request, refresh) {
     note('');
     layout({title:'Usar a Moneta em outro aparelho?',back:false,close:'Agora não',
       text:'Vincule um celular, tablet ou computador para sincronizar pela rede Wi-Fi. Cada aparelho continua funcionando sozinho.'});
+  }
+  function start() {
+    invite = null; step = 'start';
+    el('qr').hidden = el('network').hidden = true;
+    note('');
+    const here = /Android/.test(navigator.userAgent) ? 'Android' : 'Outro computador';
+    layout({title:'Já usa a Moneta em outro aparelho?',back:false,next:'Ler QR Code',close:'Começar do zero',
+      text:'Leia o QR da Moneta que você já usa no computador ou no Android para trazer os dados para cá. Se ela tiver senha, este aparelho passa a usar a mesma, sem criar outra.',
+      list:['No outro aparelho, abra Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo e escolha “'+here+'”.',
+        'Aqui, toque em “Ler QR Code” e aponte a câmera para o QR. Sem câmera, use uma foto do QR.']});
   }
   // Os QRs mudam com o endereço escolhido quando o computador está em mais de uma rede.
   function draw() {
@@ -171,7 +183,7 @@ export function setupPeers(request, refresh) {
   el('qr-android').onclick = () => install('android');
   el('qr-computer').onclick = () => pairLocal(false);
   el('qr-scan').onclick = () => { dialog.close(); location.hash = '#configuracao'; void camera(); };
-  el('qr-next').onclick = () => step === 'install-ios' ? profile() : step === 'install-android' ? pairLocal(true) : pairWeb();
+  el('qr-next').onclick = () => step === 'start' ? el('qr-scan').onclick() : step === 'install-ios' ? profile() : step === 'install-android' ? pairLocal(true) : pairWeb();
   el('qr-back').onclick = () => step === 'web' ? profile() : step === 'profile' ? install('ios') : step === 'local-android' ? install('android') : choose();
   el('qr-refresh').onclick = () => step?.startsWith('local') ? pairLocal(step === 'local-android') : step === 'profile' ? profile() : void generate('web');
   el('qr-close').onclick = () => dialog.close();
@@ -198,7 +210,35 @@ export function setupPeers(request, refresh) {
     stop();
     if (!confirm('Vincular este aparelho e sincronizar os dados financeiros dos dois?')) return;
     say('Vinculando…');
-    await request('peer/join',{code}); await status();
+    const {joined} = await request('peer/join',{code}); await status();
+    if (joined?.inherit) inherit(joined);
+  }
+  // A Moneta de origem usa senha: confere a senha com ela e liga o modo cofre aqui com a mesma.
+  function inherit(joined) {
+    const box = document.getElementById('peer-inherit-dialog'), form = document.getElementById('peer-inherit-form');
+    const error = document.getElementById('peer-inherit-error');
+    document.getElementById('peer-inherit-text').textContent = 'A Moneta de '+joined.name+' usa senha. Digite essa senha para proteger o cofre deste aparelho com ela. Daqui em diante, cada aparelho guarda a própria senha.';
+    error.textContent = '';
+    form.reset();
+    box.showModal();
+    document.getElementById('peer-inherit-skip').onclick = () => {
+      box.close();
+      say('Este aparelho continua sem senha. Você pode ligar o modo cofre em Configuração.');
+    };
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const button = form.querySelector('button:not([type])'), password = form.elements.password.value;
+      button.disabled = true;
+      error.textContent = 'Conferindo a senha com '+joined.name+'…';
+      try {
+        await request('peer/inherit',{id:joined.id,password});
+        box.close();
+        form.reset();
+        say('Pronto. Este aparelho usa a mesma senha de '+joined.name+'. Anote a chave de recuperação em Configuração → Cofre do banco.');
+        await inherited(password);
+      } catch (failure) { error.textContent = failure.message; form.elements.password.select(); }
+      finally { button.disabled = false; }
+    };
   }
   el('file').onchange = async e => {
     const file = e.target.files[0]; e.target.value = '';

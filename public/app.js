@@ -541,4 +541,9 @@ refresh().catch(error => message(error.message));
 checkUpdate();
 setInterval(checkUpdate, 6 * 60 * 60_000);
 
-setupPeers(request, () => Promise.all([refreshFinance(),refresh()]));
+// Senha herdada da Moneta de origem: mostra o modo cofre ligado e, no Android, oferece a biometria.
+setupPeers(request, () => Promise.all([refreshFinance(),refresh()]), async password => {
+  await loadVault();
+  await offerDevice(password);
+  reflectBiometric(passwordMode);
+});

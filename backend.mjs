@@ -270,6 +270,42 @@ function stop(kind) {
   server.closeAllConnections?.();
 }
 
+// Confere a senha do modo cofre, com a mesma espera crescente depois de três erros.
+function checkPassword(password) {
+  if (Date.now() < retryAt) return { valid: false, error: 'Muitas tentativas. Espere ' + Math.ceil((retryAt - Date.now()) / 1000) + ' segundos.' };
+  try { passwordSecret(passwordStore, password).load(); }
+  catch (error) {
+    if (error.code !== 'BAD_PASSWORD') return { valid: false, error: error.message };
+    failures++;
+    if (failures >= 3) retryAt = Date.now() + Math.min(2 ** (failures - 2), 300) * 1000;
+    return { valid: false };
+  }
+  failures = 0;
+  return { valid: true };
+}
+// Liga o modo cofre: troca a chave do cofre (cópias da chave lacrada sem senha deixam de valer)
+// e devolve a nova chave de recuperação.
+const idleChoices = [5, 15, 30, 60, 240];
+function enablePassword(password, idle) {
+  const secret = passwordSecret(passwordStore, password, { idle });
+  vault.useSecret(secret);
+  vaultSecret.remove();
+  unlockedWith = secret;
+  vault.rotate();
+  writeFileSync(pendingRecovery, '', { mode: 0o600 });
+  autoBackup();
+  return vault.recoveryCode();
+}
+// Instalação nova: sem senha, sem vínculos e sem nada guardado pela pessoa. Só nela o vínculo
+// pela primeira abertura pode trazer a senha do cofre de origem.
+function fresh() {
+  if (unlockedWith || peer.status().devices.length || webPeer.status().devices.length) return false;
+  return ['connections', 'snapshots', 'wallet', 'vouchers', 'rules', 'assignments', 'notes']
+    .every(table => !db.prepare('SELECT 1 FROM ' + table + ' LIMIT 1').get());
+}
+// Vínculos feitos numa instalação nova com uma Moneta que usa senha, até a senha ser conferida.
+const inheritable = new Map();
+
 let panelSeen = 0;
 const markPeerPanel = () => { panelSeen = Date.now(); };
 // Só sincroniza com a Moneta aberta e destrancada: com a janela fechada, a rede não vê os dados.
@@ -278,9 +314,14 @@ const peerAddresses = process.env.MONETA_WIFI_IP ? () => [process.env.MONETA_WIF
 // Perfil com o certificado da autoridade local, entregue ao iPhone ou iPad durante o vínculo.
 let authority, profileUntil = 0;
 const localCa = () => authority ??= localAuthority(createSecret(dataDir, {name:'moneta-autoridade',base:'autoridade-local'}), deviceName());
+// Quem lê o QR fica sabendo se este cofre usa senha e pode conferir a senha logo depois do vínculo.
+const vaultInfo = () => ({ password: Boolean(unlockedWith), idle: idleMinutes() });
+const verifyPassword = password => unlockedWith ? { ...checkPassword(password), idle: idleMinutes() } : { valid: false };
 const peer = createPeer({
   database: peerDatabase,
   persist,
+  vault: vaultInfo,
+  verify: verifyPassword,
   store: createSecret(dataDir, {name:'moneta-par',base:'par-local'}),
   addresses: peerAddresses,
   profile: () => profileUntil > Date.now() ? localCa().profile() : null,
@@ -290,6 +331,8 @@ const webOrigins = (process.env.MONETA_WEB_ORIGIN || 'https://feittosaa.github.i
 const webPeer = createPeer({
   database: peerDatabase,
   persist,
+  vault: vaultInfo,
+  verify: verifyPassword,
   store: createSecret(dataDir, {name:'moneta-par-web',base:'par-web'}),
   addresses: peerAddresses,
   port: Number(process.env.MONETA_WEB_PORT || 4175),
@@ -298,7 +341,7 @@ const webPeer = createPeer({
 const peerStatus = () => ({name:deviceName(),devices:[
   ...peer.status().devices.map(device => ({...device,kind:'local'})),
   ...webPeer.status().devices.map(device => ({...device,kind:'web'})),
-],pending:peer.status().pending || webPeer.status().pending,change:peer.status().change + webPeer.status().change});
+],pending:peer.status().pending || webPeer.status().pending,change:peer.status().change + webPeer.status().change,fresh:fresh()});
 const updater = createUpdater({ dataDir, desktop, stop });
 
 const server = http.createServer(async (req, res) => {
@@ -387,12 +430,25 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/api/finance') return json(200, overview(db));
     if (req.method === 'GET' && req.url === '/api/resumo') return json(200, resumo(overview(db)));
     if (req.method === 'GET' && req.url === '/api/rules/preview') return json(200, ruleChanges(db));
-    if (req.method !== 'POST' || !['/api/peer/invite','/api/peer/join','/api/peer/check','/api/peer/forget','/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/check', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
+    if (req.method !== 'POST' || !['/api/peer/invite','/api/peer/join','/api/peer/inherit','/api/peer/check','/api/peer/forget','/api/connect-token', '/api/connections','/api/sync', '/api/settings/pluggy', '/api/restart', '/api/shutdown', '/api/recovery', '/api/vault/code', '/api/vault/rotate', '/api/vault/confirm', '/api/vault/password', '/api/vault/password/remove', '/api/vault/password/check', '/api/vault/password/idle', '/api/vault/lock', '/api/unlock', '/api/backup/restore', '/api/connections/import', '/api/update/install', ...edits].includes(req.url)) fail(404, 'Rota desconhecida.');
     if (req.headers.origin !== 'http://' + host) fail(403, 'Origem inválida.');
     const mediaType = req.headers['content-type']?.split(';')[0].trim().toLowerCase();
     if (mediaType !== 'application/json') fail(415, 'Envie o corpo como application/json.');
     const body = await readJsonObject(req, req.url.startsWith('/api/rules') ? 2 * 1024 * 1024 : req.url === '/api/backup/restore' ? 64 * 1024 * 1024 : req.url === '/api/transaction' ? 16384 : undefined);
     if (restarting) fail(503, 'O servidor está reiniciando.');
+    // Primeira abertura: o cofre novo passa a usar a mesma senha da Moneta de onde veio o QR.
+    if (req.url === '/api/peer/inherit') {
+      markPeerPanel();
+      const since = typeof body.id === 'string' && inheritable.get(body.id);
+      if (!since || Date.now() - since > 10 * 60 * 1000 || unlockedWith) fail(409, 'Este aparelho não pode mais usar a senha da outra Moneta. Ligue o modo cofre em Configuração.');
+      if (typeof body.password !== 'string' || !body.password) fail(400, 'Digite a senha.');
+      let result;
+      try { result = await peer.verify(body.id, body.password); } catch (error) { fail(502, error.message); }
+      if (!result.valid) fail(403, result.error || 'Senha errada. Use a mesma senha da outra Moneta.');
+      inheritable.delete(body.id);
+      enablePassword(body.password, idleChoices.includes(result.idle) ? result.idle : 15);
+      return json(200, { ok: true });
+    }
     if (req.url.startsWith('/api/peer/')) {
       markPeerPanel();
       try {
@@ -404,7 +460,12 @@ const server = http.createServer(async (req, res) => {
           const invite = await webPeer.invite();
           return json(200,{...invite,profiles:peerAddresses().filter(lan).map(ip => 'http://'+ip+':'+port+'/moneta.mobileconfig')});
         }
-        if (req.url.endsWith('/join')) return json(200,await peer.join(body.code));
+        if (req.url.endsWith('/join')) {
+          const blank = fresh();
+          const { joined } = await peer.join(body.code);
+          if (blank && joined?.vault?.password) inheritable.set(joined.id, Date.now());
+          return json(200,{...peerStatus(),joined:joined && {id:joined.id,name:joined.name,inherit:inheritable.has(joined.id)}});
+        }
         if (req.url.endsWith('/forget')) {
           if (typeof body.id !== 'string') fail(400,'Escolha o aparelho.');
           (body.kind === 'web' ? webPeer : peer).forget(body.id);
@@ -442,19 +503,12 @@ const server = http.createServer(async (req, res) => {
     const password = typeof body.password === 'string' ? body.password : '';
     const idle = Number(body.idle);
     if (req.url === '/api/vault/password' || req.url === '/api/vault/password/idle') {
-      if (![5, 15, 30, 60, 240].includes(idle)) fail(400, 'Escolha um tempo de inatividade válido.');
+      if (!idleChoices.includes(idle)) fail(400, 'Escolha um tempo de inatividade válido.');
     }
     if (req.url === '/api/vault/password') {
       if (unlockedWith) fail(409, 'O modo cofre já está ligado.');
       if ([...password].length < 8) fail(400, 'Use uma senha com pelo menos 8 caracteres.');
-      const secret = passwordSecret(passwordStore, password, { idle });
-      vault.useSecret(secret);
-      vaultSecret.remove();
-      unlockedWith = secret;
-      vault.rotate();
-      writeFileSync(pendingRecovery, '', { mode: 0o600 });
-      autoBackup();
-      return json(200, { code: vault.recoveryCode() });
+      return json(200, { code: enablePassword(password, idle) });
     }
     if (req.url === '/api/vault/password/idle') {
       if (!unlockedWith) fail(409, 'O modo cofre está desligado.');
@@ -472,15 +526,8 @@ const server = http.createServer(async (req, res) => {
     // Confere a senha sem mudar nada: o Android só guarda a senha para a biometria depois disso.
     if (req.url === '/api/vault/password/check') {
       if (!unlockedWith) fail(409, 'O modo cofre está desligado.');
-      if (Date.now() < retryAt) fail(429, 'Muitas tentativas. Espere ' + Math.ceil((retryAt - Date.now()) / 1000) + ' segundos.');
-      try { passwordSecret(passwordStore, password).load(); }
-      catch (error) {
-        if (error.code !== 'BAD_PASSWORD') fail(500, error.message);
-        failures++;
-        if (failures >= 3) retryAt = Date.now() + Math.min(2 ** (failures - 2), 300) * 1000;
-        fail(403, 'Senha errada.');
-      }
-      failures = 0;
+      const { valid, error } = checkPassword(password);
+      if (!valid) fail(error ? (error.startsWith('Muitas') ? 429 : 500) : 403, error || 'Senha errada.');
       return json(200, { ok: true });
     }
     if (req.url === '/api/unlock') {

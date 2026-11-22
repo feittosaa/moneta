@@ -12,6 +12,7 @@ import { snapshot, merge, revision, track } from './peer-data.mjs';
 
 const token = () => randomBytes(24).toString('base64url');
 const limit = 64 * 1024 * 1024;
+const inheritWindow = 10 * 60 * 1000;
 export const lan = ip => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip) && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) && ip.split('.').every(x => +x <= 255);
 // Redes de contêineres e máquinas virtuais não alcançam o celular. O Wi-Fi doméstico vem primeiro.
 const virtual = /^(docker|br-|veth|virbr|vmnet|vboxnet|lxc|lxd|cni|flannel|podman|kube)/;
@@ -27,8 +28,10 @@ function validEndpoint(address) {
 const label = name => String(name || '').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,40) || 'Aparelho';
 export const deviceName = () => label(process.env.MONETA_DEVICE_NAME || (process.env.MONETA_ANDROID_PARENT ? 'Android' : hostname()));
 
+// vault(): se este cofre usa senha, entregue a quem acabou de se vincular. verify(senha): confere a
+// senha deste cofre, para o aparelho recém-vinculado criar o dele com a mesma.
 export function createPeer({ database, store, persist, web, name = deviceName(), port = web ? 4175 : 4174,
-  addresses = localAddresses, profile = () => null }) {
+  addresses = localAddresses, profile = () => null, vault = () => null, verify = () => ({valid:false}) }) {
   const version = web ? 'moneta-web-2' : 'moneta-local-2';
   const proof = (key,nonce) => createHmac('sha256',Buffer.from(key,'base64url')).update(version+'proof'+nonce).digest('hex');
   const headers = (key,nonce) => ({'X-Moneta-Nonce':nonce,'X-Moneta-Proof':proof(key,nonce)});
@@ -84,16 +87,25 @@ export function createPeer({ database, store, persist, web, name = deviceName(),
     res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});
     res.end(code === 204 ? undefined : JSON.stringify(data));
   };
+  // O perfil abre no Safari, onde a pessoa lê a resposta: os erros saem em texto, não em JSON.
+  const say = (res,code,text) => {
+    res.writeHead(code,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+    res.end(text);
+  };
   async function handle(req,res) {
     try {
-      if (!lan(req.socket.remoteAddress?.replace(/^::ffff:/,'') || '') || req.headers.cookie) return send(res,403,{});
+      const remote = lan(req.socket.remoteAddress?.replace(/^::ffff:/,'') || '');
       const url = new URL(req.url,'http://moneta');
+      // Vem antes da recusa de cookies: o Safari manda os cookies de qualquer serviço no mesmo IP,
+      // porque cookie não distingue porta, e o perfil não depende de sessão nenhuma.
       if (!web && req.method === 'GET' && url.pathname === '/moneta.mobileconfig') {
+        if (!remote) return say(res,403,'A Moneta só entrega o perfil para aparelhos na mesma rede Wi-Fi.');
         const file = profile();
-        if (!file) return send(res,404,{});
+        if (!file) return say(res,404,'Este QR do perfil expirou. Na Moneta do computador ou do Android, toque em Voltar e depois em Continuar para gerar outro, e leia de novo.');
         res.writeHead(200,{'Content-Type':'application/x-apple-aspen-config','Content-Disposition':'attachment; filename="Moneta.mobileconfig"','Cache-Control':'no-store'});
         return res.end(file);
       }
+      if (!remote || req.headers.cookie) return send(res,403,{});
       if (!database() || (!hosted() && !available())) return send(res,403,{});
       if (web) {
         if (!web.origins().includes(req.headers.origin) || !addresses().some(ip => req.headers.host === ip+':'+listener.address().port)) return send(res,403,{});
@@ -134,10 +146,16 @@ export function createPeer({ database, store, persist, web, name = deviceName(),
         const id = identity(body.pairKey);
         peers = [...peers,{id,key:body.pairKey,role:'host',name:label(body.name)}];
         save(); invite = null;
-        info(id).last = Date.now();
-        return send(res,200,{packet:seal(body.pairKey,'reply'+nonce,{paired:true,name})});
+        Object.assign(info(id),{last:Date.now(),paired:Date.now()});
+        return send(res,200,{packet:seal(body.pairKey,'reply'+nonce,{paired:true,name,vault:vault()})});
       }
       const peer = peers.find(p => p.key === key);
+      // Conferência da senha, aceita só nos primeiros minutos depois do vínculo.
+      if (typeof body.verify === 'string') {
+        const result = Date.now() - (info(peer.id).paired || 0) < inheritWindow ? await verify(body.verify)
+          : {valid:false,error:'O prazo para usar a mesma senha acabou. Desvincule e vincule os aparelhos de novo.'};
+        return send(res,200,{packet:seal(key,'reply'+nonce,result)});
+      }
       if (body.packet && merge(db,body.packet)) change++;
       const mine = snapshot(db);
       persist();
@@ -194,16 +212,16 @@ export function createPeer({ database, store, persist, web, name = deviceName(),
       socket.bind(0,() => { socket.setBroadcast(true); socket.send(tag,port,'255.255.255.255'); });
     });
   }
+  async function challenge(endpoint, id) {
+    const res = await fetch('http://'+endpoint+'/challenge?id='+id,{redirect:'error',signal:AbortSignal.timeout(2500)});
+    if (!res.ok) throw Error();
+    const reply = await readJsonObject(res.body,4096);
+    if (reply.id !== id || !/^[\w-]{32}$/.test(reply.nonce)) throw Error();
+    return reply.nonce;
+  }
   async function exchange(current) {
     const db = database();
     if (!db) return;
-    const challenge = async (endpoint, id) => {
-      const res = await fetch('http://'+endpoint+'/challenge?id='+id,{redirect:'error',signal:AbortSignal.timeout(2500)});
-      if (!res.ok) throw Error();
-      const reply = await readJsonObject(res.body,4096);
-      if (reply.id !== id || !/^[\w-]{32}$/.test(reply.nonce)) throw Error();
-      return reply.nonce;
-    };
     let endpoint = current.endpoint, nonce;
     const first = current.invitation ? identity(current.invitation) : current.id;
     try { nonce = await challenge(endpoint,first); }
@@ -221,6 +239,7 @@ export function createPeer({ database, store, persist, web, name = deviceName(),
       if (!handshake.ok) throw Error();
       const reply = open(current.key,'reply'+nonce,(await readJsonObject(handshake.body,4096)).packet);
       if (!reply.paired) throw Error();
+      info(current.id).vault = reply.vault && typeof reply.vault === 'object' ? {password:reply.vault.password === true} : null;
       peer = {id:current.id,key:current.key,role:'client',endpoint,name:label(reply.name)};
       peers = peers.map(p => p === current ? peer : p);
       save();
@@ -282,13 +301,31 @@ export function createPeer({ database, store, persist, web, name = deviceName(),
       const [kind,endpoint,key,...extra] = String(code).split('|');
       if (kind !== version || !validEndpoint(endpoint) || !/^[\w-]{43}$/.test(key) || extra.length) throw Error('QR da Moneta inválido. Atualize a Moneta nos dois aparelhos.');
       const pairKey = randomBytes(32).toString('base64url');
+      const id = identity(pairKey);
       joinError = null;
-      peers = [...peers.filter(p => !p.invitation),{id:identity(pairKey),key:pairKey,invitation:key,endpoint,role:'client'}];
+      peers = [...peers.filter(p => !p.invitation),{id,key:pairKey,invitation:key,endpoint,role:'client'}];
       // Uma rodada já em andamento não inclui o vínculo novo.
       if (running) await running;
       await tick();
       if (joinError) throw Error(joinError);
-      return this.status();
+      const joined = peers.find(p => p.id === id);
+      return {...this.status(),joined:joined && {id,name:joined.name,vault:info(id).vault ?? null}};
+    },
+    // Confere, no aparelho que mostrou o QR, a senha do cofre dele.
+    async verify(id, password) {
+      const peer = peers.find(p => p.id === id && p.role === 'client' && !p.invitation);
+      if (!peer) throw Error('Vínculo não encontrado. Leia o QR de novo.');
+      let reply;
+      try {
+        const nonce = await challenge(peer.endpoint,id);
+        const res = await fetch('http://'+peer.endpoint+'/exchange',{method:'POST',redirect:'error',
+          headers:headers(peer.key,nonce),signal:AbortSignal.timeout(15000),
+          body:JSON.stringify({packet:seal(peer.key,'request'+nonce,{verify:String(password)})})});
+        if (!res.ok) throw Error();
+        reply = open(peer.key,'reply'+nonce,(await readJsonObject(res.body,4096)).packet);
+      } catch { throw Error('Não encontrei a outra Moneta. Deixe-a aberta, no mesmo Wi-Fi, e tente de novo.'); }
+      return {valid:reply.valid === true,error:typeof reply.error === 'string' ? reply.error : null,
+        idle:Number.isInteger(reply.idle) ? reply.idle : null};
     },
     tick,
     // Mantém o servidor aberto por um tempo, por exemplo para entregar o perfil do iPhone.

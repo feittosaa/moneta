@@ -2,7 +2,8 @@ import { initializeFinance, navigate, refresh } from './finance.js';
 import { openFinance } from './local-finance.mjs';
 import { createCipher, decryptVault, maxBackupSize, vaultStorage } from './vault-web.mjs';
 
-import { setupPairing } from './web-pairing.mjs';
+import { setupPairing, scanCode, pairWelcome, offline } from './web-pairing.mjs';
+import { preparePair, confirmPair, verifyPair } from './peer-client.mjs';
 import { createPluggy } from './web-pluggy.mjs';
 import { setupConnections } from './web-connections.mjs';
 import { biometricPassword, biometricSupported, deviceLabel, enrollBiometric } from './web-biometric.mjs';
@@ -135,6 +136,73 @@ function start(store,SQL,finance,encrypt,saved,password = '') {
   navigator.storage?.persist?.().catch(() => {});
 }
 
+// Primeira abertura: oferece trazer os dados de uma Moneta que a pessoa já usa. Se ela tem senha,
+// a senha é conferida com ela e o cofre daqui nasce com a mesma. Devolve {started} quando o cofre
+// já foi criado, {peer} quando a origem não usa senha (a pessoa cria uma senha a seguir) ou {}.
+function firstRun(store, SQL) {
+  const card = $('#web-start'), video = $('#web-start-video'), ask = $('#web-start-password');
+  const yes = $('#web-start-yes'), no = $('#web-start-no');
+  const note = text => { $('#web-start-feedback').textContent = text; };
+  let scanning = 0;
+  form.hidden = true;
+  card.hidden = false;
+  const done = value => {
+    scanning++;
+    card.hidden = true;
+    form.hidden = false;
+    localStorage.setItem(pairWelcome,'done');
+    return value;
+  };
+  return new Promise(resolve => {
+    no.onclick = () => resolve(done({}));
+    yes.onclick = async () => {
+      const id = ++scanning;
+      yes.disabled = true;
+      note('Aponte a câmera para o QR de vínculo.');
+      let joined;
+      try {
+        const code = await scanCode(video,() => id === scanning);
+        if (!code) return;
+        note('Vinculando…');
+        joined = await confirmPair(preparePair(code));
+      } catch (error) {
+        note(error.name === 'NotAllowedError' ? 'Permita o acesso à câmera em Ajustes para ler o QR.' : error.offline ? offline : error.message);
+        return;
+      } finally { yes.disabled = false; }
+      if (!joined.vault?.password) return resolve(done({peer:joined.peer}));
+      const name = joined.peer.name;
+      $('#web-start-steps').hidden = yes.hidden = no.hidden = true;
+      $('#web-start-title').textContent = 'Senha da Moneta de '+name;
+      $('#web-start-intro').textContent = 'Digite a senha do cofre de '+name+'. Este aparelho passa a usar a mesma senha. Daqui em diante, cada aparelho guarda a própria senha.';
+      note('');
+      ask.hidden = false;
+      ask.elements.password.focus();
+      ask.onsubmit = async event => {
+        event.preventDefault();
+        const button = ask.querySelector('button'), password = ask.elements.password.value;
+        button.disabled = true;
+        note('Conferindo a senha com '+name+'…');
+        let finance;
+        try {
+          const result = await verifyPair(joined.peer,password);
+          if (!result.valid) throw Error(result.error || 'Senha errada. Use a mesma senha da outra Moneta.');
+          finance = openFinance(SQL);
+          finance.savePeers([joined.peer]);
+          const encrypt = await createCipher(password);
+          const record = await store.save(await encrypt(finance.snapshot()));
+          done();
+          start(store,SQL,finance,encrypt,record,password);
+          resolve({started:true});
+        } catch (error) {
+          finance?.close();
+          note(error.offline ? offline : error.message);
+          ask.elements.password.select();
+        } finally { button.disabled = false; }
+      };
+    };
+  });
+}
+
 async function prepare() {
   if (!crypto.subtle || !('serviceWorker' in navigator)) throw Error('Abra a Moneta em um endereço HTTPS no Safari.');
   const [store,SQL] = await Promise.all([
@@ -152,6 +220,13 @@ async function prepare() {
     sessionStorage.setItem('web-install-skip','1');
     $('#web-install').hidden = true;
     form.hidden = false;
+  }
+  // Vínculo feito na primeira abertura com uma Moneta sem senha: entra no cofre criado a seguir.
+  let pending = null;
+  if (!saved) {
+    const result = await firstRun(store,SQL);
+    if (result.started) return;
+    pending = result.peer ?? null;
   }
   const {password,repeat,backup} = form.elements;
   const button = form.querySelector('button');
@@ -175,9 +250,10 @@ async function prepare() {
     };
   }
   $('#web-intro').textContent = saved ? 'Digite sua senha para abrir o cofre deste aparelho.' :
+    pending ? 'A Moneta de '+pending.name+' não usa senha. Crie uma senha para guardar os lançamentos neste aparelho.' :
     'Crie uma senha para guardar os lançamentos neste aparelho ou restaure um backup.';
   password.autocomplete = saved ? 'current-password' : 'new-password';
-  $('#web-import').hidden = Boolean(saved);
+  $('#web-import').hidden = Boolean(saved || pending);
   function reflect() {
     const creating = !saved && !backup.files.length;
     $('#web-repeat').hidden = !creating;
@@ -196,6 +272,7 @@ async function prepare() {
     let finance;
     try {
       finance = openFinance(SQL);
+      if (pending) finance.savePeers([pending]);
       const record = await store.save(finance.snapshot(),undefined,{unlocked:true});
       start(store,SQL,finance,plain,record);
     } catch (error) {
@@ -220,6 +297,7 @@ async function prepare() {
       } else {
         if (password.value !== repeat.value) throw Error('As senhas precisam ser iguais.');
         finance = openFinance(SQL);
+        if (pending) finance.savePeers([pending]);
         encrypt = await createCipher(password.value);
         record = await store.save(await encrypt(finance.snapshot()));
       }

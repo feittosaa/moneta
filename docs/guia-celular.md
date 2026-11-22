@@ -26,20 +26,19 @@ A Moneta para iPhone e iPad é um app da web: você instala pelo Safari, sem App
 
 ### 2. Abra e crie o cofre
 
-1. Abra a **Moneta** pelo ícone na Tela de Início.
+1. Abra a **Moneta** pelo ícone na Tela de Início. Ela pergunta se você já usa a Moneta em outro aparelho.
+   - **Ler QR Code:** traz os dados da Moneta do computador ou do Android, sem criar um cofre do zero. Siga [Vincular ao computador](#vincular-ao-computador). Se a outra Moneta tiver senha, digite essa senha: este aparelho passa a usar a mesma. Se ela não tiver senha, a Moneta pede para você criar uma, como no passo seguinte.
+   - **Começar do zero:** siga o passo seguinte.
 2. Escolha uma das opções:
    - **Criar cofre:** digite uma senha de pelo menos 8 caracteres e repita. A senha protege os lançamentos neste aparelho. Ela não pode ser recuperada, então guarde num gerenciador de senhas.
    - **Usar sem senha:** a Moneta abre direto. Você pode ativar a senha depois em **Configuração → Cofre neste aparelho**.
 3. Espere aparecer **Disponível offline** no rodapé. A partir daí, a Moneta abre mesmo sem internet.
 
-### 3. Escolha como usar
+### 3. Use a Moneta
 
-Na primeira abertura, a Moneta pergunta se você quer sincronizar com outra Moneta.
+Começando do zero, a Moneta funciona sozinha neste aparelho. Registre gastos em **Carteira** e, se quiser, [conecte seus bancos](#conectar-bancos-no-celular). Para vincular depois, use **Configuração → Sincronização → Ler QR Code**.
 
-- **Usar só neste aparelho:** a Moneta funciona sozinha. Registre gastos em **Carteira** e, se quiser, [conecte seus bancos](#conectar-bancos-no-celular).
-- **Sim, ler QR Code:** siga [Vincular ao computador](#vincular-ao-computador).
-
-Você pode mudar de ideia depois em **Configuração → Sincronização**.
+A senha copiada da outra Moneta vale só a partir do vínculo. Se você trocar a senha num aparelho depois, o outro continua com a antiga.
 
 ## Android
 
@@ -47,7 +46,7 @@ A Moneta para Android 9 ou posterior (ARM64, o caso de quase todo celular atual)
 
 1. No celular, baixe o [Moneta-Android-arm64.apk](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk). Se você já usa a Moneta no computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo → Android** e leia o primeiro QR com a câmera.
 2. Abra o arquivo baixado. O Android pede para permitir a instalação de apps dessa fonte. Se o Play Protect avisar que não conhece o app, toque em **Instalar mesmo assim**.
-3. Abra a Moneta e crie o cofre.
+3. Abra a Moneta. Ela pergunta se você já usa a Moneta em outro aparelho. Para trazer os dados do computador, toque em **Ler QR Code** e siga [Android com o computador](#android-com-o-computador). Se a Moneta do computador tiver senha, digite essa senha: o Android passa a usar a mesma e oferece o desbloqueio pela digital. Para começar sem dados, toque em **Começar do zero**.
 
 Para atualizar, veja [Atualizar a Moneta](#atualizar-a-moneta). Depois de instalado, o Android tem os mesmos recursos do computador: cofre próprio, conexão com os bancos e vínculo com outros aparelhos. As instruções para compilar o APK estão em [Moneta no celular: detalhes técnicos](mobile.md#android).
 
@@ -65,7 +64,7 @@ O iPhone e o iPad só conversam com o computador por conexão segura. Por isso, 
 4. Abra **Ajustes**. Logo no topo aparece **Perfil Baixado**. Toque nele e depois em **Instalar**. O iPhone pede o código do aparelho.
 5. Em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**, ative o certificado da **Moneta**.
 6. No computador, clique em **Já instalei o perfil, continuar**.
-7. Na Moneta do iPhone, toque em **Sim, ler QR Code**, ou abra **Configuração → Sincronização → Ler QR Code**. Permita o uso da câmera e aponte para o QR.
+7. Na Moneta do iPhone, toque em **Ler QR Code** na primeira abertura, ou abra **Configuração → Sincronização → Ler QR Code**. Permita o uso da câmera e aponte para o QR. Na primeira abertura, se a Moneta do computador tiver senha, digite essa senha para criar o cofre do iPhone com ela.
 
 Pronto: o computador e o iPhone aparecem um na lista do outro. Os passos 3 a 5 são feitos uma única vez em cada iPhone ou iPad.
 
@@ -75,7 +74,7 @@ Se o firewall do computador perguntar, permita conexões na rede privada. A Mone
 
 1. Deixe os dois no mesmo Wi-Fi.
 2. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo** e escolha **Android**. Se a Moneta ainda não está no celular, leia o primeiro QR com a câmera para baixar o aplicativo. Depois, clique em **Já instalei, continuar**.
-3. No Android, abra **Configuração → Sincronização entre aparelhos → Ler QR de outro aparelho** e aponte a câmera para o QR.
+3. No Android, toque em **Ler QR Code** na primeira abertura, ou abra **Configuração → Sincronização entre aparelhos → Ler QR de outro aparelho**, e aponte a câmera para o QR. Na primeira abertura, se a Moneta do computador tiver senha, digite essa senha para o Android usar a mesma.
 
 ### Mais de dois aparelhos
 
@@ -146,4 +145,4 @@ Se ainda não havia nada importante no Safari, basta criar o cofre de novo no ap
 
 ### O link do primeiro QR não abre o perfil
 
-O QR do perfil vale por 10 minutos. Mostre o QR de novo no computador e leia com o app **Câmera**, não pela Moneta.
+O QR do perfil vale por 10 minutos. Se o Safari mostrar que o QR expirou, toque em **Voltar** e depois em **Continuar** no computador para gerar outro, e leia com o app **Câmera**, não pela Moneta.

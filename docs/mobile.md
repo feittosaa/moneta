@@ -39,11 +39,20 @@ MONETA_VERSION=1.4.0 MONETA_ANDROID_KEYSTORE=moneta-release.jks MONETA_ANDROID_K
 Cada Moneta funciona sozinha: computador, Android, iPhone e iPad têm cofre próprio e conectam os bancos pela Pluggy por conta própria. O vínculo é opcional e aceita vários aparelhos ao mesmo tempo.
 
 1. Abra a Moneta nos dois aparelhos, na mesma rede Wi-Fi, e destranque os cofres.
-2. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo**.
+2. Numa instalação nova, a primeira abertura pergunta se você já usa a Moneta em outro aparelho. **Ler QR Code** traz os dados de lá sem criar um cofre do zero; veja [Senha na primeira abertura](#senha-na-primeira-abertura). Numa Moneta que já tem dados, a primeira abertura pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo**.
 3. Escolha o tipo do outro aparelho e siga as instruções da tela. O QR vale por dois minutos.
 4. Para Android ou outro computador, use **Ler QR de outro aparelho** no outro lado, pela câmera ou por uma foto do QR. Para iPhone, iPad e Android, o primeiro QR instala a Moneta no celular.
 
 Depois do vínculo, a lista em **Configuração** mostra cada aparelho e a hora da última troca. Para encerrar um vínculo, toque em **Desvincular** ao lado do aparelho.
+
+### Senha na primeira abertura
+
+Quando a primeira abertura de uma instalação nova lê o QR de uma Moneta com modo cofre, o aparelho novo pede a senha dessa Moneta. A senha vai cifrada pelo vínculo e é conferida pela Moneta de origem, com a mesma espera crescente depois de três erros do desbloqueio. A origem só aceita essa conferência nos 10 minutos seguintes ao vínculo. Com a senha certa:
+
+- **Computador e Android:** o modo cofre liga com a mesma senha e o mesmo tempo de inatividade da origem. O cofre ganha uma chave de recuperação própria, mostrada em **Configuração → Cofre do banco**.
+- **iPhone e iPad:** o cofre é criado com a mesma senha.
+
+Se a origem não usa senha, o computador e o Android continuam sem senha, com a chave lacrada pelo sistema; o iPhone e o iPad pedem uma senha nova, com a opção **Usar sem senha**. Depois do vínculo, cada aparelho guarda a própria senha: trocar a senha num deles não muda a do outro.
 
 ### Como a sincronização funciona
 

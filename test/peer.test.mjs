@@ -119,3 +119,43 @@ test('QR inicial, vários aparelhos, cofre fechado, reinício e desvínculo',asy
   assert.equal(a.db.prepare('SELECT COUNT(*) n FROM wallet').get().n,4);
   await assert.rejects(phone.join('moneta-local-1|'+ip+':1|'+'a'.repeat(43)),/QR da Moneta inválido/);
 });
+
+test('perfil do iPhone baixa mesmo com cookies de outro serviço no mesmo IP e explica quando expira',async t => {
+  const ip=Object.values(networkInterfaces()).flat().find(x=>x.family==='IPv4' && /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(x.address))?.address;
+  if (!ip) { t.skip('precisa de uma interface de rede local'); return; }
+  let file='<plist/>';
+  const host=createPeer({...instance(),port:24176,addresses:()=>[ip],profile:()=>file});
+  t.after(()=>host.close());
+  const url='http://'+ip+':'+await host.share(60000)+'/moneta.mobileconfig';
+  const ok=await fetch(url,{headers:{Cookie:'sessao=roteador'}});
+  assert.equal(ok.status,200);
+  assert.equal(ok.headers.get('content-type'),'application/x-apple-aspen-config');
+  assert.equal(await ok.text(),'<plist/>');
+  file=null;
+  const expired=await fetch(url);
+  assert.equal(expired.status,404);
+  assert.match(await expired.text(),/expirou/);
+});
+
+test('na primeira abertura, quem lê o QR sabe se a origem usa senha e confere a senha com ela',async t => {
+  const ip=Object.values(networkInterfaces()).flat().find(x=>x.family==='IPv4' && /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(x.address))?.address;
+  if (!ip) { t.skip('precisa de uma interface de rede local'); return; }
+  const tried=[];
+  const host=createPeer({...instance(),port:24177,addresses:()=>[ip],name:'PC',vault:()=>({password:true,idle:30}),
+    verify:password=>{tried.push(password);return {valid:password==='senha do PC',idle:30};}});
+  const phone=createPeer({...instance(),port:24177,addresses:()=>[ip]});
+  const plain=createPeer({...instance(),port:24178,addresses:()=>[ip],name:'Notebook'});
+  const other=createPeer({...instance(),port:24178,addresses:()=>[ip]});
+  t.after(()=>{host.close();phone.close();plain.close();other.close();});
+  const {joined}=await phone.join((await host.invite()).codes[0]);
+  assert.equal(joined.name,'PC');
+  assert.deepEqual(joined.vault,{password:true});
+  assert.deepEqual(await phone.verify(joined.id,'errada'),{valid:false,error:null,idle:30});
+  assert.deepEqual(await phone.verify(joined.id,'senha do PC'),{valid:true,error:null,idle:30});
+  assert.deepEqual(tried,['errada','senha do PC']);
+  await assert.rejects(phone.verify('desconhecido','x'),/Vínculo não encontrado/);
+  // Origem sem senha (ou de versão antiga, que não informa): nada a herdar.
+  const second=(await other.join((await plain.invite()).codes[0])).joined;
+  assert.equal(second.vault,null);
+  assert.deepEqual(await other.verify(second.id,'qualquer'),{valid:false,error:null,idle:null});
+});

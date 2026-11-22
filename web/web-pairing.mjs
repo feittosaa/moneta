@@ -3,23 +3,55 @@
 import { preparePair, confirmPair, syncPair } from './peer-client.mjs';
 
 const time = value => new Date(value).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+// Marca que a pergunta da primeira abertura já foi respondida.
+export const pairWelcome = 'moneta-web:pair-welcome';
+let decoder;
+
+// Abre a câmera traseira e devolve o texto do primeiro QR lido, ou nulo se active() ficar falso.
+export async function scanCode(video, active) {
+  const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  try {
+    if (!active()) return null;
+    video.srcObject = stream;
+    video.hidden = false;
+    await video.play();
+    decoder ||= import('./vendor/jsQR.js');
+    await decoder;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d',{willReadFrequently:true});
+    while (active()) {
+      if (video.videoWidth && video.videoHeight) {
+        const scale = Math.min(1,760/Math.max(video.videoWidth,video.videoHeight));
+        canvas.width = Math.round(video.videoWidth*scale); canvas.height = Math.round(video.videoHeight*scale);
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        const pixels = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const code = globalThis.jsQR(pixels.data,pixels.width,pixels.height)?.data;
+        if (code) return code;
+      }
+      await new Promise(resolve => setTimeout(resolve,160));
+    }
+    return null;
+  } finally {
+    stream.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+    video.hidden = true;
+  }
+}
 
 // finance(): banco aberto; write(op): grava no cofre; refresh(): redesenha o painel.
+export const offline = 'Não encontrei a outra Moneta. Confira se os dois estão no mesmo Wi-Fi, se a Moneta está aberta no outro aparelho e se você instalou e ativou o perfil da Moneta neste iPhone ou iPad.';
+
 export function setupPairing(finance, write, refresh) {
   const el = name => document.getElementById('web-peer-'+name);
   const dialog = el('dialog'), video = el('video');
   const seen = new Map();
-  let scanId = 0, stream, decoder, polling = false;
+  let scanId = 0, polling = false;
   const feedback = message => { el('feedback').textContent = message; };
   const status = message => { el('status').textContent = message; };
-  const dismissed = 'moneta-web:pair-welcome';
-  const remember = () => { localStorage.setItem(dismissed,'done'); };
+  const remember = () => { localStorage.setItem(pairWelcome,'done'); };
+  // A câmera fecha sozinha na próxima volta da leitura.
   function stop() {
     scanId++;
-    stream?.getTracks().forEach(track => track.stop());
-    stream = null;
-    video.srcObject = null;
-    video.hidden = true;
     el('yes').disabled = false;
   }
   function reflect() {
@@ -68,7 +100,7 @@ export function setupPairing(finance, write, refresh) {
     let ok = false, changed = false;
     try {
       if (candidate) {
-        const peer = await confirmPair(candidate);
+        const {peer} = await confirmPair(candidate);
         await write(f => f.savePeers([...f.peers(),peer]));
       }
       for (const peer of finance().peers()) {
@@ -88,40 +120,19 @@ export function setupPairing(finance, write, refresh) {
     el('yes').disabled = true;
     feedback('');
     try {
-      const camera = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-      if (id !== scanId || !dialog.open) { camera.getTracks().forEach(track => track.stop()); return; }
-      stream = camera;
-      video.srcObject = stream;
-      video.hidden = false;
-      await video.play();
-      decoder ||= import('./vendor/jsQR.js');
-      await decoder;
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d',{willReadFrequently:true});
-      while (id === scanId && dialog.open) {
-        if (video.videoWidth && video.videoHeight) {
-          const scale = Math.min(1,760/Math.max(video.videoWidth,video.videoHeight));
-          canvas.width = Math.round(video.videoWidth*scale); canvas.height = Math.round(video.videoHeight*scale);
-          ctx.drawImage(video,0,0,canvas.width,canvas.height);
-          const pixels = ctx.getImageData(0,0,canvas.width,canvas.height);
-          const code = globalThis.jsQR(pixels.data,pixels.width,pixels.height)?.data;
-          if (code) {
-            stop();
-            let candidate;
-            try { candidate = preparePair(code); }
-            catch (error) { feedback(error.message); return; }
-            feedback('Vinculando…');
-            try {
-              await sync(candidate);
-              if (dialog.open) dialog.close();
-              status('Aparelhos vinculados.');
-            } catch (error) {
-              feedback(error.offline ? 'Não encontrei a outra Moneta. Confira se os dois estão no mesmo Wi-Fi, se a Moneta está aberta no outro aparelho e se você instalou e ativou o perfil da Moneta neste iPhone ou iPad.' : error.message);
-            }
-            return;
-          }
-        }
-        await new Promise(resolve => setTimeout(resolve,160));
+      const code = await scanCode(video,() => id === scanId && dialog.open);
+      if (!code) return;
+      stop();
+      let candidate;
+      try { candidate = preparePair(code); }
+      catch (error) { feedback(error.message); return; }
+      feedback('Vinculando…');
+      try {
+        await sync(candidate);
+        if (dialog.open) dialog.close();
+        status('Aparelhos vinculados.');
+      } catch (error) {
+        feedback(error.offline ? offline : error.message);
       }
     } catch (error) {
       if (id !== scanId) return;
@@ -142,6 +153,6 @@ export function setupPairing(finance, write, refresh) {
   document.addEventListener('visibilitychange',() => { if (document.hidden) stop(); else void sync().catch(() => {}); });
   setInterval(() => void sync().catch(() => {}),15000);
   reflect();
-  if (!finance().peers().length && !localStorage.getItem(dismissed)) dialog.showModal();
+  if (!finance().peers().length && !localStorage.getItem(pairWelcome)) dialog.showModal();
   else void sync().catch(() => {});
 }

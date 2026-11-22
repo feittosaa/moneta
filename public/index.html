@@ -133,6 +133,14 @@
 <button type="button" id="peer-qr-refresh" hidden>Gerar novo QR</button>
 <button type="button" id="peer-qr-close">Agora não</button></div>
 </dialog>
+<dialog id="peer-inherit-dialog" aria-labelledby="peer-inherit-title"><form id="peer-inherit-form">
+<h2 id="peer-inherit-title">Usar a mesma senha</h2>
+<p id="peer-inherit-text"></p>
+<label class="peer-inherit-field">Senha do cofre<input type="password" name="password" required maxlength="256" autocomplete="current-password"></label>
+<p id="peer-inherit-error" role="alert"></p>
+<div class="dialog-actions"><button type="button" id="peer-inherit-skip">Agora não</button>
+<button>Usar esta senha</button></div>
+</form></dialog>
 <div id="recovery" hidden><form class="locked-card" id="recovery-form" aria-labelledby="recovery-title">
 <img src="/logo.png" alt="" width="56" height="56"><h2 id="recovery-title">O cofre do banco está trancado</h2>
 <p id="recovery-text">Este computador não conseguiu abrir a chave do banco. Isso acontece quando o TPM é apagado ou quando os dados vêm de outro computador. Digite a chave de recuperação que você anotou para abrir o cofre e lacrar a chave de novo aqui.</p>

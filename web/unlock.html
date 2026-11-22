@@ -10,6 +10,25 @@
 </ol>
 <button id="web-install-skip" type="button">Usar no Safari mesmo assim</button>
 </section>
+<section class="locked-card" id="web-start" hidden aria-labelledby="web-start-title">
+<img src="./logo.png" alt="" width="56" height="56">
+<h2 id="web-start-title">Já usa a Moneta em outro aparelho?</h2>
+<p id="web-start-intro">Leia o QR da Moneta do computador ou do Android para trazer os dados para cá. Se ela tiver senha, este aparelho passa a usar a mesma, sem criar outra.</p>
+<ol id="web-start-steps" class="peer-steps">
+<li>No outro aparelho, abra Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo e escolha “iPhone ou iPad”.</li>
+<li>Siga os passos de lá até aparecer o QR de vínculo e toque em “Ler QR Code” aqui.</li>
+</ol>
+<video id="web-start-video" hidden autoplay muted playsinline style="width:min(100%,320px)"></video>
+<form id="web-start-password" hidden>
+<label>Senha do cofre <input type="password" name="password" required maxlength="256" autocomplete="current-password"></label>
+<button>Usar esta senha</button>
+</form>
+<p id="web-start-feedback" role="status"></p>
+<div class="dialog-actions">
+<button id="web-start-yes" type="button">Ler QR Code</button>
+<button id="web-start-no" type="button">Começar do zero</button>
+</div>
+</section>
 <form class="locked-card" id="unlock-form" aria-labelledby="unlock-title">
 <img src="./logo.png" alt="" width="56" height="56">
 <h2 id="unlock-title">Moneta</h2>

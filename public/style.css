@@ -336,6 +336,8 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 .locked-card h2 { margin:0 0 12px; font-family:var(--serif); font-size:26px; font-weight:400 }
 .locked-card p { margin:0 0 12px; line-height:1.6 }
 .locked-card .locked-hint { color:var(--muted); font-size:13px; margin:0 }
+.locked-card ol { text-align:left; margin:0 0 16px }
+.locked-card .dialog-actions { justify-content:center }
 .locked-card code { padding:1px 6px; border-radius:6px; background:var(--field); border:1px solid var(--field-line) }
 
 /* Cofre do banco */
@@ -377,7 +379,7 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 .peer-steps li { margin-block: 6px; }
 
 
-#peer-qr-dialog, #web-peer-dialog {
+#peer-qr-dialog, #web-peer-dialog, #peer-inherit-dialog {
   width: min(440px, calc(100% - 28px));
   max-height: calc(100% - 28px);
   padding: 24px;
@@ -386,7 +388,8 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
   background: var(--panel);
   color: var(--text);
 }
-#peer-qr-dialog::backdrop, #web-peer-dialog::backdrop { background: var(--backdrop); }
+#peer-qr-dialog::backdrop, #web-peer-dialog::backdrop, #peer-inherit-dialog::backdrop { background: var(--backdrop); }
+.peer-inherit-field { display: grid; gap: 4px; margin-block: 12px; }
 #peer-qr { display: block; margin-inline: auto; width: min(100%, 284px); }
 @media(max-width:780px) { .brand { font-size:24px } }
 
