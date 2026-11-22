@@ -95,6 +95,7 @@ Quando der certo, a instituição aparece na lista de **Conexões** e os saldos 
 - Com a Moneta ligada, ela busca os dados novos sozinha a cada 6 horas.
 - Para buscar na hora, clique em **Sincronizar**, no canto superior direito.
 - O Meu Pluggy atualiza cada banco uma vez por dia. Clicar em **Sincronizar** traz o que o Meu Pluggy já tem, mas não força o banco a atualizar.
+- O histórico vai até cerca de um ano para trás. Esse é o limite do Open Finance, e lançamentos mais antigos não chegam à Moneta. As faturas de cartão já fechadas, com as compras delas, continuam na Moneta mesmo depois de saírem dessa janela.
 
 ## Se algo der errado
 
@@ -118,10 +119,20 @@ Você escolheu o banco diretamente, e não o MeuPluggy. Feche a janela, clique e
 
 A janela vem da internet, do site da Pluggy. Confira a conexão e desative bloqueadores de anúncios ou de scripts para o endereço da Moneta.
 
+### Os valores não batem com o banco ou com a fatura
+
+Na primeira conexão, alguns bancos, principalmente os cartões de crédito, não enviam todos os dados de uma vez. Faltam compras ou a fatura vem incompleta.
+
+1. Espere algumas horas ou até o dia seguinte e clique em **Sincronizar** na Moneta.
+2. Se ainda faltar algo, entre no [Meu Pluggy](https://meu.pluggy.ai), abra **Conexões**, escolha o cartão ou a conta e toque em **Atualizar**.
+3. Depois que o Meu Pluggy terminar, clique em **Sincronizar** na Moneta de novo.
+
+Compras recentes também podem chegar alguns dias depois, com a data original. É o caso de pagamentos de fatura datados no dia do fechamento e de lojas que confirmam a compra depois.
+
 ### Os dados pararam de atualizar
 
 - Confira no [Meu Pluggy](https://meu.pluggy.ai) se o banco continua conectado. A autorização do Open Finance com o banco tem prazo e às vezes precisa ser renovada por lá.
-- A autorização que a Moneta recebe do Meu Pluggy vale por um ano. Quando vencer, repita a Etapa 6.
+- Se você cancelou o compartilhamento com a Moneta no Meu Pluggy, ou se a conexão sumiu de lá, repita a Etapa 6. A Moneta não impõe prazo à conexão.
 
 ## Privacidade
 
