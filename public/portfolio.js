@@ -58,10 +58,6 @@ export function renderPortfolio(history,transactions,currency,target,money) {
 
   const panel = element('div'), canvas = element('canvas'), detail = element('output');
   panel.className = 'panel portfolio-chart';
-  // No celular, o desenho usa uma área estreita para que datas e linhas fiquem legíveis.
-  const narrow = matchMedia('(max-width:780px)').matches;
-  const W = narrow ? 360 : 980, H = narrow ? 250 : 320, ratio = Math.min(devicePixelRatio || 1,3);
-  canvas.width = W*ratio; canvas.height = H*ratio;
   canvas.setAttribute('aria-label','Evolução do patrimônio e dos investimentos');
   canvas.setAttribute('role','img');
   const slider = element('input');
@@ -101,9 +97,21 @@ export function renderPortfolio(history,transactions,currency,target,money) {
   }
   if (!added.length) list.append(element('p','Nenhum investimento registrado no período.'));
   target.append(panel,list);
+  // O desenho acompanha a largura real do painel, em pixels de tela: sem esticar nem encolher.
+  // Assim fica nítido no computador e legível no celular, e se ajusta quando a janela muda.
   const ctx = canvas.getContext('2d');
-  ctx.scale(ratio,ratio);
-  const left = narrow ? 8 : 24, width = W-2*left, top = 16, height = H-60;
+  let W, H, narrow, left, width;
+  const top = 16;
+  let height;
+  function size() {
+    W = Math.max(280,Math.round(canvas.clientWidth || panel.clientWidth || 980));
+    narrow = W < 600;
+    H = narrow ? 250 : Math.min(360,Math.max(280,Math.round(W*.3)));
+    const ratio = Math.min(devicePixelRatio || 1,3);
+    canvas.width = Math.round(W*ratio); canvas.height = Math.round(H*ratio);
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    left = narrow ? 8 : 24; width = W-2*left; height = H-60;
+  }
   const first = Date.parse(points[0].day), duration = Date.parse(points.at(-1).day)-first;
   const x = point => duration ? left+width*(Date.parse(point.day)-first)/duration : left+width/2;
   function draw() {
@@ -164,5 +172,12 @@ export function renderPortfolio(history,transactions,currency,target,money) {
     if (Number(slider.value) !== closest) { slider.value = closest; draw(); }
   };
   slider.oninput = draw;
-  draw();
+  size(); draw();
+  let last = W;
+  const observer = new ResizeObserver(() => {
+    if (!canvas.isConnected) { observer.disconnect(); return; }
+    if (Math.round(canvas.clientWidth) === last) return;
+    size(); last = W; draw();
+  });
+  observer.observe(panel);
 }
