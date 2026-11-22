@@ -24,7 +24,8 @@ function choices(select, options) {
   select.replaceChildren(...options.map(([value,title]) => new Option(title,String(value))));
   if (options.some(([value]) => String(value) === before)) select.value = before;
 }
-let hiddenAmounts = localStorage.getItem('moneta-hide-amounts') === 'true';
+// No celular, a Moneta sempre abre com os valores ocultos; um toque no olho mostra.
+let hiddenAmounts = matchMedia('(max-width:780px)').matches || localStorage.getItem('moneta-hide-amounts') === 'true';
 const money = n => hiddenAmounts ? '••••' : n == null ? 'Indisponível' : (n === 0 ? 0 : n/100).toLocaleString('pt-BR',{style:'currency',currency:currency.value});
 const accountName = a => [a.institution,a.name,a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
 // Rótulo curto: instituição e tipo de conta, com o final do número só quando o tipo não basta.
