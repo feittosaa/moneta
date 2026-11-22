@@ -129,6 +129,10 @@ function report() {
   const summary = summarize(data,period,currency.value);
   const amount = value => loaded ? money(value) : '—';
   $('#net-worth').textContent = amount(summary.net);
+  // Composição logo abaixo do patrimônio: o que está investido, o que está nas contas e o que sai no crédito.
+  $('#net-worth-parts').replaceChildren(...!loaded ? [] : [
+    ['Investido (bruto)',summary.investedGross],['Em contas',summary.cash],['Crédito a pagar',summary.credit,true],
+  ].map(([name,value,debt]) => tag('span',name+' '+(debt && value ? '− ' : '')+amount(value))));
   const result = summary.income - summary.spent;
   const indicators = metrics([
     ['Receita', loaded ? summary.income : null],
