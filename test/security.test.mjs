@@ -71,6 +71,9 @@ test('acesso à API, cabeçalhos, cofre e permissões dos arquivos', async t => 
   assert.equal(page.headers.get('x-content-type-options'), 'nosniff');
   assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
   assert.doesNotMatch(await page.text(), /<script>(?!<\/script>)/, 'nenhum script embutido no HTML');
+  // Depois de atualizar, a janela precisa conferir cada módulo, ou mistura versões.
+  assert.equal(page.headers.get('cache-control'), 'no-cache');
+  assert.equal((await fetch(base + '/card-periods.mjs')).headers.get('cache-control'), 'no-cache');
 
   // Entrada: chave errada recusada; chave certa vira cookie restrito e sai da URL.
   assert.equal((await fetch(base + '/entrar?chave=errada', { redirect: 'manual' })).status, 403);

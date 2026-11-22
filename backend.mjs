@@ -387,13 +387,16 @@ const server = http.createServer(async (req, res) => {
       let file;
       try { file = readFileSync(new URL(path, import.meta.url)); }
       catch { fail(404, 'Arquivo do guia não encontrado.'); }
-      res.writeHead(200, { 'Content-Type': types[guide[2]] });
+      res.writeHead(200, { 'Content-Type': types[guide[2]], 'Cache-Control': 'no-cache' });
       res.end(file);
       return;
     }
     if (req.method === 'GET' && assets.has(req.url)) {
       const [type, file] = assets.get(req.url);
       res.setHeader('Content-Type', /^(?:image\/(?:png|x-icon)|font\/ttf)$/.test(type) ? type : type + '; charset=utf-8');
+      // Sem esse cabeçalho a janela reaproveitava módulos antigos depois de atualizar: o index.html e o
+      // finance.js vinham novos e o report.mjs e o card-periods.mjs ficavam na versão anterior.
+      res.setHeader('Cache-Control', 'no-cache');
       res.end(readFileSync(new URL('public/' + file, import.meta.url)));
       return;
     }
