@@ -1,6 +1,9 @@
 import qrcode from './vendor/qrcode.mjs';
 const el = id => document.getElementById('peer-'+id);
 const welcome = 'peer-welcome';
+// Endereços de instalação: a Moneta Web para iPhone e iPad e o APK da última release para Android.
+const installIos = 'https://feittosaa.github.io/moneta/';
+const installAndroid = 'https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk';
 const time = value => new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
 
 // Sincronização entre aparelhos no painel do computador ou do Android: lista os vínculos,
@@ -64,6 +67,7 @@ export function setupPeers(request, refresh) {
     el('qr-steps').hidden = !lines.length;
   }
   function layout({title, text, list = [], next = false, back = true, close = 'Fechar'}) {
+    el('qr-next').textContent = next || 'Continuar';
     el('qr-title').textContent = title;
     el('qr-instructions').textContent = text;
     el('qr-types').hidden = step !== null;
@@ -105,10 +109,28 @@ export function setupPeers(request, refresh) {
       poll = setInterval(() => void status(),3000);
     } catch (error) { invite = null; note(error.message); el('qr-refresh').hidden = false; }
   }
+  // Primeiro passo nos celulares: instalar a Moneta lendo o QR com a câmera.
+  function install(kind) {
+    step = kind === 'ios' ? 'install-ios' : 'install-android';
+    invite = null; clearInterval(poll);
+    el('network').hidden = true;
+    note('');
+    if (kind === 'ios') layout({title:'1. Instalar a Moneta no iPhone ou iPad',next:'Já instalei, continuar',
+      text:'Se a Moneta já está na Tela de Início, toque em “Já instalei”.',
+      list:['No iPhone ou iPad, abra o app Câmera, aponte para o QR e toque no aviso para abrir no Safari.',
+        'Toque em Compartilhar e depois em Adicionar à Tela de Início. Deixe Abrir como App da Web ativado e toque em Adicionar.',
+        'Abra a Moneta pelo ícone na Tela de Início e crie o cofre.']});
+    else layout({title:'1. Instalar a Moneta no Android',next:'Já instalei, continuar',
+      text:'Se a Moneta já está instalada, toque em “Já instalei”.',
+      list:['No Android, abra a câmera, aponte para o QR e toque no link para baixar o aplicativo.',
+        'Abra o arquivo baixado. Se o Android pedir, permita instalar apps desta fonte. Se o Play Protect avisar, toque em Instalar mesmo assim.',
+        'Abra a Moneta e crie o cofre.']});
+    show(kind === 'ios' ? installIos : installAndroid,kind === 'ios' ? 'QR para abrir a Moneta Web no iPhone ou iPad' : 'QR para baixar a Moneta para Android');
+  }
   function profile() {
     step = 'profile';
-    layout({title:'1. Confiar na Moneta neste iPhone ou iPad',next:true,
-      text:'Faça isto uma vez em cada iPhone ou iPad. Se já fez, toque em “Já instalei”.',
+    layout({title:'2. Confiar na Moneta neste iPhone ou iPad',next:'Já instalei o perfil, continuar',
+      text:'Faça isto uma vez em cada iPhone ou iPad. Se já fez, toque em “Já instalei o perfil”.',
       list:['No iPhone ou iPad, abra o app Câmera, aponte para o QR e toque no aviso para abrir no Safari. Toque em Permitir para baixar o perfil.',
         'Abra Ajustes e toque em Perfil Baixado, no topo. Toque em Instalar e confirme com o código do aparelho.',
         'Em Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados, ative a Moneta e toque em Continuar.']});
@@ -116,15 +138,15 @@ export function setupPeers(request, refresh) {
   }
   function pairWeb() {
     step = 'web';
-    layout({title:'2. Vincular o iPhone ou iPad',
+    layout({title:'3. Vincular o iPhone ou iPad',
       text:'Use o mesmo Wi-Fi nos dois aparelhos e deixe a Moneta aberta aqui.',
       list:['Abra a Moneta no iPhone ou iPad. Na primeira abertura, toque em “Sim, ler QR Code”. Depois, use Configuração → Sincronização → Ler QR Code.',
         'Permita o uso da câmera e aponte para este QR.']});
     if (invite && Date.now() < invite.until) draw(); else void generate('web');
   }
-  function pairLocal() {
-    step = 'local';
-    layout({title:'Vincular Android ou computador',
+  function pairLocal(android) {
+    step = android ? 'local-android' : 'local';
+    layout({title:android ? '2. Vincular o Android' : 'Vincular outro computador',
       text:'Use o mesmo Wi-Fi nos dois aparelhos e deixe a Moneta aberta nos dois.',
       list:['No outro aparelho, abra Configuração → Sincronização entre aparelhos.',
         'Toque em “Ler QR de outro aparelho” e aponte a câmera para este QR. Sem câmera, use uma foto do QR.']});
@@ -145,12 +167,13 @@ export function setupPeers(request, refresh) {
     el('qr-close').textContent = 'Concluir';
   }
   el('address').onchange = draw;
-  el('qr-ios').onclick = profile;
-  el('qr-android').onclick = pairLocal;
+  el('qr-ios').onclick = () => install('ios');
+  el('qr-android').onclick = () => install('android');
+  el('qr-computer').onclick = () => pairLocal(false);
   el('qr-scan').onclick = () => { dialog.close(); location.hash = '#configuracao'; void camera(); };
-  el('qr-next').onclick = pairWeb;
-  el('qr-back').onclick = () => step === 'web' ? profile() : choose();
-  el('qr-refresh').onclick = () => step === 'local' ? pairLocal() : step === 'profile' ? profile() : void generate('web');
+  el('qr-next').onclick = () => step === 'install-ios' ? profile() : step === 'install-android' ? pairLocal(true) : pairWeb();
+  el('qr-back').onclick = () => step === 'web' ? profile() : step === 'profile' ? install('ios') : step === 'local-android' ? install('android') : choose();
+  el('qr-refresh').onclick = () => step?.startsWith('local') ? pairLocal(step === 'local-android') : step === 'profile' ? profile() : void generate('web');
   el('qr-close').onclick = () => dialog.close();
   dialog.onclose = () => {
     invite = null; step = null; clearInterval(poll);

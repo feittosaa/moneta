@@ -13,7 +13,7 @@ Moneta é um painel de finanças pessoais que roda no seu computador ou celular 
   &nbsp;·&nbsp;
   <a href="https://feittosaa.github.io/moneta/"><b>Abrir no iPhone e iPad</b></a>
   &nbsp;·&nbsp;
-  <a href="#android-e-sincronização-local"><b>Instalar no Android</b></a>
+  <a href="https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk"><b>⬇ Baixar para Android</b></a>
 </p>
 
 - **Local e de usuário único:** o painel escuta apenas em `127.0.0.1` e não tem contas de usuário. O banco fica cifrado em disco, com backups diários testados.
@@ -41,19 +41,32 @@ As imagens usam uma base de demonstração com dados fictícios e o modo que ocu
 
 Os instaladores já trazem tudo o que a Moneta precisa e não pedem senha de administrador.
 
+### Celular e tablet
+
+Aponte a câmera do celular para o QR do seu aparelho. Se você já usa a Moneta no computador, os mesmos QRs aparecem em **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo**.
+
+| iPhone e iPad | Android |
+| :---: | :---: |
+| <img src="docs/qr/iphone.svg" alt="QR para abrir a Moneta no iPhone e iPad" width="160"> | <img src="docs/qr/android.svg" alt="QR para baixar a Moneta para Android" width="160"> |
+| [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/) | [Moneta-Android-arm64.apk](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk) |
+
 ### Android e sincronização local
 
-A versão de desenvolvimento para Android 9 ou posterior (ARM64) inclui o motor da Moneta e guarda um cofre no próprio celular. Você pode começar pelo celular, conectar os bancos pela Pluggy e registrar lançamentos com o PC desligado.
+A Moneta para Android 9 ou posterior (ARM64) inclui o motor da Moneta e guarda um cofre no próprio celular. Você pode começar pelo celular, conectar os bancos pela Pluggy e registrar lançamentos com o PC desligado.
+
+1. Baixe o [Moneta-Android-arm64.apk](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk) no celular, pelo link ou pelo QR acima.
+2. Abra o arquivo baixado. O app não vem da Play Store, então o Android pede para permitir a instalação de apps dessa fonte. Se o Play Protect avisar que não conhece o app, toque em **Instalar mesmo assim**.
+3. Para atualizar, baixe e abra o APK da versão nova. Ele instala por cima e mantém os dados.
 
 Cada Moneta funciona sozinha, e você pode vincular quantos aparelhos quiser. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos**. No mesmo Wi-Fi, os aparelhos trocam as alterações enquanto a Moneta está aberta nos dois. Se o mesmo item mudar em dois deles, vale a edição mais recente. Cada aparelho mantém sua senha, sua chave de recuperação e suas credenciais da Pluggy.
 
-O APK desta branch é gerado localmente. O uso no celular está no [guia para celular e tablet](docs/guia-celular.md), e as instruções de compilação, nos [detalhes técnicos](docs/mobile.md).
+O uso no celular está no [guia para celular e tablet](docs/guia-celular.md), e as instruções de compilação, nos [detalhes técnicos](docs/mobile.md).
 
 ### iPhone e iPad
 
 **Versão de teste.** A Moneta funciona offline e conecta os bancos sozinha, sem computador. O passo a passo completo, com o vínculo ao computador, está no [guia para celular e tablet](docs/guia-celular.md).
 
-1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/).
+1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/), ou leia o QR acima com o app **Câmera**.
 2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Se aparecer **Abrir como App da Web**, deixe ativado, e toque em **Adicionar**.
 3. Abra a **Moneta** pelo ícone na Tela de Início e só então crie a senha. O Safari e o app guardam dados separados, então o que for criado numa aba do Safari não aparece no app.
 4. Espere aparecer **Disponível offline** no rodapé.

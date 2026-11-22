@@ -16,7 +16,7 @@ A Moneta para iPhone e iPad é um app da web: você instala pelo Safari, sem App
 
 ### 1. Instale na Tela de Início
 
-1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/).
+1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/). Se você já usa a Moneta no computador, também pode abrir **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo → iPhone ou iPad** e ler o QR com o app **Câmera**.
 2. Toque em **Compartilhar** (o quadrado com a seta para cima).
 3. Toque em **Adicionar à Tela de Início**. Se aparecer **Abrir como App da Web**, deixe ativado.
 4. Toque em **Adicionar**.
@@ -42,7 +42,13 @@ Você pode mudar de ideia depois em **Configuração → Sincronização**.
 
 ## Android
 
-O app para Android 9 ou posterior ainda está em teste e é gerado a partir do código. As instruções de compilação estão em [Moneta no celular: detalhes técnicos](mobile.md#android). Depois de instalado, o Android tem os mesmos recursos do computador: cofre próprio, conexão com os bancos e vínculo com outros aparelhos.
+A Moneta para Android 9 ou posterior (ARM64, o caso de quase todo celular atual) é um aplicativo instalado fora da Play Store.
+
+1. No celular, baixe o [Moneta-Android-arm64.apk](https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Android-arm64.apk). Se você já usa a Moneta no computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo → Android** e leia o primeiro QR com a câmera.
+2. Abra o arquivo baixado. O Android pede para permitir a instalação de apps dessa fonte. Se o Play Protect avisar que não conhece o app, toque em **Instalar mesmo assim**.
+3. Abra a Moneta e crie o cofre.
+
+Para atualizar, baixe e abra o APK da versão nova: ele instala por cima e mantém os dados. Depois de instalado, o Android tem os mesmos recursos do computador: cofre próprio, conexão com os bancos e vínculo com outros aparelhos. As instruções para compilar o APK estão em [Moneta no celular: detalhes técnicos](mobile.md#android).
 
 ## Vincular ao computador
 
@@ -53,11 +59,11 @@ Os aparelhos vinculados trocam as alterações pelo Wi-Fi de casa, enquanto a Mo
 O iPhone e o iPad só conversam com o computador por conexão segura. Por isso, na primeira vez, você instala um perfil com o certificado da Moneta do seu computador. O certificado vale só para endereços da rede local e não serve para nenhum site da internet.
 
 1. Deixe o computador e o iPhone no mesmo Wi-Fi.
-2. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo** e escolha **iPhone ou iPad**.
+2. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo** e escolha **iPhone ou iPad**. O primeiro QR instala a Moneta; se ela já está na Tela de Início, clique em **Já instalei, continuar**.
 3. No iPhone, abra o app **Câmera** e aponte para o QR. Toque no link que aparece. O Safari pergunta se quer baixar um perfil: toque em **Permitir**.
 4. Abra **Ajustes**. Logo no topo aparece **Perfil Baixado**. Toque nele e depois em **Instalar**. O iPhone pede o código do aparelho.
 5. Em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**, ative o certificado da **Moneta**.
-6. No computador, clique em **Já instalei, mostrar QR de vínculo**.
+6. No computador, clique em **Já instalei o perfil, continuar**.
 7. Na Moneta do iPhone, toque em **Sim, ler QR Code**, ou abra **Configuração → Sincronização → Ler QR Code**. Permita o uso da câmera e aponte para o QR.
 
 Pronto: o computador e o iPhone aparecem um na lista do outro. Os passos 3 a 5 são feitos uma única vez em cada iPhone ou iPad.
@@ -67,7 +73,7 @@ Se o firewall do computador perguntar, permita conexões na rede privada. A Mone
 ### Android com o computador
 
 1. Deixe os dois no mesmo Wi-Fi.
-2. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo** e escolha **Android ou outro computador**.
+2. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo** e escolha **Android**. Se a Moneta ainda não está no celular, leia o primeiro QR com a câmera para baixar o aplicativo. Depois, clique em **Já instalei, continuar**.
 3. No Android, abra **Configuração → Sincronização entre aparelhos → Ler QR de outro aparelho** e aponte a câmera para o QR.
 
 ### Mais de dois aparelhos
