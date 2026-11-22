@@ -151,6 +151,8 @@ let restarting = false;
 const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment','/api/vouchers','/api/vouchers/remove'];
 const assets = new Map([
   ['/peer-ui.mjs',['text/javascript','peer-ui.mjs']],
+  ['/device-unlock.mjs',['text/javascript','device-unlock.mjs']],
+  ['/drawer.mjs',['text/javascript','drawer.mjs']],
   ['/vendor/qrcode.mjs',['text/javascript','vendor/qrcode.mjs']],
   ['/vendor/jsQR.js',['text/javascript','vendor/jsQR.js']],
   ['/', ['text/html', 'index.html']],
