@@ -5,7 +5,7 @@
 <label id="web-mode-repeat">Repita a senha <input type="password" name="repeat" minlength="8" maxlength="256" autocomplete="new-password"></label>
 <button></button>
 </form>
-<button id="web-lock" type="button">Trancar cofre</button>
+<button class="secondary" id="web-lock" type="button">Trancar cofre</button>
 <div id="web-biometric-settings" hidden>
 <h3 id="web-biometric-title"></h3>
 <p id="web-biometric-status"></p>
@@ -13,20 +13,20 @@
 <label>Senha do cofre <input type="password" name="password" required maxlength="256" autocomplete="current-password"></label>
 <button>Ativar</button>
 </form>
-<button id="web-biometric-off" type="button" hidden>Desativar</button>
+<button class="danger" id="web-biometric-off" type="button" hidden>Desativar</button>
 </div>
 <h2>Credenciais Pluggy</h2><p id="config"></p><p class="guide-link">Não sabe onde encontrar o Client ID e o Client Secret? Siga o <a href="https://github.com/feittosaa/moneta/blob/main/docs/guia/conectar-bancos.md" target="_blank" rel="noopener noreferrer">Guia de conexão</a>.</p>
 <form id="credentials-form">
 <label>Client ID<input name="clientId" required spellcheck="false" autocapitalize="none" autocomplete="off"></label>
 <label>Client Secret<input name="clientSecret" type="password" required autocomplete="off"></label>
 <button>Validar e salvar</button></form>
-<button id="pluggy-remove" type="button" hidden>Apagar credenciais deste aparelho</button>
+<button class="danger" id="pluggy-remove" type="button" hidden>Apagar credenciais deste aparelho</button>
 <h2>Sincronização</h2>
 <p>A Moneta funciona sozinha neste aparelho. Para sincronizar, leia o QR de uma Moneta no computador ou no Android. No mesmo Wi-Fi, as alterações são trocadas enquanto a Moneta estiver aberta nos dois. Se o mesmo item mudar em dois aparelhos, vale a edição mais recente.</p>
 <p id="web-peer-status" role="status"></p>
 <ul id="web-peer-devices" class="peer-devices"></ul>
 <div class="peer-actions"><button id="web-peer-open" type="button">Ler QR Code</button>
-<button id="web-peer-retry" type="button" hidden>Sincronizar agora</button></div>
+<button class="secondary" id="web-peer-retry" type="button" hidden>Sincronizar agora</button></div>
 <h2>Backup</h2>
 <form id="web-backup" class="backup-restore">
 <label hidden id="web-backup-password">Crie uma senha para o backup <input type="password" name="password" minlength="8" maxlength="256" autocomplete="new-password"></label>
@@ -35,6 +35,6 @@
 <form id="web-restore" class="backup-restore">
 <label>Backup da Moneta Web <input type="file" name="backup" accept=".monetaweb" required></label>
 <label>Senha do backup <input type="password" name="password" required autocomplete="off" maxlength="256"></label>
-<button>Restaurar</button>
+<button class="secondary">Restaurar</button>
 </form>
 </section>

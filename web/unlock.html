@@ -8,7 +8,7 @@
 <li>Ative <b>Abrir como App da Web</b> e toque em <b>Adicionar</b>.</li>
 <li>Abra a Moneta pelo ícone na Tela de Início e crie a senha por lá.</li>
 </ol>
-<button id="web-install-skip" type="button">Usar no Safari mesmo assim</button>
+<button class="secondary" id="web-install-skip" type="button">Usar no Safari mesmo assim</button>
 </section>
 <section class="locked-card" id="web-start" hidden aria-labelledby="web-start-title">
 <img src="./logo.png" alt="" width="56" height="56">
@@ -27,7 +27,7 @@
 <p id="web-start-feedback" role="status"></p>
 <div class="dialog-actions" id="web-start-actions">
 <button id="web-start-yes" type="button">Ler QR Code</button>
-<button id="web-start-no" type="button">Começar do zero</button>
+<button class="secondary" id="web-start-no" type="button">Começar do zero</button>
 </div>
 </section>
 <section class="locked-card" id="web-pair-hint" hidden aria-labelledby="web-pair-hint-title">
@@ -39,7 +39,7 @@
 <li>Na primeira abertura, toque em <b>Ler QR Code</b>. Se a Moneta já estiver em uso, abra <b>Configuração → Sincronização → Ler QR Code</b>.</li>
 <li>Aponte a câmera para o QR que está no computador ou no Android.</li>
 </ol>
-<button id="web-pair-hint-skip" type="button">Continuar no Safari</button>
+<button class="secondary" id="web-pair-hint-skip" type="button">Continuar no Safari</button>
 </section>
 <form class="locked-card" id="unlock-form" aria-labelledby="unlock-title">
 <img src="./logo.png" alt="" width="56" height="56">
@@ -50,7 +50,7 @@
 <label id="web-import" hidden>Ou escolha um backup <input type="file" name="backup" accept=".monetaweb"></label>
 <button disabled>Continuar</button>
 <button id="web-biometric" type="button" hidden></button>
-<button id="web-skip-password" type="button" hidden>Usar sem senha</button>
+<button class="secondary" id="web-skip-password" type="button" hidden>Usar sem senha</button>
 <p id="unlock-error" role="status"></p>
 </form>
 </div>
@@ -67,7 +67,7 @@
 <p id="web-peer-feedback" role="status"></p>
 <div class="dialog-actions">
 <button id="web-peer-yes" type="button">Sim, ler QR Code</button>
-<button id="web-peer-no" type="button">Usar só neste aparelho</button>
+<button class="secondary" id="web-peer-no" type="button">Usar só neste aparelho</button>
 </div>
 </dialog>
 <dialog id="web-biometric-offer" aria-labelledby="web-biometric-offer-title">
@@ -76,7 +76,7 @@
 <p id="web-biometric-offer-feedback" role="status"></p>
 <div class="dialog-actions">
 <button id="web-biometric-offer-yes" type="button"></button>
-<button id="web-biometric-offer-no" type="button">Agora não</button>
+<button class="secondary" id="web-biometric-offer-no" type="button">Agora não</button>
 </div>
 </dialog>
 <script src="./sql-wasm-browser.js"></script>

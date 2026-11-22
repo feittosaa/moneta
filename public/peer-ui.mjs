@@ -30,6 +30,7 @@ export function setupPeers(request, refresh, inherited = async () => {}) {
       const forget = document.createElement('button');
       forget.type = 'button';
       forget.textContent = 'Desvincular';
+      forget.className = 'danger';
       forget.onclick = async () => {
         if (!confirm('Desvincular '+device.name+'? Os lançamentos já sincronizados ficam nos dois aparelhos.')) return;
         try { await request('peer/forget',{id:device.id,kind:device.kind}); await status(); } catch (error) { say(error.message); }

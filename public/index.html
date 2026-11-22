@@ -27,7 +27,7 @@
 <label id="portfolio-year-label">Ano<select id="portfolio-year"></select></label>
 <label class="portfolio-custom" hidden>De<input type="date" id="portfolio-from"></label><label class="portfolio-custom" hidden>Até<input type="date" id="portfolio-to"></label></div>
 <div id="portfolio-content"></div></div></section>
-<section id="transacoes" hidden><div class="filters"><label>Período<select id="ledger-period"><option value="month">Mês selecionado</option><option value="all">Todos os meses</option></select></label><label>Buscar descrição<input id="search" type="search"></label><label>Conta ou cartão<select id="account"></select></label><label>Categoria<select id="filter-category"></select></label></div><div id="ledger-context" hidden><span id="ledger-context-label"></span> <button type="button" id="clear-ledger-context">Ver transações pela data da compra</button></div><div id="ledger"></div>
+<section id="transacoes" hidden><div class="filters"><label>Período<select id="ledger-period"><option value="month">Mês selecionado</option><option value="all">Todos os meses</option></select></label><label>Buscar descrição<input id="search" type="search"></label><label>Conta ou cartão<select id="account"></select></label><label>Categoria<select id="filter-category"></select></label></div><div id="ledger-context" hidden><span id="ledger-context-label"></span> <button class="secondary" type="button" id="clear-ledger-context">Ver transações pela data da compra</button></div><div id="ledger"></div>
 <dialog id="tx-dialog" aria-labelledby="tx-title"><form id="tx-form">
 <h2 id="tx-title"></h2><p id="tx-details"></p>
 <label>Categoria<select name="category"></select></label>
@@ -35,7 +35,7 @@
 <label class="check"><input name="createRule" type="checkbox"> Criar regra com esta categoria</label>
 <fieldset id="tx-rule" hidden><label>Prioridade<select name="rulePriority"><option value="1">1 · primeiro</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10 · por último</option></select></label><label>Aplicar quando<select name="ruleMode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label><div id="tx-conditions" class="conditions"></div></fieldset>
 <p id="tx-error" role="alert"></p>
-<div class="dialog-actions"><button type="button" id="tx-cancel">Cancelar</button><button>Salvar</button></div>
+<div class="dialog-actions"><button class="secondary" type="button" id="tx-cancel">Cancelar</button><button>Salvar</button></div>
 </form></dialog></section>
 <section id="carteira" hidden><div id="wallet-balance"></div>
 <form id="wallet-form"><label>Movimentação<select name="operation"><option value="add">Adicionar saldo</option><option value="remove">Retirar saldo</option><option value="income">Receita em dinheiro</option><option value="expense">Despesa em dinheiro</option></select></label>
@@ -58,21 +58,21 @@
 <label><span id="voucher-start-label">Primeiro crédito</span><input name="start" type="date" required></label>
 <label id="voucher-end">Último crédito (opcional)<input name="end" type="date"></label>
 <p id="voucher-error" role="alert"></p>
-<div class="dialog-actions"><button type="button" id="voucher-cancel">Cancelar</button><button>Salvar</button></div>
+<div class="dialog-actions"><button class="secondary" type="button" id="voucher-cancel">Cancelar</button><button>Salvar</button></div>
 </form></dialog></section>
 <section id="categorias" hidden><form id="category-form"><label>Nome da categoria<input name="name" required maxlength="100"></label><label>Cor<input type="color" name="color" value="#78a9ff"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label><button>Criar categoria</button></form><div class="filters"><label>Origem<select id="category-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="category-list"></div>
 <dialog id="category-editor" aria-labelledby="category-heading"><form id="edit-category-form">
 <h2 id="category-heading">Editar categoria</h2><label>Nome<input name="name" required maxlength="100"></label>
 <label>Cor<input type="color" name="color"></label><label class="check"><input name="internal" type="checkbox"> Excluir do fluxo de receitas e despesas</label>
-<div class="dialog-actions"><button type="button" id="cancel-category">Cancelar</button><button>Salvar</button></div>
+<div class="dialog-actions"><button class="secondary" type="button" id="cancel-category">Cancelar</button><button>Salvar</button></div>
 </form></dialog></section>
-<section id="regras" hidden><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><button type="button" id="apply-rules">Aplicar regras ao histórico</button>
+<section id="regras" hidden><p>A primeira regra correspondente classifica lançamentos antigos e novos. A escolha manual tem prioridade.</p><button type="button" id="new-rule">Criar regra</button><button class="secondary" type="button" id="apply-rules">Aplicar regras ao histórico</button>
 <dialog id="apply-dialog" aria-labelledby="apply-title" aria-describedby="apply-description">
 <h2 id="apply-title">Aplicar todas as regras ao histórico?</h2>
 <p id="apply-description">A Moneta vai reavaliar os lançamentos de todas as contas e meses com as regras ativas. As categorias escolhidas manualmente serão preservadas.</p>
 <p id="apply-summary" role="status"></p><div id="apply-preview"></div>
-<div class="dialog-actions"><button type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply" disabled>Confirmar e aplicar</button></div>
-</dialog><button type="button" id="new-rule">Criar regra</button> <button type="button" id="export-rules" title="Baixa em JSON as regras da origem escolhida no filtro abaixo">Exportar regras</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button>Importar regras</button></form><div class="filters"><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><label>Origem<select id="rule-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="rule-list"></div>
+<div class="dialog-actions"><button class="secondary" type="button" id="cancel-apply" autofocus>Cancelar</button><button type="button" id="confirm-apply" disabled>Confirmar e aplicar</button></div>
+</dialog> <button class="secondary" type="button" id="export-rules" title="Baixa em JSON as regras da origem escolhida no filtro abaixo">Exportar regras</button><form id="rules-import"><label>Exportação de regras do perfil pessoal<input name="file" type="file" required accept=".json,application/json"></label><label class="check"><input type="checkbox" name="applyExisting" checked> Aplicar também aos lançamentos existentes</label><button class="secondary">Importar regras</button></form><div class="filters"><label>Pesquisar regras<input type="search" id="rule-search" placeholder="Nome, termo ou categoria"></label><label>Origem<select id="rule-origin"><option value="">Todas</option><option value="mine">Criadas por mim</option><option value="moneta">Moneta</option></select></label></div><div id="rule-list"></div>
 <dialog id="rule-editor" aria-labelledby="rule-heading"><form id="edit-rule-form"><h2 id="rule-heading">Editar regra</h2>
 <label id="edit-title-label">Nome<input name="title" required></label>
 <label>Categoria<select name="category" required></select></label>
@@ -80,7 +80,7 @@
 <label>Aplicar quando<select name="mode"><option value="and">Todas as condições coincidirem</option><option value="or">Alguma condição coincidir</option></select></label>
 <label class="check"><input type="checkbox" name="active"> Regra ativa</label></div>
 <p class="hint">Quando mais de uma regra serve para a mesma transação, vale a de prioridade menor: 1 é testada primeiro e 10 por último. Em empate, vale a ordem da lista. Suas regras são testadas antes das regras da Moneta.</p><div id="edit-conditions" class="conditions"></div><p role="alert" id="edit-error"></p>
-<div class="dialog-actions"><button type="button" id="edit-cancel">Cancelar</button><button type="submit">Salvar</button></div>
+<div class="dialog-actions"><button class="secondary" type="button" id="edit-cancel">Cancelar</button><button type="submit">Salvar</button></div>
 </form></dialog></section>
 <section id="conexoes" hidden><button id="connect" disabled>Conectar instituição</button><p id="hint"></p><ul id="items"></ul>
 </section>
@@ -90,29 +90,29 @@
 <button>Validar e salvar</button></form>
 <h2>Cofre do banco</h2><p id="vault-status"></p>
 <div id="vault-pending" class="vault-alert" hidden><p><strong>Anote a chave de recuperação.</strong> Sem ela, se o TPM do computador for apagado (numa atualização de BIOS, por exemplo) ou se você trocar de computador, não há como abrir o banco. Guarde num gerenciador de senhas ou no papel, longe do computador.</p><button type="button" id="vault-show">Mostrar chave de recuperação</button></div>
-<div id="vault-code" class="vault-alert" hidden><p>Chave de recuperação:</p><code id="vault-code-text"></code><div class="dialog-actions"><button type="button" id="vault-copy">Copiar</button><button type="button" id="vault-confirm">Já guardei num lugar seguro</button></div></div>
-<button type="button" id="vault-rotate">Gerar nova chave de recuperação</button>
+<div id="vault-code" class="vault-alert" hidden><p>Chave de recuperação:</p><code id="vault-code-text"></code><div class="dialog-actions"><button class="secondary" type="button" id="vault-copy">Copiar</button><button type="button" id="vault-confirm">Já guardei num lugar seguro</button></div></div>
+<button class="secondary" type="button" id="vault-rotate">Gerar nova chave de recuperação</button>
 <h2 id="peer-title">Sincronização entre aparelhos</h2>
 <p>A Moneta funciona sozinha em cada aparelho. Se quiser, vincule outros: no mesmo Wi-Fi, eles trocam as alterações enquanto a Moneta está aberta nos dois. Se o mesmo item mudar em dois aparelhos, vale a edição mais recente.</p>
 <p id="peer-status" role="status"></p>
 <ul id="peer-devices" class="peer-devices"></ul>
 <div class="peer-actions"><button type="button" id="peer-show">Mostrar QR de vínculo</button>
-<button type="button" id="peer-camera">Ler QR de outro aparelho</button></div>
+<button class="secondary" type="button" id="peer-camera">Ler QR de outro aparelho</button></div>
 <label class="peer-file">Ou selecione uma foto do QR <input id="peer-file" type="file" accept="image/*"></label>
 <video hidden id="peer-video" autoplay muted playsinline></video>
-<button hidden type="button" id="peer-stop">Fechar câmera</button>
+<button class="secondary" hidden type="button" id="peer-stop">Fechar câmera</button>
 <h2>Backups</h2><p>A Moneta guarda sozinha um backup por dia dos últimos 7 dias, cifrado e testado logo depois de criado. Para não perder nada se o computador quebrar, baixe um backup de vez em quando e guarde fora dele (num pen drive ou na nuvem). Ele abre com a chave de recuperação que valia no dia em que foi feito.</p>
 <button type="button" id="backup-download">Baixar backup agora</button>
 <ul id="backup-list" class="backup-list"></ul>
-<form id="backup-restore" class="backup-restore"><label>Restaurar de um arquivo<input type="file" name="file" accept=".monetabackup" required></label><label id="backup-code" hidden>Chave de recuperação da época do backup<input name="code" autocomplete="off" spellcheck="false" placeholder="MONETA-XXXXX-XXXXX-…"></label><button>Restaurar</button></form>
+<form id="backup-restore" class="backup-restore"><label>Restaurar de um arquivo<input type="file" name="file" accept=".monetabackup" required></label><label id="backup-code" hidden>Chave de recuperação da época do backup<input name="code" autocomplete="off" spellcheck="false" placeholder="MONETA-XXXXX-XXXXX-…"></label><button class="secondary">Restaurar</button></form>
 <h2>Modo cofre</h2><p id="password-status"></p>
 <form id="password-on" class="password-form"><label>Senha da Moneta<input type="password" name="password" required minlength="8" autocomplete="new-password"></label><label>Repita a senha<input type="password" name="repeat" required minlength="8" autocomplete="new-password"></label><label>Trancar depois de<select name="idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button>Ligar modo cofre</button></form>
-<div id="password-settings" hidden><div class="password-form"><label>Trancar depois de<select id="password-idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button type="button" id="password-lock">Trancar agora</button></div>
-<form id="password-off" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button>Desligar modo cofre</button></form>
+<div id="password-settings" hidden><div class="password-form"><label>Trancar depois de<select id="password-idle"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label><button class="secondary" type="button" id="password-lock">Trancar agora</button></div>
+<form id="password-off" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button class="danger">Desligar modo cofre</button></form>
 <div id="biometric" hidden><h3>Digital ou bloqueio de tela</h3><p id="biometric-status"></p>
 <form id="biometric-on" class="password-form"><label>Senha atual<input type="password" name="password" required autocomplete="current-password"></label><button>Ativar desbloqueio pelo aparelho</button></form>
-<button type="button" id="biometric-off" hidden>Desativar desbloqueio pelo aparelho</button></div></div>
-<h2>Servidor local</h2><button id="restart" type="button">Reiniciar servidor</button> <button id="shutdown" type="button" hidden>Encerrar a Moneta</button></section>
+<button class="danger" type="button" id="biometric-off" hidden>Desativar desbloqueio pelo aparelho</button></div></div>
+<h2>Servidor local</h2><button class="secondary" id="restart" type="button">Reiniciar servidor</button> <button class="danger" id="shutdown" type="button" hidden>Encerrar a Moneta</button></section>
 <section id="guia" hidden><div class="overview-tabs guide-tabs" role="group" aria-label="Guias"><button type="button" data-guide="bancos" aria-pressed="true">Conectar bancos</button><button type="button" data-guide="celular" aria-pressed="false">Celular e tablet</button></div><article id="guide" class="guide"></article></section>
 <p id="message" role="status"></p></main>
 <dialog id="peer-qr-dialog" aria-labelledby="peer-qr-title">
@@ -128,17 +128,17 @@
 <label hidden id="peer-network">Endereço na rede Wi-Fi <select id="peer-address"></select></label>
 <img hidden id="peer-qr" alt="">
 <p id="peer-qr-status" role="status"></p>
-<div class="dialog-actions"><button type="button" id="peer-qr-back" hidden>Voltar</button>
+<div class="dialog-actions"><button class="secondary" type="button" id="peer-qr-back" hidden>Voltar</button>
 <button type="button" id="peer-qr-next" hidden>Continuar</button>
-<button type="button" id="peer-qr-refresh" hidden>Gerar novo QR</button>
-<button type="button" id="peer-qr-close">Agora não</button></div>
+<button class="secondary" type="button" id="peer-qr-refresh" hidden>Gerar novo QR</button>
+<button class="secondary" type="button" id="peer-qr-close">Agora não</button></div>
 </dialog>
 <dialog id="peer-inherit-dialog" aria-labelledby="peer-inherit-title"><form id="peer-inherit-form">
 <h2 id="peer-inherit-title">Usar a mesma senha</h2>
 <p id="peer-inherit-text"></p>
 <label class="peer-inherit-field">Senha do cofre<input type="password" name="password" required maxlength="256" autocomplete="current-password"></label>
 <p id="peer-inherit-error" role="alert"></p>
-<div class="dialog-actions"><button type="button" id="peer-inherit-skip">Agora não</button>
+<div class="dialog-actions"><button class="secondary" type="button" id="peer-inherit-skip">Agora não</button>
 <button>Usar esta senha</button></div>
 </form></dialog>
 <div id="recovery" hidden><form class="locked-card" id="recovery-form" aria-labelledby="recovery-title">
@@ -151,7 +151,7 @@
 <p>O modo cofre está ligado. Digite a senha da Moneta para abrir o banco.</p>
 <label>Senha<input type="password" name="password" required autocomplete="current-password"></label>
 <p id="unlock-error" role="alert"></p><button>Destrancar</button>
-<button type="button" id="unlock-biometric" hidden>Usar digital ou bloqueio de tela</button>
+<button class="secondary" type="button" id="unlock-biometric" hidden>Usar digital ou bloqueio de tela</button>
 <button type="button" id="unlock-forgot" class="link-button">Esqueci a senha</button></form></div>
 <div id="locked" hidden><div class="locked-card" role="alertdialog" aria-labelledby="locked-title" aria-describedby="locked-text">
 <img src="/logo.png" alt="" width="56" height="56"><h2 id="locked-title">Este navegador ainda não tem acesso à Moneta</h2>

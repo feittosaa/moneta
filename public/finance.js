@@ -28,10 +28,10 @@ function choices(select, options) {
 // No celular, a Moneta sempre abre com os valores ocultos; um toque no olho mostra.
 let hiddenAmounts = matchMedia('(max-width:780px)').matches || localStorage.getItem('moneta-hide-amounts') === 'true';
 const money = n => hiddenAmounts ? '••••' : n == null ? 'Indisponível' : (n === 0 ? 0 : n/100).toLocaleString('pt-BR',{style:'currency',currency:currency.value});
-const accountName = a => [a.institution,a.name,a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+const accountName = a => [a.institution,a.name,a.last4 && '••\u00a0'+a.last4].filter(Boolean).join(' · ');
 // Rótulo curto: instituição e tipo de conta, com o final do número só quando o tipo não basta.
 const accountLabel = a => [a.institution,a.kind || (a.type === 'CREDIT' ? 'Cartão' : a.name && a.name.toLocaleLowerCase() !== a.institution?.toLocaleLowerCase() ? a.name : ''),
-  (a.type === 'CREDIT' || !a.kind) && a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  (a.type === 'CREDIT' || !a.kind) && a.last4 && '••\u00a0'+a.last4].filter(Boolean).join(' · ');
 const categoryName = id => id === 'invoice' ? 'Fatura sem detalhamento' : id === 'invoices' ? 'Faturas de cartão' : data.categories.find(c => c.id === id)?.name || 'Sem categoria';
 function categoryColor(id) {
   return data.categories.find(c => c.id === id)?.color || (id === 'invoice' || id === 'invoices' ? 'var(--invoice)' : 'var(--muted)');
@@ -267,7 +267,7 @@ function ledger() {
   });
   $('#ledger').replaceChildren(table(['Data','Descrição','Conta','Categoria','Situação','Valor'],records,'Nenhuma transação para estes filtros.'));
   if (rows.length > ledgerLimit) {
-    const more = tag('button','Mostrar mais'); more.onclick = () => {ledgerLimit += 100; ledger();}; $('#ledger').append(more);
+    const more = tag('button','Mostrar mais'); more.className = 'secondary show-more'; more.onclick = () => {ledgerLimit += 100; ledger();}; $('#ledger').append(more);
   }
 }
 const formatDate = value => value.split('-').reverse().join('/');
@@ -318,7 +318,7 @@ function cardAmount(tx) {
 }
 function cards() {
   const list = data.accounts.filter(a => ['CREDIT','BANK'].includes(a.type) && a.currency === currency.value);
-  const cardName = a => [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '•• '+a.last4].filter(Boolean).join(' · ');
+  const cardName = a => [a.type === 'BANK' ? 'Débito' : 'Crédito',a.institution,a.kind || (a.name !== a.institution ? a.name : ''),a.last4 && '••\u00a0'+a.last4].filter(Boolean).join(' · ');
   choices($('#card'),list.map(a => [a.id,cardName(a)]));
   const card = list.find(a => a.id === $('#card').value);
   const pane = $('#card-detail');
@@ -378,7 +378,7 @@ function vouchers() {
   $('#voucher-credits').replaceChildren(table(['Data','Vale','Categoria','Valor'],credits.map(t =>
     [formatDate(t.date),names.get(t.account) ?? t.description,categoryName(t.category),cardAmount(t)]),'Nenhum crédito de vale neste mês.'));
   $('#voucher-list').replaceChildren(table(['Vale','Valor','Recorrência','Categoria','Período','Ações'],list.map(v => {
-    const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+    const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir'); remove.className = 'danger';
     actions.className = 'rule-actions';
     edit.onclick = () => editVoucher(v);
     remove.onclick = () => {
@@ -430,9 +430,10 @@ function conditionEditor(root, conditions, inherit) {
     : inherit ? [['receiver_document',inherit+' do destinatário desta transação']] : [];
   const fields = [['description','Descrição'],...receiver,['amount','Valor'],['date','Data'],['status','Situação'],['type','Tipo'],['payee_id','Favorecido importado']];
   const operators = [['contains','contém'],['not_contains','não contém'],['starts_with','começa com'],['ends_with','termina com'],['equals','igual a'],['not_equals','diferente de'],['regex','corresponde à expressão'],['lt','menor que'],['lte','menor ou igual a'],['gt','maior que'],['gte','maior ou igual a']];
-  function button(title,action) {
+  function button(title,action,className = 'secondary') {
     const control = tag('button',title);
     control.type = 'button';
+    control.className = className;
     control.onclick = action;
     return control;
   }
@@ -440,10 +441,10 @@ function conditionEditor(root, conditions, inherit) {
     container.replaceChildren();
     for (const node of nodes) {
       const row = tag('fieldset');
-      const remove = button('Remover',() => {
+      const remove = button('Remover condição',() => {
         nodes.splice(nodes.indexOf(node),1);
         row.remove();
-      });
+      },'danger remove-condition');
       if (Array.isArray(node.conditions)) {
         const mode = tag('select'), inner = tag('div');
         choices(mode,[['and','Todas (E)'],['or','Qualquer (OU)']]);
@@ -582,7 +583,7 @@ function manage(page) {
       {title:'Origem',sort:c => c.custom ? mine : 'Moneta',cell:c => c.custom ? mine : 'Moneta'},
       {title:'Participa do fluxo mensal',sort:c => c.internal ? 'Não' : 'Sim',cell:c => c.internal ? 'Não' : 'Sim'},
       {title:'Ações',cell:c => {
-        const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+        const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir'); remove.className = 'danger';
         actions.className = 'rule-actions';
         edit.onclick = () => editCategory(c);
         remove.onclick = () => {
@@ -610,7 +611,7 @@ function manage(page) {
       {title:'Categoria',sort:r => categoryName(r.category),cell:r => categoryName(r.category)},
       {title:'Situação',sort:r => r.status,cell:r => r.status},
       {title:'Ações',cell:r => {
-        const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir');
+        const actions = tag('div'), edit = tag('button','Editar'), remove = tag('button','Excluir'); remove.className = 'danger';
         actions.className = 'rule-actions';
         edit.onclick = () => editRule(r);
         remove.onclick = () => {

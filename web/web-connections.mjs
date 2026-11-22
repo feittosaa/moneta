@@ -3,6 +3,18 @@ import { syncFinance } from './finance.js';
 
 const $ = selector => document.querySelector(selector);
 
+// Status da conexão como a Pluggy informa, em português e com o tom de cada um.
+const connectionStates = { UPDATED:['Atualizada','ok'], UPDATING:['Atualizando','wait'], WAITING_USER_INPUT:['Aguardando você','warn'],
+  WAITING_USER_ACTION:['Aguardando você','warn'], LOGIN_ERROR:['Erro de acesso','error'], OUTDATED:['Desatualizada','warn'], CREATED:['Criada','wait'] };
+function connectionRow(item) {
+  const row = document.createElement('li'), name = document.createElement('strong'), badge = document.createElement('span');
+  const [label, tone] = connectionStates[item.status] || [item.status || 'Sem status', 'wait'];
+  name.textContent = item.institution;
+  badge.className = 'connection-status ' + tone;
+  badge.textContent = label;
+  row.append(name, badge);
+  return row;
+}
 export function setupConnections(request, say, vaultOff) {
   let state = {configured:false,connections:[]};
   async function refresh() {
@@ -19,11 +31,7 @@ export function setupConnections(request, say, vaultOff) {
     $('#connect').disabled = off || !state.configured;
     $('#sync').hidden = !state.configured;
     $('#sync').disabled = !state.configured || !state.connections.length;
-    $('#items').replaceChildren(...state.connections.map(item => {
-      const row = document.createElement('li');
-      row.textContent = item.institution+' · Status ao conectar: '+item.status;
-      return row;
-    }));
+    $('#items').replaceChildren(...state.connections.map(connectionRow));
   }
   const form = $('#credentials-form');
   form.onsubmit = async event => {

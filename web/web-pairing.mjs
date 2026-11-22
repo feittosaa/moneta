@@ -65,6 +65,7 @@ export function setupPairing(finance, write, refresh) {
       const forget = document.createElement('button');
       forget.type = 'button';
       forget.textContent = 'Desvincular';
+      forget.className = 'danger';
       forget.onclick = async () => {
         if (!confirm('Desvincular '+peer.name+'? Os lançamentos já sincronizados ficam nos dois aparelhos.')) return;
         try { await write(f => f.savePeers(f.peers().filter(p => p.id !== peer.id))); seen.delete(peer.id); reflect(); }

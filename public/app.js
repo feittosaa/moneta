@@ -25,6 +25,18 @@ const keyProtections = {
   dpapi: 'protegida pelo cofre do Windows (DPAPI) do seu usuário',
 };
 let pluggy = { configured: false, connections: 0 };
+// Status da conexão como a Pluggy informa, em português e com o tom de cada um.
+const connectionStates = { UPDATED:['Atualizada','ok'], UPDATING:['Atualizando','wait'], WAITING_USER_INPUT:['Aguardando você','warn'],
+  WAITING_USER_ACTION:['Aguardando você','warn'], LOGIN_ERROR:['Erro de acesso','error'], OUTDATED:['Desatualizada','warn'], CREATED:['Criada','wait'] };
+function connectionRow(item) {
+  const row = document.createElement('li'), name = document.createElement('strong'), badge = document.createElement('span');
+  const [label, tone] = connectionStates[item.status] || [item.status || 'Sem status', 'wait'];
+  name.textContent = item.institution;
+  badge.className = 'connection-status ' + tone;
+  badge.textContent = label;
+  row.append(name, badge);
+  return row;
+}
 async function refresh() {
   const { configured, connections, protection, credentialsError } = await request('connections');
   $('#config').textContent = credentialsError || (configured
@@ -35,11 +47,7 @@ async function refresh() {
   reflectGuideCredentials();
   $('#connect').disabled = !configured;
   $('#sync').disabled = !configured || !connections.length;
-  $('#items').replaceChildren(...connections.map(item => {
-    const row = document.createElement('li');
-    row.textContent = item.institution + ' · Status ao conectar: ' + item.status;
-    return row;
-  }));
+  $('#items').replaceChildren(...connections.map(connectionRow));
 }
 const form = $('#credentials-form');
 const restart = $('#restart');
@@ -322,10 +330,10 @@ async function loadVault() {
     small.textContent = size(backup.size);
     label.append(small);
     const get = document.createElement('button');
-    get.type = 'button'; get.textContent = 'Baixar';
+    get.type = 'button'; get.textContent = 'Baixar'; get.className = 'secondary';
     get.onclick = () => saveFile('/api/backups/' + backup.name);
     const put = document.createElement('button');
-    put.type = 'button'; put.textContent = 'Restaurar';
+    put.type = 'button'; put.textContent = 'Restaurar'; put.className = 'secondary';
     put.onclick = () => restore({ name: backup.name });
     row.append(label, get, put);
     return row;
