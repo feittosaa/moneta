@@ -11,9 +11,9 @@ Moneta é um painel de finanças pessoais que roda no seu computador ou celular 
   &nbsp;·&nbsp;
   <a href="#linux"><b>Instalar no Linux</b></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/feittosaa/moneta/releases/latest">Novidades da última versão</a>
+  <a href="https://feittosaa.github.io/moneta/"><b>Abrir no iPhone e iPad</b></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/feittosaa/moneta/releases">Todas as versões</a>
+  <a href="#android-e-sincronização-local"><b>Instalar no Android</b></a>
 </p>
 
 - **Local e de usuário único:** o painel escuta apenas em `127.0.0.1` e não tem contas de usuário. O banco fica cifrado em disco, com backups diários testados.
@@ -22,6 +22,8 @@ Moneta é um painel de finanças pessoais que roda no seu computador ou celular 
 - **Interface em português**, com valores em várias moedas mantidos separados.
 
 > **Primeira vez?** Instale pelo link acima e siga o [Guia de conexão](docs/guia/conectar-bancos.md): ele mostra, passo a passo e com imagens, como criar as contas gratuitas na Pluggy e conectar seus bancos. Não é preciso saber programar. O mesmo guia abre dentro da Moneta, no menu **Guia**.
+>
+> **No celular?** Siga o guia de instalação e uso para [Android](docs/guia-celular.md#android) ou para [iPhone e iPad](docs/guia-celular.md#iphone-e-ipad). Ele explica como instalar, proteger o cofre com a digital ou o Face ID e sincronizar com o computador.
 
 ## Capturas de tela
 
