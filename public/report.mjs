@@ -151,22 +151,23 @@ export function portfolio(data,currency) {
   const positions = data.holdings.filter(p => p.currency === currency);
   const accounts = data.accounts.filter(a => a.currency === currency);
   const assets = [], debts = [], shared = new Set();
-  const credit = [];
+  const credit = [], cash = [];
   for (const a of accounts) {
     if (a.shared && shared.has(a.shared)) continue;
     shared.add(a.shared);
     if (a.balance == null) {
       assets.push(null); debts.push(null);
-      if (a.type === 'CREDIT') credit.push(null);
+      (a.type === 'CREDIT' ? credit : cash).push(null);
       continue;
     }
     const balance = a.type === 'CREDIT' ? -a.balance : a.balance - Math.min(Math.max(a.balance,0),Math.max(a.auto,0));
     assets.push(Math.max(0,balance)); debts.push(Math.max(0,-balance));
-    if (a.type === 'CREDIT') credit.push(Math.max(0,-balance));
+    if (a.type === 'CREDIT') credit.push(Math.max(0,-balance)); else cash.push(balance);
   }
   const invested = total(positions.map(p => p.net));
   const gross = total([...assets,...positions.map(p => p.gross)]);
   const netAssets = total([...assets,invested]);
   const debt = total(debts);
-  return {gross,net:netAssets == null || debt == null ? null : netAssets-debt,credit:total(credit),invested};
+  return {gross,net:netAssets == null || debt == null ? null : netAssets-debt,credit:total(credit),invested,
+    investedGross:total(positions.map(p => p.gross)),cash:total(cash)};
 }
