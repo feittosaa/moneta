@@ -85,7 +85,7 @@ dd { text-align:right; font-weight:600 }
 table { border-collapse:collapse; width:100%; background:var(--panel); font-variant-numeric:tabular-nums }
 td,th { padding:10px 14px; text-align:left; font-size:14px; border-bottom:1px solid var(--line) }
 th { background:var(--th); color:var(--muted); font-size:12px }
-td:last-child { white-space:nowrap }
+td:nth-last-child(2) { white-space:nowrap }
 form,.filters { align-items:end; margin:18px 0 }
 .check { display:flex; align-items:center; padding:8px 0 }
 input[type=checkbox] { accent-color:var(--accent) }
@@ -366,24 +366,65 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 #peer-qr { display: block; margin-inline: auto; width: min(100%, 284px); }
 @media(max-width:780px) { .brand { font-size:24px } }
 
-/* Celular: o olho e a sincronização ficam na barra fixa do topo, à direita, sempre ao alcance.
-   O período ocupa uma linha só: mês anterior, mês, próximo mês e mês atual. */
-.sync-icon { display:none }
+/* Celular: o olho e a sincronização ficam na barra do topo, à direita. O período ocupa uma linha só:
+   mês anterior, mês, próximo mês e mês atual. Tabelas viram cartões, um por linha. */
+.sync-icon,#header-actions,td.cell-break { display:none }
 @media(max-width:780px) {
+  main { overflow-x:clip }
   aside { grid-template-columns:94px 1fr 94px }
-  #privacy,#sync { position:fixed; top:calc(env(safe-area-inset-top) + 10px); z-index:41; width:44px; height:44px; min-width:44px; padding:0; border-radius:10px }
-  #privacy { right:16px }
-  #sync { right:66px; background:transparent; color:var(--text); border:1px solid var(--line) }
+  #header-actions { grid-row:1; grid-column:3; justify-self:end; display:flex; gap:6px }
+  #header-actions button { width:44px; height:44px; min-width:44px; padding:0; border-radius:10px; display:inline-grid; place-items:center }
+  #sync { background:transparent; color:var(--text); border:1px solid var(--line) }
   #sync:disabled { color:var(--disabled-text); background:transparent }
   #sync .sync-icon { display:block } #sync span { display:none }
-  :root.drawer-open #privacy,:root.drawer-open #sync { visibility:hidden }
   .topbar { display:grid; gap:14px; align-items:stretch; padding-bottom:14px; margin-bottom:18px }
   .topbar h1 { margin:0 }
   .toolbar { display:block }
+  .toolbar:empty,.toolbar:not(:has(> :not([hidden]))) { display:none }
   #period { display:grid; grid-template-columns:44px minmax(0,1fr) 44px auto; gap:6px }
   #period[hidden] { display:none }
   #period [data-month-step="-12"],#period [data-month-step="12"] { display:none }
   #period button { height:44px; min-width:44px }
   #period .date-field,#period .date-field input { width:100%; height:44px }
   #period #current-month { padding-inline:12px; white-space:nowrap }
+
+  /* Indicadores: duas colunas iguais, título e número sempre no mesmo lugar. */
+  .metrics,#month-metrics .metrics.with-invoice { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px }
+  .metrics article { padding:14px; display:flex; flex-direction:column; min-width:0 }
+  .metrics article > span { display:grid; grid-template-columns:8px minmax(0,1fr); align-items:start; gap:8px; font-size:11px; line-height:1.35; min-height:2.7em }
+  .metrics span::before { width:8px; height:8px; margin-top:.3em }
+  .metrics strong { font-size:19px; margin-top:6px }
+  .bank-metric [role=tooltip] { display:none }
+  .metrics .bank-metric { grid-column:1 / -1 }
+  .account-breakdown { font-size:12px }
+
+  /* Tabelas em cartões: principal e valor na primeira linha, detalhes embaixo, ações por último. */
+  .scroll { overflow:visible; border-radius:12px }
+  .scroll table,.scroll tbody,.scroll tr,.scroll td { display:block }
+  .scroll thead { display:none }
+  .scroll tr { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 16px; padding:14px 16px; border-bottom:1px solid var(--line) }
+  .scroll tr:last-child { border-bottom:0 }
+  .scroll td { padding:0; border:0; white-space:normal; min-width:0 }
+  .scroll td.cell-title { order:1; flex:1 1 55%; font-size:15px; font-weight:600; color:var(--text); overflow-wrap:anywhere }
+  .scroll td.cell-value { order:2; flex:0 0 auto; max-width:45%; margin-left:auto; text-align:right; font-size:15px; font-weight:650; white-space:nowrap }
+  .scroll td.cell-break { display:block; order:3; flex-basis:100%; height:0 }
+  .scroll td.cell-meta { order:4; font-size:13px; color:var(--muted) }
+  .scroll td.cell-meta.empty { display:none }
+  .scroll td.cell-actions { order:5; flex-basis:100%; margin-top:8px }
+  .scroll td.cell-actions .rule-actions { display:flex; gap:8px }
+  .scroll td.cell-actions button { flex:1; height:40px }
+  .scroll .transaction-link { text-align:left; font-weight:inherit }
+  .scroll.labeled tr { gap:6px 16px }
+  .scroll.labeled td.cell-meta::before { content:attr(data-label) ": "; margin:0; color:var(--muted); opacity:.8 }
+  .scroll.labeled td.cell-meta { color:var(--text); display:flex; align-items:center; gap:6px }
+  .scroll.labeled input[type=color] { width:36px; height:28px; padding:2px }
+
+  /* Regras: criar em destaque, as ações sobre todas as regras lado a lado logo abaixo. */
+  #regras:not([hidden]) { display:grid; grid-template-columns:1fr 1fr; gap:10px }
+  #regras > * { grid-column:1 / -1; order:4; min-width:0 }
+  #regras > p:first-child { order:0 }
+  #regras > #new-rule { order:1; height:48px }
+  #regras > #apply-rules,#regras > #export-rules { grid-column:auto; order:2; height:48px; background:var(--panel); color:var(--accent-ink); border:1px solid var(--line); font-size:14px }
+  #regras > #export-rules { order:3 }
+  #category-form > button,#rules-import > button,#new-voucher,#connect { width:100%; height:48px }
 }

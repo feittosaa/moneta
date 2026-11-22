@@ -52,15 +52,29 @@ function metrics(values) {
   }
   return grid;
 }
-function table(headers, rows, empty) {
+// No celular, cada linha vira um cartão: o item principal à esquerda, o valor à direita e os
+// demais campos numa linha menor embaixo. As classes dizem o papel de cada coluna.
+function table(headers, rows, empty, {labeled = false} = {}) {
   if (!rows.length) return tag('p',empty);
   const wrap = tag('div'), t = tag('table'), heading = t.createTHead().insertRow();
-  wrap.className = 'scroll'; wrap.append(t);
+  wrap.className = 'scroll'+(labeled ? ' labeled' : ''); wrap.append(t);
   for (const h of headers) heading.append(tag('th',h));
+  const title = headers.findIndex(h => ['Descrição','Vale','Regra'].includes(h));
+  const main = title >= 0 ? title : headers.indexOf('Categoria');
+  const roles = headers.map((h,i) => i === main ? 'cell-title' : h === 'Valor' ? 'cell-value' : h === 'Ações' ? 'cell-actions' : 'cell-meta');
+  const firstMeta = roles.indexOf('cell-meta');
   const body = t.createTBody();
   for (const row of rows) {
     const tr = body.insertRow();
-    for (const v of row) tr.insertCell().append(v instanceof Node ? v : String(v));
+    row.forEach((v,i) => {
+      const cell = tr.insertCell();
+      cell.className = roles[i]+(i === firstMeta ? ' first' : '')+(v === '—' ? ' empty' : '');
+      cell.dataset.label = headers[i];
+      cell.append(v instanceof Node ? v : String(v));
+    });
+    const gap = tr.insertCell();
+    gap.className = 'cell-break';
+    gap.setAttribute('aria-hidden','true');
   }
   return wrap;
 }
@@ -72,7 +86,7 @@ function sortableTable(id, columns, items, empty, render) {
   const state = sorting.get(id);
   const key = state && columns[state.column]?.sort;
   const ordered = key ? [...items].sort((a,b) => compare(key(a),key(b))*state.direction) : items;
-  const wrap = table(columns.map(c => c.title),ordered.map(item => columns.map(c => c.cell(item))),empty);
+  const wrap = table(columns.map(c => c.title),ordered.map(item => columns.map(c => c.cell(item))),empty,{labeled:true});
   const heading = wrap.querySelector('thead tr');
   if (!heading) return wrap;
   wrap.dataset.table = id;

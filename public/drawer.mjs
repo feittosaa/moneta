@@ -17,4 +17,9 @@ export function setupDrawer() {
   addEventListener('keydown', event => { if (event.key === 'Escape' && aside.classList.contains('open')) { set(false); toggle.focus(); } });
   addEventListener('hashchange', () => set(false));
   matchMedia('(min-width:781px)').addEventListener('change', event => { if (event.matches) set(false); });
+  // No celular, o olho e a sincronização moram na barra do topo; no computador, na barra da página.
+  const actions = document.querySelector('#header-actions'), toolbar = document.querySelector('.toolbar');
+  const mobile = matchMedia('(max-width:780px)');
+  const place = () => { for (const id of ['#sync','#privacy']) (mobile.matches ? actions : toolbar).append(document.querySelector(id)); };
+  if (actions && toolbar) { place(); mobile.addEventListener('change',place); }
 }

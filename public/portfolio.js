@@ -58,7 +58,10 @@ export function renderPortfolio(history,transactions,currency,target,money) {
 
   const panel = element('div'), canvas = element('canvas'), detail = element('output');
   panel.className = 'panel portfolio-chart';
-  canvas.width = 980; canvas.height = 320;
+  // No celular, o desenho usa uma área estreita para que datas e linhas fiquem legíveis.
+  const narrow = matchMedia('(max-width:780px)').matches;
+  const W = narrow ? 360 : 980, H = narrow ? 250 : 320, ratio = Math.min(devicePixelRatio || 1,3);
+  canvas.width = W*ratio; canvas.height = H*ratio;
   canvas.setAttribute('aria-label','Evolução do patrimônio e dos investimentos');
   canvas.setAttribute('role','img');
   const slider = element('input');
@@ -99,7 +102,8 @@ export function renderPortfolio(history,transactions,currency,target,money) {
   if (!added.length) list.append(element('p','Nenhum investimento registrado no período.'));
   target.append(panel,list);
   const ctx = canvas.getContext('2d');
-  const left = 24, width = 932, top = 16, height = 260;
+  ctx.scale(ratio,ratio);
+  const left = narrow ? 8 : 24, width = W-2*left, top = 16, height = H-60;
   const first = Date.parse(points[0].day), duration = Date.parse(points.at(-1).day)-first;
   const x = point => duration ? left+width*(Date.parse(point.day)-first)/duration : left+width/2;
   function draw() {
@@ -114,7 +118,7 @@ export function renderPortfolio(history,transactions,currency,target,money) {
     const max = values.reduce((high,n) => Math.max(high,n),min+1);
     const y = value => top + height*(1-(value-min)/(max-min));
     const index = Number(slider.value);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0,0,W,H);
     ctx.strokeStyle = themeColor('--chart-grid');
     ctx.lineWidth = 1;
     for (let i=0; i<=4; i++) {
@@ -122,12 +126,13 @@ export function renderPortfolio(history,transactions,currency,target,money) {
       ctx.beginPath(); ctx.moveTo(left,tick); ctx.lineTo(left+width,tick); ctx.stroke();
     }
     ctx.fillStyle = themeColor('--muted');
-    ctx.font = '14px system-ui';
+    ctx.font = (narrow ? 12 : 14)+'px system-ui';
     // Com uma só posição, a data já aparece na legenda abaixo do gráfico.
     if (duration) {
-      ctx.fillText(dateLabel(points[0].day),left,302);
+      const base = H-18;
+      ctx.fillText(dateLabel(points[0].day),left,base);
       const last = dateLabel(points.at(-1).day);
-      ctx.fillText(last,left+width-ctx.measureText(last).width,302);
+      ctx.fillText(last,left+width-ctx.measureText(last).width,base);
     }
     ctx.beginPath(); ctx.moveTo(x(points[index]),top); ctx.lineTo(x(points[index]),top+height); ctx.stroke();
     for (const s of series) {
@@ -153,7 +158,7 @@ export function renderPortfolio(history,transactions,currency,target,money) {
   }
   canvas.onpointermove = canvas.onclick = event => {
     const bounds = canvas.getBoundingClientRect();
-    const cursor = (event.clientX-bounds.left)*canvas.width/bounds.width;
+    const cursor = (event.clientX-bounds.left)*W/bounds.width;
     let closest = 0;
     for (let i=1; i<points.length; i++) if (Math.abs(x(points[i])-cursor) < Math.abs(x(points[closest])-cursor)) closest = i;
     if (Number(slider.value) !== closest) { slider.value = closest; draw(); }
