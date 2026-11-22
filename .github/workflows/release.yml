@@ -1,5 +1,5 @@
-# Ao enviar uma tag de versão (por exemplo 1.0.0), roda os testes, gera o AppImage e o
-# instalador do Windows e publica tudo numa release do GitHub.
+# Ao enviar uma tag de versão (por exemplo 1.0.0), roda os testes, gera o AppImage, o
+# instalador do Windows e o APK do Android e publica tudo numa release do GitHub.
 name: Release
 
 on:
@@ -56,6 +56,30 @@ jobs:
           MONETA_DESKTOP_EXE: janela-windows/moneta.exe
           MONETA_DESKTOP_LINUX: desktop/target/release/moneta
         run: packaging/build.sh "$GITHUB_REF_NAME"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # A chave de assinatura fica nos segredos do repositório. Ela precisa ser sempre a mesma:
+      # com outra chave, o Android recusa instalar a versão nova por cima da anterior.
+      - name: APK do Android
+        env:
+          MONETA_VERSION: ${{ github.ref_name }}
+          KEYSTORE_BASE64: ${{ secrets.MONETA_ANDROID_KEYSTORE_BASE64 }}
+          MONETA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MONETA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$MONETA_ANDROID_KEYSTORE_PASSWORD" ]; then
+            echo "::warning::Sem os segredos MONETA_ANDROID_KEYSTORE_BASE64 e MONETA_ANDROID_KEYSTORE_PASSWORD; a release sai sem o APK."
+            exit 0
+          fi
+          sudo apt-get install -y zstd
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/moneta.jks"
+          MONETA_ANDROID_KEYSTORE="$RUNNER_TEMP/moneta.jks" android/build.sh
+          rm -f "$RUNNER_TEMP/moneta.jks"
+          (cd dist && sha256sum Moneta-x86_64.AppImage Moneta-Setup.exe install.sh Moneta-Android-arm64.apk > SHA256SUMS.txt)
 
       - name: Publicar a release
         env:

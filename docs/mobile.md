@@ -15,7 +15,24 @@ android/build.sh
 adb install -r dist/Moneta-Android-arm64.apk
 ```
 
-Também é possível copiar o APK para o telefone e abri-lo no gerenciador de arquivos. O build verifica os hashes dos pacotes do runtime e assina o APK com a chave de desenvolvimento em `android/.local/debug.jks`. Guarde essa chave para instalar atualizações locais sobre a mesma instalação. A distribuição pela loja exigirá assinatura de distribuição.
+Também é possível copiar o APK para o telefone e abri-lo no gerenciador de arquivos. O build verifica os hashes dos pacotes do runtime e assina o APK com a chave de desenvolvimento em `android/.local/debug.jks`. Guarde essa chave para instalar atualizações locais sobre a mesma instalação.
+
+### APK da release
+
+Cada tag de versão publica o `Moneta-Android-arm64.apk` na release, junto com o AppImage e o instalador do Windows. O workflow passa a versão em `MONETA_VERSION` (1.4.2 vira `versionCode` 10402) e assina com a chave fixa guardada nos segredos do repositório:
+
+| Segredo | Conteúdo |
+| --- | --- |
+| `MONETA_ANDROID_KEYSTORE_BASE64` | O arquivo `.jks` da chave, em base64 (`base64 -w0 moneta-release.jks`). |
+| `MONETA_ANDROID_KEYSTORE_PASSWORD` | A senha do arquivo e da chave, com alias `moneta`. |
+
+A chave precisa ser sempre a mesma: com outra, o Android recusa instalar a versão nova por cima e só aceita depois de desinstalar, o que apaga os dados do aparelho. Guarde uma cópia do `.jks` e da senha fora do computador. Sem os segredos, a release sai sem o APK e o workflow mostra um aviso.
+
+Para gerar localmente um APK assinado como na release:
+
+```bash
+MONETA_VERSION=1.4.0 MONETA_ANDROID_KEYSTORE=moneta-release.jks MONETA_ANDROID_KEYSTORE_PASSWORD=... android/build.sh
+```
 
 ## Vincular aparelhos
 
@@ -24,7 +41,7 @@ Cada Moneta funciona sozinha: computador, Android, iPhone e iPad têm cofre pró
 1. Abra a Moneta nos dois aparelhos, na mesma rede Wi-Fi, e destranque os cofres.
 2. Na primeira abertura, a Moneta pergunta se você quer usá-la em outro aparelho. A opção também fica em **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo**.
 3. Escolha o tipo do outro aparelho e siga as instruções da tela. O QR vale por dois minutos.
-4. Para Android ou outro computador, use **Ler QR de outro aparelho** no outro lado, pela câmera ou por uma foto do QR.
+4. Para Android ou outro computador, use **Ler QR de outro aparelho** no outro lado, pela câmera ou por uma foto do QR. Para iPhone, iPad e Android, o primeiro QR instala a Moneta no celular.
 
 Depois do vínculo, a lista em **Configuração** mostra cada aparelho e a hora da última troca. Para encerrar um vínculo, toque em **Desvincular** ao lado do aparelho.
 
@@ -55,10 +72,10 @@ O iOS não executa sites em segundo plano. Por isso, a Moneta Web atualiza os ba
 O Safari só deixa a Moneta Web falar com outra Moneta por HTTPS. Cada computador ou Android cria a própria autoridade de certificados, e o iPhone ou iPad passa a confiar nela uma única vez:
 
 1. No computador, abra **Configuração → Sincronização entre aparelhos → Mostrar QR de vínculo → iPhone ou iPad**.
-2. No iPhone ou iPad, aponte o app **Câmera** para o primeiro QR e abra o link no Safari. Toque em **Permitir** para baixar o perfil.
+2. Se a Moneta ainda não está no iPhone ou iPad, leia o primeiro QR com o app **Câmera** para instalá-la. Depois, no computador, toque em **Já instalei, continuar** e aponte a **Câmera** para o QR do perfil. Abra o link no Safari e toque em **Permitir** para baixar o perfil.
 3. Abra **Ajustes → Perfil Baixado → Instalar**.
 4. Em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**, ative a Moneta.
-5. No computador, toque em **Já instalei, mostrar QR de vínculo**.
+5. No computador, toque em **Já instalei o perfil, continuar**.
 6. Na Moneta do iPhone ou iPad, toque em **Sim, ler QR Code** na primeira abertura ou em **Configuração → Sincronização → Ler QR Code**. Permita a câmera e aponte para o QR.
 
 Os passos 2 a 4 são feitos uma vez por aparelho. Para vincular outro iPhone ou iPad ao mesmo computador, eles se repetem só no aparelho novo.
