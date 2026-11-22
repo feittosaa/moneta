@@ -64,7 +64,7 @@ O uso no celular está no [guia para celular e tablet](docs/guia-celular.md), e 
 
 ### iPhone e iPad
 
-**Versão de teste.** A Moneta funciona offline, conecta os bancos sozinha, sem computador, e se atualiza sozinha ao abrir. O passo a passo completo, com o vínculo ao computador, está no [guia para celular e tablet](docs/guia-celular.md).
+No iPhone e no iPad, a Moneta funciona offline, conecta os bancos sozinha, sem computador, e se atualiza sozinha ao abrir. O passo a passo completo, com o vínculo ao computador, está no [guia para celular e tablet](docs/guia-celular.md).
 
 1. No **Safari**, abra [feittosaa.github.io/moneta](https://feittosaa.github.io/moneta/), ou leia o QR acima com o app **Câmera**.
 2. Toque em **Compartilhar** → **Adicionar à Tela de Início**. Se aparecer **Abrir como App da Web**, deixe ativado, e toque em **Adicionar**.
