@@ -335,6 +335,15 @@ nav hr::after { content:"◆"; position:absolute; left:50%; top:50%; transform:t
 #recovery-form h2,#recovery-form img { text-align:center }
 #recovery-form input { font-family:monospace; letter-spacing:.04em }
 #recovery-error:empty { display:none }
+/* Atualização: cobre a página do clique em instalar até a versão nova responder. */
+#updating { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:24px; background:var(--canvas); animation:updating-in .2s ease-out }
+#updating .locked-card { width:min(100%,30rem) }
+.updating-bar { position:relative; height:4px; margin:6px 0 18px; overflow:hidden; border-radius:4px; background:var(--track) }
+.updating-bar span { position:absolute; inset:0 auto 0 0; width:38%; border-radius:inherit; background:var(--accent); animation:updating-bar 1.4s ease-in-out infinite }
+#updating-close { margin-top:14px }
+@keyframes updating-in { from { opacity:0 } }
+@keyframes updating-bar { from { transform:translateX(-100%) } to { transform:translateX(265%) } }
+@media (prefers-reduced-motion:reduce) { #updating { animation:none } .updating-bar span { animation:none; width:100% } }
 #unlock { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:24px; background:var(--canvas) }
 #unlock-form { display:grid; gap:12px; text-align:left }
 #unlock-form h2,#unlock-form img { text-align:center }
