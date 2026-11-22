@@ -41,7 +41,7 @@ for (const icon of manifest.icons) {
 await emit('site.webmanifest',JSON.stringify({...manifest,id:'./',scope:'./',start_url:'./'},null,2));
 await mkdir(join(out,'fonts'),{recursive:true});
 await emit('style.css',(await read('public/style.css')).replace('url(/fonts/','url(./fonts/'));
-for (const file of ['theme.js','finance.js','drawer.mjs','portfolio.js','date-field.mjs','card-periods.mjs','movement.mjs','report.mjs',
+for (const file of ['theme.js','finance.js','drawer.mjs','appearance.mjs','portfolio.js','date-field.mjs','card-periods.mjs','movement.mjs','report.mjs',
   'logo.png','favicon.svg','favicon.ico','favicon-96x96.png','apple-touch-icon.png','web-app-manifest-192x192.png',
   'web-app-manifest-512x512.png','fonts/GoudyBookletter1911.ttf','fonts/OFL.txt']) {
   await emit(file,await readFile(join(root,'public',file)));

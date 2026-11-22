@@ -4,6 +4,7 @@ import { localDateField } from './date-field.mjs';
 import { showGuide } from './guide.js';
 import { summarize } from './report.mjs';
 import { setupDrawer } from './drawer.mjs';
+import { setupAppearance } from './appearance.mjs';
 setupDrawer();
 const $ = selector => document.querySelector(selector);
 const month = $('#month'), currency = $('#currency');
@@ -780,16 +781,7 @@ export function initializeFinance(api, message) {
     } catch (error) { currency.value = data.currency; notify(error.message); }
     finally { currency.disabled = false; navigate(); }
   };
-  // Tema da interface, guardado neste navegador: escuro, claro ou igual ao sistema.
-  const theme = $('#theme'), systemLight = matchMedia('(prefers-color-scheme: light)');
-  function applyTheme() {
-    const choice = ['dark','light','system'].includes(localStorage.getItem('moneta-theme')) ? localStorage.getItem('moneta-theme') : 'system';
-    theme.value = choice;
-    document.documentElement.dataset.theme = choice === 'light' || (choice === 'system' && systemLight.matches) ? 'light' : 'dark';
-  }
-  applyTheme();
-  theme.onchange = () => { localStorage.setItem('moneta-theme',theme.value); applyTheme(); navigate(); };
-  systemLight.addEventListener('change',() => { applyTheme(); navigate(); });
+  setupAppearance(navigate);
   $('#sync').onclick = syncFinance;
   $('#current-month').onclick = () => {
     month.value = currentMonth();

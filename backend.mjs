@@ -152,6 +152,7 @@ const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/a
 const assets = new Map([
   ['/peer-ui.mjs',['text/javascript','peer-ui.mjs']],
   ['/device-unlock.mjs',['text/javascript','device-unlock.mjs']],
+  ['/appearance.mjs', ['text/javascript', 'appearance.mjs']],
   ['/drawer.mjs',['text/javascript','drawer.mjs']],
   ['/vendor/qrcode.mjs',['text/javascript','vendor/qrcode.mjs']],
   ['/vendor/jsQR.js',['text/javascript','vendor/jsQR.js']],
