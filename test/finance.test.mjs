@@ -88,6 +88,26 @@ test('ciclos por cartão, fatura fechada e projeção sem duplicar parcelas info
   assert.equal(summarize(data,'2027-01','BRL',day).invoices,8000);
 });
 
+test('fatura aberta não duplica parcela quando a primeira leva a sobra do arredondamento', async () => {
+  const {cardPeriod} = await import('../public/card-periods.mjs');
+  const card = {id:'c',type:'CREDIT',currency:'BRL',close:'2026-11-03',due:'2026-11-10'};
+  const base = {description:'Loja X',currency:'BRL',account:'c',installments:4,purchaseDate:'2026-09-20',date:'2026-09-20'};
+  const transactions = [
+    {...base,installment:1,amount:-3334,forecast:'2026-10'},
+    {...base,installment:2,amount:-3333,forecast:'2026-11'},
+    {...base,installment:3,amount:-3333,forecast:'2026-12',pending:true},
+    // Outra compra igual no mesmo dia, de valor diferente, continua sendo projetada à parte.
+    {...base,installment:2,amount:-5000,forecast:'2026-11'},
+  ];
+  const day = '2026-11-22';
+  const dec = cardPeriod({bills:[],transactions},card,'2026-12',day);
+  assert.equal(dec.open,true);
+  assert.equal(dec.amount,3333+5000);
+  // Sem a parcela 3 informada, a projeção usa o valor das parcelas seguintes, não o da primeira.
+  const jan = cardPeriod({bills:[],transactions},card,'2027-01',day);
+  assert.deepEqual(jan.rows.map(r => [r.installment,r.amount]).sort(),[[4,-3333],[4,-5000]]);
+});
+
 test('movimentos de principal preservam receitas de rendimentos e despesas de imposto', () => {
   const tx = (description,amount,providerCategory) => ({description,amount,providerCategory,date:'2026-11-18',currency:'BRL',account:'b'});
   const data = {categories:[],accounts:[{id:'b',type:'BANK'}],holdings:[],transactions:[
@@ -191,4 +211,31 @@ test('sincronização preserva posição omitida e remove resgate total confirma
   assert.deepEqual(overview(db).holdings.map(h => h.id),['y']);
   assert.deepEqual(portfolioHistory(db).map(point => point.holdings.map(h => h.id)),[['x'],['y']]);
   db.close();
+});
+
+test('mês previsto pela Pluggy deslocado do vencimento é calibrado pelas faturas fechadas', async () => {
+  const {cardPeriod} = await import('../public/card-periods.mjs');
+  const card = {id:'x',type:'CREDIT',currency:'BRL',due:'2026-11-10'};
+  const bills = [{id:'out',account:'x',currency:'BRL',due:'2026-10-10',amount:300},{id:'nov',account:'x',currency:'BRL',due:'2026-11-10',amount:500}];
+  const tx = {account:'x',currency:'BRL',amount:-100};
+  const transactions = [
+    {...tx,date:'2026-09-15',forecast:'2026-09',billId:'out'},{...tx,date:'2026-09-20',forecast:'2026-09',billId:'out'},
+    {...tx,date:'2026-10-15',forecast:'2026-10',billId:'nov'},{...tx,date:'2026-10-20',forecast:'2026-10',billId:'nov'},
+    {...tx,date:'2026-11-12',forecast:'2026-11',pending:true,amount:-4000},
+  ];
+  const dec = cardPeriod({bills,transactions},card,'2026-12','2026-11-22');
+  assert.equal(dec.open,true);
+  assert.equal(dec.amount,4000);
+  assert.equal(cardPeriod({bills,transactions},card,'2026-11','2026-11-22').amount,500);
+});
+
+test('pendente repetido pela Pluggy conta uma vez na fatura aberta', async () => {
+  const {cardPeriod} = await import('../public/card-periods.mjs');
+  const card = {id:'x',type:'CREDIT',currency:'BRL',close:'2026-11-03',due:'2026-11-10'};
+  const tx = {account:'x',currency:'BRL',date:'2026-11-12',description:'MULTIMIX',amount:-37519,pending:true};
+  const transactions = [tx,{...tx,description:'MULTIMIX                 PETROPOLIS   BR'},{...tx,date:'2026-11-13'},
+    {...tx,description:'MULTIMIXX'}];
+  const dec = cardPeriod({bills:[],transactions},card,'2026-12','2026-11-22');
+  assert.equal(dec.amount,3*37519);
+  assert.ok(dec.rows.some(t => t.description.includes('PETROPOLIS')));
 });

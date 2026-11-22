@@ -27,9 +27,35 @@ export function cardPeriod(data, card, month, today) {
     const offset = (y-cy)*12+m-cm;
     return monthOf(shift(due,offset + Number(day > shift(close,offset))));
   }
-  const transactions = data.transactions.filter(t => t.account === card.id && t.currency === card.currency);
+  // A Pluggy às vezes repete uma compra pendente: no XP veio uma vez como "MULTIMIX" e outra como
+  // "MULTIMIX  PETROPOLIS  BR". Enquanto nenhuma fatura confirma, pendentes de mesma data e valor cuja
+  // descrição é igual ao começo da outra contam uma vez só, ficando a descrição mais completa.
+  const words = t => (t.description || '').trim().replace(/\s+/g,' ').toLowerCase();
+  const own = data.transactions.filter(t => t.account === card.id && t.currency === card.currency);
+  const loose = own.filter(t => t.pending && !byId.has(t.billId)).sort((a,b) => words(b).length - words(a).length);
+  const kept = [], repeated = new Set();
+  for (const t of loose) {
+    const text = words(t);
+    const twin = kept.find(k => k.date === t.date && k.amount === t.amount && (k.installment ?? null) === (t.installment ?? null) &&
+      (words(k) === text || words(k).startsWith(text+' ')));
+    if (twin) repeated.add(t); else kept.push(t);
+  }
+  const transactions = own.filter(t => !repeated.has(t));
+  // O mês previsto pela Pluggy nem sempre é o do vencimento: no XP vem um mês antes. As compras à vista
+  // já vinculadas a faturas fechadas mostram o deslocamento de cada cartão; sem maioria clara, nenhum.
+  const offsets = new Map();
+  for (const t of transactions) {
+    const bill = byId.get(t.billId);
+    if (!bill?.due || !t.forecast || t.installments > 1) continue;
+    const [by,bm] = bill.due.split('-').map(Number), [fy,fm] = t.forecast.split('-').map(Number);
+    const offset = (by-fy)*12+bm-fm;
+    offsets.set(offset,(offsets.get(offset) || 0)+1);
+  }
+  const counted = [...offsets.values()].reduce((s,n) => s+n,0);
+  const [offset = 0] = [...offsets].find(([,n]) => counted >= 3 && n > counted*0.6) || [];
+  const forecastMonth = t => t.forecast && monthOf(shift(t.forecast.slice(0,7),offset));
   const pendingMonth = transactions.filter(t => t.pending && t.date <= today && !byId.has(t.billId))
-    .map(t => monthOf(t.forecast)).filter(m => m >= monthOf(today) && !bills.some(b => monthOf(b.due) === m)).sort()[0];
+    .map(forecastMonth).filter(m => m >= monthOf(today) && !bills.some(b => monthOf(b.due) === m)).sort()[0];
   const openMonth = card.due && (!card.close || today <= card.close) && today <= card.due ? monthOf(card.due) : pendingMonth || cycle(today);
   const rows = [], series = new Map();
   let paid = 0;
@@ -42,7 +68,7 @@ export function cardPeriod(data, card, month, today) {
     const linked = byId.get(tx.billId);
     const n = tx.installment, count = tx.installments;
     const firstMonth = tx.purchaseDate && cycle(tx.purchaseDate);
-    let target = monthOf(linked?.due) || monthOf(tx.forecast);
+    let target = monthOf(linked?.due) || forecastMonth(tx);
     if (!target && n > 1 && tx.billPostDate) target = monthOf(tx.billPostDate);
     if (!target && firstMonth && n > 0) target = monthOf(shift(firstMonth,n-1));
     target ||= cycle(tx.date);
@@ -51,21 +77,38 @@ export function cardPeriod(data, card, month, today) {
     if (target === month) rows.push(tx);
     if (target && Number.isInteger(n) && n >= 1 && Number.isInteger(count) && count >= n && tx.amount < 0) {
       const merchant = (tx.description || '').replace(/\b\d+\s*\/\s*\d+\b/g,'').trim().toLowerCase();
-      const key = JSON.stringify([merchant,tx.purchaseDate || shift(target,1-n).slice(0,7),count,tx.amount]);
+      // O valor fica fora da chave: a sobra do arredondamento costuma cair numa só parcela (em geral a
+      // primeira), e com o valor na chave essa parcela virava uma compra à parte, projetada de novo todo mês.
+      const key = JSON.stringify([merchant,tx.purchaseDate || shift(target,1-n).slice(0,7),count]);
       if (!series.has(key)) series.set(key,[]);
       series.get(key).push({tx,target});
     }
   }
   if (!official.length && month >= monthOf(today)) {
     const [year,number] = month.split('-').map(Number);
-    for (const installments of series.values()) {
-      if (installments.some(entry => entry.target === month)) continue;
-      const prior = installments.filter(entry => entry.target < month).sort((a,b) => b.target.localeCompare(a.target));
-      for (const {tx,target} of prior) {
-        if (target !== prior[0].target) break;
+    for (const group of series.values()) {
+      // Compras iguais no mesmo dia (mesma loja e número de parcelas) seguem separadas: cada parcela
+      // entra na primeira compra que ainda não tem esse número e cujo valor difere no máximo da sobra
+      // do arredondamento (menos de um centavo por parcela).
+      const purchases = [];
+      for (const entry of group) {
+        const {installment:n,installments:count,amount} = entry.tx;
+        const same = purchases.find(list => !list.some(e => e.tx.installment === n) &&
+          Math.abs(list[0].tx.amount - amount) <= count);
+        if (same) same.push(entry); else purchases.push([entry]);
+      }
+      for (const installments of purchases) {
+        if (installments.some(entry => entry.target === month)) continue;
+        const prior = installments.filter(entry => entry.target < month)
+          .sort((a,b) => b.target.localeCompare(a.target) || b.tx.installment - a.tx.installment);
+        if (!prior.length) continue;
+        const {tx,target} = prior[0];
         const [y,m] = target.split('-').map(Number);
         const installment = tx.installment + (year-y)*12 + number-m;
-        if (installment <= tx.installments) rows.push({...tx,installment,projected:true});
+        if (installment > tx.installments || installments.some(entry => entry.tx.installment === installment)) continue;
+        // A parcela 1 pode carregar a sobra; as seguintes repetem o valor de qualquer outra parcela.
+        const amount = (prior.find(entry => entry.tx.installment > 1) || prior[0]).tx.amount;
+        rows.push({...tx,amount,installment,projected:true});
       }
     }
   }
