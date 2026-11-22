@@ -256,3 +256,23 @@ test('patrimônio desconta o limite usado do cartão, mesmo com a fatura atual z
   const holdings = [{currency:'BRL',net:50000,gross:50000}];
   assert.deepEqual([portfolio({holdings,accounts},'BRL').cash,portfolio({holdings,accounts},'BRL').invested],[160579,50000]);
 });
+
+test('Itaú: parcela colada no nome não duplica e pagamento da fatura não abate a aberta', async () => {
+  const {cardPeriod} = await import('../public/card-periods.mjs');
+  const card = {id:'i',type:'CREDIT',currency:'BRL',due:'2026-11-10'};
+  const bills = [{id:'out',account:'i',currency:'BRL',due:'2026-10-13',amount:21510},{id:'nov',account:'i',currency:'BRL',due:'2026-11-10',amount:21505}];
+  const part = (n, extra) => ({account:'i',currency:'BRL',description:'LOJA*XYZ0'+n+'/07',installment:n,installments:7,
+    purchaseDate:'2026-09-17',amount:-21505,...extra});
+  const transactions = [
+    part(1,{date:'2026-09-17',forecast:'2026-10',billId:'out',amount:-21510}),
+    part(2,{date:'2026-09-17',forecast:'2026-11',billId:'nov'}),
+    part(3,{date:'2026-11-30',forecast:'2026-12',pending:true}),
+    part(4,{date:'2026-12-31',forecast:'2027-01',pending:true}),
+    {account:'i',currency:'BRL',description:'PAGAMENTO VIA CONTA',date:'2026-11-05',forecast:'2026-12',pending:true,amount:155000},
+    {account:'i',currency:'BRL',description:'MERCADO',date:'2026-11-06',forecast:'2026-12',pending:true,amount:-10000},
+  ];
+  const day = '2026-11-22';
+  assert.equal(cardPeriod({bills,transactions},card,'2026-12',day).amount,21505+10000);
+  assert.equal(cardPeriod({bills,transactions},card,'2027-01',day).amount,21505);
+  assert.equal(cardPeriod({bills,transactions},card,'2027-02',day).amount,21505);
+});

@@ -61,7 +61,7 @@ export function cardPeriod(data, card, month, today) {
   let paid = 0;
   for (const tx of transactions) {
     if (/^(pagamento de fatura|credit card payment)$/i.test(tx.providerCategory) ||
-        (tx.amount > 0 && /^(?:pagamento (?:recebido|efetuado)|pagamentos v[aá]lidos normais)\s*$/i.test(tx.description))) {
+        (tx.amount > 0 && /^(?:pagamento\b|pagamentos v[aá]lidos normais\s*$)/i.test(tx.description))) {
       if (!tx.pending && tx.amount > 0 && monthOf(tx.date) === month && !byId.has(tx.billId)) paid += tx.amount;
       continue;
     }
@@ -76,7 +76,8 @@ export function cardPeriod(data, card, month, today) {
     if (!target && tx.pending && tx.date <= today && (!n || n === 1)) target = openMonth;
     if (target === month) rows.push(tx);
     if (target && Number.isInteger(n) && n >= 1 && Number.isInteger(count) && count >= n && tx.amount < 0) {
-      const merchant = (tx.description || '').replace(/\b\d+\s*\/\s*\d+\b/g,'').trim().toLowerCase();
+      // O Itaú cola o número da parcela no nome ("LOJA02/07"): sem isso, cada parcela virava outra compra.
+      const merchant = (tx.description || '').replace(/(?<!\d)\d{1,3}\s*\/\s*\d{1,3}(?!\d)/g,'').trim().toLowerCase();
       // O valor fica fora da chave: a sobra do arredondamento costuma cair numa só parcela (em geral a
       // primeira), e com o valor na chave essa parcela virava uma compra à parte, projetada de novo todo mês.
       const key = JSON.stringify([merchant,tx.purchaseDate || shift(target,1-n).slice(0,7),count]);
