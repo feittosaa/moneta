@@ -23,6 +23,7 @@ nav { display:grid; gap:4px }
 nav a { color:var(--muted); display:flex; align-items:center; gap:13px; border-radius:8px; padding:10px 13px; font-weight:550 }
 nav a:hover,nav a[aria-current=page] { background:var(--nav-active); color:var(--accent-ink); text-decoration:none }
 nav i { width:20px; text-align:center; font:normal 22px/1 system-ui }
+nav i svg { display:block; margin:auto }
 nav hr { border:0; border-top:1px solid var(--line); margin:14px 8px }
 .drawer { display:contents }
 #menu-toggle { display:none; place-content:center; gap:5px; width:44px; height:44px; padding:0; border-radius:10px; background:transparent; border:1px solid var(--line); color:var(--text) }
