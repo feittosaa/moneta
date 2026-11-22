@@ -50,9 +50,17 @@
     const color = localStorage.getItem('moneta-accent');
     return valid(color) ? color.toLowerCase() : defaultAccent;
   }
+  // Dentro da Ayla, a página recebe a folha /__ayla/tema.css, que troca fundos e fontes pelos dela.
+  // Ela só vale no tema "Sistema"; Claro e Escuro mostram as cores da própria Moneta.
+  const hostSheet = 'link[rel=stylesheet][href="/__ayla/tema.css"]';
+  function host() {
+    const follow = theme() === 'system';
+    for (const link of document.querySelectorAll(hostSheet)) link.disabled = !follow;
+  }
   function apply() {
     const choice = theme(), light = choice === 'light' || (choice === 'system' && systemLight.matches);
     root.dataset.theme = light ? 'light' : 'dark';
+    host();
     const color = accent();
     if (color === defaultAccent) for (const name of derived) root.style.removeProperty(name);
     else for (const [name,value] of Object.entries(palette(color,light))) root.style.setProperty(name,value);
@@ -69,5 +77,9 @@
     setAccent: color => save('moneta-accent',valid(color) && color.toLowerCase() !== defaultAccent ? color.toLowerCase() : ''),
   };
   apply();
+  // A Ayla insere a folha depois deste script: desliga assim que ela aparece, antes da primeira pintura.
+  const watcher = new MutationObserver(host);
+  watcher.observe(root,{childList:true,subtree:true});
+  addEventListener('DOMContentLoaded',() => { watcher.disconnect(); host(); },{once:true});
   systemLight.addEventListener('change',() => { apply(); dispatchEvent(new Event('moneta-appearance')); });
 })();
