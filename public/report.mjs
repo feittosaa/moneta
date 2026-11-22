@@ -160,7 +160,13 @@ export function portfolio(data,currency) {
       (a.type === 'CREDIT' ? credit : cash).push(null);
       continue;
     }
-    const balance = a.type === 'CREDIT' ? -a.balance : a.balance - Math.min(Math.max(a.balance,0),Math.max(a.auto,0));
+    // No cartão, o saldo é só a fatura atual (no XP, zero depois do pagamento). O limite usado também
+    // conta as parcelas futuras e as compras da fatura aberta: é o que ainda sairá das contas.
+    // O saldo aplicado automaticamente só sai da conta quando aparece também entre as posições (mesmo
+    // valor). No Itaú e no XP ele não aparece, e descontá-lo zerava as contas no patrimônio.
+    const auto = Math.min(Math.max(a.balance,0),Math.max(a.auto,0));
+    const invested = auto > 0 && positions.some(p => [p.net,p.gross].some(v => v != null && Math.abs(v-auto) <= 1));
+    const balance = a.type === 'CREDIT' ? -Math.max(a.balance,a.used ?? 0) : a.balance - (invested ? auto : 0);
     assets.push(Math.max(0,balance)); debts.push(Math.max(0,-balance));
     if (a.type === 'CREDIT') credit.push(Math.max(0,-balance)); else cash.push(balance);
   }
