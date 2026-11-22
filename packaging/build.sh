@@ -27,7 +27,7 @@ stage() {
   mkdir -p "$target"
   cp "$root"/{server.mjs,backend.mjs,peer-sync.mjs,peer-data.mjs,local-ca.mjs,finance.mjs,category-rules.mjs,default-rules.json,request-body.mjs,secret-store.mjs,updater.mjs,vault.mjs,LICENSE} "$target/"
   cp -r "$root/public" "$target/public"
-  mkdir -p "$target/docs" && cp -r "$root/docs/guia" "$target/docs/guia"
+  mkdir -p "$target/docs" && cp -r "$root/docs/guia" "$target/docs/guia" && cp "$root/docs/guia-celular.md" "$target/docs/"
   printf '{"name":"moneta","version":"%s","type":"module"}\n' "$version" > "$target/package.json"
 }
 

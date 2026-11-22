@@ -378,12 +378,14 @@ const server = http.createServer(async (req, res) => {
       });
       return res.end();
     }
-    // Guia de conexão: o Markdown e as imagens ficam em docs/guia, lidos também pelo GitHub.
+    // Guias do app: o Markdown e as imagens ficam em docs/guia, lidos também pelo GitHub. O guia do
+    // celular fica em docs/guia-celular.md, onde o README aponta, e é servido como /guia/celular.md.
     const guide = req.method === 'GET' && /^\/guia\/([a-z0-9-]+\.(md|svg|png))$/.exec(req.url);
     if (guide) {
       const types = { md:'text/markdown; charset=utf-8', svg:'image/svg+xml', png:'image/png' };
+      const path = guide[1] === 'celular.md' ? 'docs/guia-celular.md' : 'docs/guia/' + guide[1];
       let file;
-      try { file = readFileSync(new URL('docs/guia/' + guide[1], import.meta.url)); }
+      try { file = readFileSync(new URL(path, import.meta.url)); }
       catch { fail(404, 'Arquivo do guia não encontrado.'); }
       res.writeHead(200, { 'Content-Type': types[guide[2]] });
       res.end(file);

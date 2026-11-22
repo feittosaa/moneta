@@ -1,6 +1,21 @@
-// Mostra o guia oficial (docs/guia/conectar-bancos.md) dentro do app.
-// Lê só o subconjunto de Markdown que o guia usa e monta o DOM sem innerHTML.
-const base = '/guia/';
+// Mostra os guias oficiais dentro do app, um por aba: conectar bancos (docs/guia/conectar-bancos.md)
+// e celular e tablet (docs/guia-celular.md). Lê só o subconjunto de Markdown que os guias usam e
+// monta o DOM sem innerHTML.
+// Relativo à página: /guia/ no computador e no Android, ./guia/ na Moneta Web.
+const base = 'guia/';
+const guides = { bancos:'conectar-bancos.md', celular:'celular.md' };
+const docs = 'https://github.com/feittosaa/moneta/blob/main/docs/';
+// Aba sendo montada: os links para seções apontam para a mesma aba.
+let tab = 'bancos';
+const guideLink = (name, section) => '#guia' + (name === 'bancos' && !section ? '' :
+  '?' + new URLSearchParams({ ...(name !== 'bancos' && { aba:name }), ...(section && { secao:section }) }));
+// Links relativos do Markdown: os outros guias viram abas; os demais documentos abrem no GitHub.
+function relative(href) {
+  const [file, section] = href.split('#');
+  if (/(^|\/)conectar-bancos\.md$/.test(file)) return guideLink('bancos', section);
+  if (/(^|\/)guia-celular\.md$/.test(file)) return guideLink('celular', section);
+  return /^[a-z0-9/-]+\.md$/.test(file) ? new URL(file + (section ? '#' + section : ''), docs).href : null;
+}
 // Quadros interativos que o app encaixa no guia, marcados no Markdown com <!-- moneta:nome -->.
 // No GitHub o comentário não aparece; aqui ele vira o quadro registrado com esse nome.
 const widgets = new Map();
@@ -20,9 +35,9 @@ function inline(text) {
     else {
       node = document.createElement('a');
       node.append(...inline(label));
-      if (/^https:\/\//.test(href)) { node.href = href; node.target = '_blank'; node.rel = 'noopener noreferrer'; }
-      else if (href.startsWith('#')) node.href = '#guia?secao=' + href.slice(1);
-      else node.href = '#guia';
+      const target = href.startsWith('#') ? guideLink(tab, href.slice(1)) : /^https:\/\//.test(href) ? href : relative(href) || '#guia';
+      node.href = target;
+      if (/^https:\/\//.test(target)) { node.target = '_blank'; node.rel = 'noopener noreferrer'; }
     }
     nodes.push(node);
     last = match.index + match[0].length;
@@ -92,17 +107,40 @@ export function renderMarkdown(source) {
   return root;
 }
 
-let loaded;
-export async function showGuide(container, section) {
-  loaded ||= fetch(base + 'conectar-bancos.md').then(response => {
+// Cada aba guarda a própria leitura do Markdown; um erro libera a aba para tentar de novo.
+const loaded = new Map();
+function load(name) {
+  if (!loaded.has(name)) loaded.set(name, fetch(base + guides[name]).then(response => {
     if (!response.ok) throw new Error('Não foi possível abrir o guia.');
     return response.text();
-  }).then(text => { container.replaceChildren(renderMarkdown(text)); }).catch(error => {
-    loaded = null;
-    const p = document.createElement('p');
-    p.textContent = error.message;
-    container.replaceChildren(p);
-  });
-  await loaded;
+  }).catch(error => { loaded.delete(name); throw error; }));
+  return loaded.get(name);
+}
+let shown, wanted;
+export async function showGuide(container, section, name = 'bancos') {
+  if (!guides[name]) name = 'bancos';
+  wanted = name;
+  for (const button of document.querySelectorAll('[data-guide]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.guide === name));
+    button.onclick = () => { location.hash = guideLink(button.dataset.guide); };
+  }
+  if (shown !== name) {
+    try {
+      const text = await load(name);
+      // Outra aba foi escolhida enquanto esta carregava.
+      if (wanted !== name) return;
+      tab = name;
+      container.replaceChildren(renderMarkdown(text));
+      shown = name;
+      if (!section) scrollTo({ top: 0 });
+    } catch (error) {
+      if (wanted !== name) return;
+      shown = null;
+      const p = document.createElement('p');
+      p.textContent = error.message;
+      container.replaceChildren(p);
+      return;
+    }
+  }
   if (section) container.querySelector('#guia-' + CSS.escape(section))?.scrollIntoView({ block: 'start' });
 }

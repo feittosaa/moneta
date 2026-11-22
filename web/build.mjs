@@ -19,11 +19,6 @@ function replace(source, pattern, value) {
 }
 
 let html = await read('public/index.html');
-// O guia de conexão fica no GitHub; o resto do painel é o mesmo do computador.
-for (const section of ['guia']) {
-  html = replace(html,new RegExp('<a href="#'+section+'"(?: [^>]+)?>.*?</a>'),'');
-  html = replace(html,new RegExp('<section id="'+section+'"[^>]*>[\\s\\S]*?</section>'),'');
-}
 html = replace(html,/<h2>Credenciais Pluggy<\/h2>[\s\S]*?<\/section>/,await read('web/settings.html'));
 html = replace(html,/<dialog id="peer-qr-dialog"[\s\S]*?<\/dialog>/,'');
 html = replace(html,/<div id="recovery" hidden>[\s\S]*?<\/body>/,await read('web/unlock.html'));
@@ -46,8 +41,11 @@ for (const file of ['theme.js','finance.js','drawer.mjs','appearance.mjs','portf
   'web-app-manifest-512x512.png','fonts/GoudyBookletter1911.ttf','fonts/OFL.txt']) {
   await emit(file,await readFile(join(root,'public',file)));
 }
-// O painel compartilhado importa o guia, que está disponível no desktop.
-await emit('guide.js','export function showGuide() {}\n');
+// Os guias vão junto e ficam disponíveis offline, como no computador e no Android.
+await emit('guide.js',await read('public/guide.js'));
+await mkdir(join(out,'guia'),{recursive:true});
+for (const name of await readdir(join(root,'docs/guia'))) await emit('guia/'+name,await readFile(join(root,'docs/guia',name)));
+await emit('guia/celular.md',await read('docs/guia-celular.md'));
 const finance = replace(await read('finance.mjs'),"'node:crypto'","'./browser-crypto.mjs'")
   .replace("'./public/movement.mjs'","'./movement.mjs'");
 await emit('finance.mjs',finance);

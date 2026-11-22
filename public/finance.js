@@ -631,7 +631,7 @@ export function navigate() {
   $('#page-title').textContent = current.dataset.title || current.lastChild.textContent;
   $('.toolbar').hidden = !['relatorio','transacoes','cartoes','vales','carteira','conexoes'].includes(page);
   $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab) || (page === 'transacoes' && allMonths());
-  if (page === 'guia') showGuide($('#guide'),new URLSearchParams(search || '').get('secao'));
+  if (page === 'guia') { const query = new URLSearchParams(search || ''); showGuide($('#guide'),query.get('secao'),query.get('aba') || 'bancos'); }
   if (!data) return;
   if (page !== 'transacoes' || !search) {
     ledgerScope = ledgerLink = null;

@@ -3,6 +3,7 @@ WORKDIR /app
 COPY server.mjs backend.mjs peer-sync.mjs peer-data.mjs local-ca.mjs finance.mjs category-rules.mjs default-rules.json request-body.mjs secret-store.mjs updater.mjs vault.mjs ./
 COPY public/ ./public/
 COPY docs/guia/ ./docs/guia/
+COPY docs/guia-celular.md ./docs/
 USER node
 ENV MONETA_BIND_ADDRESS=0.0.0.0
 EXPOSE 4173

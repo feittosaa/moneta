@@ -28,7 +28,7 @@ import sys
 root,work=map(Path,sys.argv[1:3])
 version=sys.argv[3]
 with ZipFile(work/'assets/app.zip','w',ZIP_DEFLATED) as out:
-    for p in [*root.glob('*.mjs'), root/'default-rules.json', root/'LICENSE', *(root/'public').rglob('*'), *(root/'docs/guia').rglob('*')]:
+    for p in [*root.glob('*.mjs'), root/'default-rules.json', root/'LICENSE', *(root/'public').rglob('*'), *(root/'docs/guia').rglob('*'), root/'docs/guia-celular.md']:
         if p.is_file(): out.write(p,p.relative_to(root))
     out.write(work/'assets/runtime/ca.pem','ca.pem')
     # Com a versão, o app sabe qual release está instalada e oferece a atualização.

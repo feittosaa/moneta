@@ -234,6 +234,7 @@ td button:hover,td button:focus-visible,.overview-tabs button:hover,.overview-ta
 tbody tr:hover,tbody tr:focus-within { background:var(--hover-soft) }
 .overview-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px }
 .overview-tabs button[aria-pressed=true] { color:var(--accent-ink); border-color:var(--accent) }
+.guide-tabs { margin-bottom:28px }
 #breakdown a { width:fit-content; color:var(--text); text-decoration:underline; text-underline-offset:3px }
 #breakdown a:hover,#breakdown a:focus-visible { color:var(--accent-ink) }
 #flow > div:hover,#flow > div:focus-within { background:var(--hover) }
