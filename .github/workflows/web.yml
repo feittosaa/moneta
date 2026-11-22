@@ -2,9 +2,9 @@ name: Moneta Web
 
 on:
   workflow_dispatch:
-  # Temporário: publica a Moneta Web a cada push do branch de teste. Remover antes do merge.
+  # Publica a Moneta Web (iPhone e iPad) a cada push no main.
   push:
-    branches: [feature/android-sync-qr]
+    branches: [main]
 
 permissions:
   contents: read

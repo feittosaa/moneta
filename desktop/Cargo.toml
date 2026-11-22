@@ -1,6 +1,6 @@
 [package]
 name = "moneta-desktop"
-version = "1.3.7"
+version = "1.4.0"
 description = "Moneta: janela nativa que abre o painel e mantém o servidor local em segundo plano"
 license = "MIT"
 edition = "2021"

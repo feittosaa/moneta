@@ -87,4 +87,9 @@ jobs:
         run: |
           notes="packaging/notas/${GITHUB_REF_NAME#v}.md"
           if [ -f "$notes" ]; then set -- --notes-file "$notes"; else set -- --generate-notes; fi
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Moneta ${GITHUB_REF_NAME#v}" "$@"
+          # Rodar de novo (por exemplo, depois de cadastrar a chave do Android) completa a release.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "Moneta ${GITHUB_REF_NAME#v}" "$@"
+          fi

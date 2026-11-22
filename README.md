@@ -4,7 +4,7 @@
 
 <h1 align="center">Moneta</h1>
 
-Moneta é um painel de finanças pessoais que roda no seu computador ou celular Android. Ela se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo num banco local cifrado. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
+Moneta é um painel de finanças pessoais que roda no seu computador, no Android, no iPhone e no iPad. Ela se conecta aos seus bancos, cartões e corretoras por meio da [Pluggy](https://pluggy.ai), uma plataforma de Open Finance, e guarda tudo num banco local cifrado. Assim você acompanha receitas, despesas, faturas e patrimônio sem enviar seus dados a um serviço de terceiros além da própria Pluggy.
 
 <p align="center">
   <a href="https://github.com/feittosaa/moneta/releases/latest/download/Moneta-Setup.exe"><b>⬇ Baixar para Windows</b></a>
