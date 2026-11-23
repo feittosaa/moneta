@@ -44,8 +44,11 @@ test('despesas por categoria dos últimos 12 meses somam o total do mês', () =>
   const r = resumo({...data, categories:[...data.categories, {id:'market', name:'Mercado'}],
     transactions:[...data.transactions, {id:'e', date:'2026-09-05', description:'Mercado Pix', amount:-3000, currency:'BRL',
       account:'bank', pending:false, providerCategory:'', category:'market'}]}, '2026-11-20');
-  // Outubro fica de fora: a compra no cartão entra pela fatura de novembro.
-  assert.deepEqual(r.months.map(m => m.month), ['2026-09', '2026-11'], 'só meses com movimento');
+  assert.deepEqual(r.months.map(m => m.month), ['2026-09', '2026-10', '2026-11'], 'só meses com movimento');
+  // Gasto pela data da compra: a compra de outubro fica em outubro, não na fatura de novembro.
+  assert.deepEqual(r.months.find(m => m.month === '2026-10').purchases, {total:50000, categories:[{name:'Alimentação', amount:50000}]});
+  assert.equal(r.months.find(m => m.month === '2026-10').spent, 0);
+  for (const m of r.months) assert.equal(m.purchases.categories.reduce((total, c) => total + c.amount, 0), m.purchases.total, m.month);
   for (const m of r.months) assert.equal(m.categories.reduce((total, c) => total + c.amount, 0), m.spent, m.month);
   assert.deepEqual(r.months[0].categories, [{name:'Mercado', amount:3000}]);
   // A fatura de novembro (paga em 10/11) traz a compra de outubro em Alimentação.
