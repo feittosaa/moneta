@@ -125,9 +125,10 @@ export function cardPeriod(data, card, month, today) {
     }
   }
   const open = month === openMonth && !official.length;
+  const reportedOpen = open && monthOf(card.due) === month && card.openAmount != null;
   let amount = null;
   if (official.length) amount = official.reduce((s,b) => s+Math.max(0,b.amount),0);
-  else if (open && monthOf(card.due) === month && card.openAmount != null) amount = Math.max(0,card.openAmount);
+  else if (reportedOpen) amount = Math.max(0,card.openAmount);
   else if (rows.length) amount = Math.max(0,-rows.reduce((s,t) => s+t.amount,0));
   let closingDate, dueDate;
   if (due && close) {
@@ -140,5 +141,6 @@ export function cardPeriod(data, card, month, today) {
   // Prefer explicit membership when the bank supplies it for a closed statement.
   const linkedRows = rows.filter(t => official.some(b => b.id === t.billId));
   const statementRows = linkedRows.length ? linkedRows : rows;
-  return {amount,paid,rows:statementRows,official,openMonth,open,closingDate,dueDate};
+  const estimated = amount != null && !official.length && !reportedOpen;
+  return {amount,paid,rows:statementRows,official,openMonth,open,estimated,closingDate,dueDate};
 }

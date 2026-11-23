@@ -130,8 +130,9 @@ function report() {
   const amount = value => loaded ? money(value) : '—';
   $('#net-worth').textContent = amount(summary.net);
   // Composição logo abaixo do patrimônio: o que está investido, o que está nas contas e o que sai no crédito.
+  const datedCredit = data.accounts.some(a => a.currency === currency.value && a.usedAsOf);
   $('#net-worth-parts').replaceChildren(...!loaded ? [] : [
-    ['Investido (bruto)',summary.investedGross],['Em contas',summary.cash],['Crédito a pagar',summary.credit,true],
+    ['Investido (bruto)',summary.investedGross],['Em contas',summary.cash],['Crédito a pagar'+(datedCredit ? ' (com saldo anterior)' : ''),summary.credit,true],
   ].map(([name,value,debt]) => tag('span',name+' '+(debt && value ? '− ' : '')+amount(value))));
   const result = summary.income - summary.spent;
   const indicators = metrics([
@@ -145,10 +146,11 @@ function report() {
     const open = data.accounts.filter(a => a.type === 'CREDIT' && a.currency === currency.value).map(card => {
       const current = cardPeriod(data,card,period,today);
       const bill = current.openMonth && cardPeriod(data,card,current.openMonth,today);
-      return bill?.open ? bill.amount : null;
-    }).filter(value => value != null);
+      return bill?.open && bill.amount != null ? bill : null;
+    }).filter(Boolean);
     if (open.length) {
-      indicators.append(metrics([['Fatura em aberto',sum(open,value => value),'invoice-metric']]).firstChild);
+      const label = open.some(bill => bill.estimated) ? 'Fatura em aberto (estimada)' : 'Fatura em aberto';
+      indicators.append(metrics([[label,sum(open,bill => bill.amount),'invoice-metric']]).firstChild);
       indicators.classList.add('with-invoice');
       const note = tag('small',open.length === 1 ? '1 cartão' : open.length+' cartões');
       note.className = 'expense-detail';
@@ -341,9 +343,12 @@ function cards() {
   const day = new Date().toLocaleDateString('en-CA');
   const period = cardPeriod(data,card,month.value,day);
   const open = period.openMonth && cardPeriod(data,card,period.openMonth,day);
-  const openLabel = open?.open ? 'Fatura em aberto · '+period.openMonth.split('-').reverse().join('/') : 'Fatura atual em aberto';
+  const openLabel = open?.open ? 'Fatura em aberto'+(open.estimated ? ' (estimada)' : '')+' · '+period.openMonth.split('-').reverse().join('/') : 'Fatura atual em aberto';
   pane.append(metrics([[openLabel,open?.open ? open.amount : null,'invoice-metric'],['Limite total',card.limit],['Limite utilizado',card.used]]));
-  const status = period.official.length ? 'fechada' : period.open ? 'em aberto' : 'estimada';
+  if (card.usedAsOf) {
+    pane.append(tag('p','Limite utilizado em '+formatDate(card.usedAsOf)+'. Na coleta mais recente, a Pluggy retornou saldo do cartão zerado e limite utilizado calculado de '+money(card.reportedUsed)+'.'));
+  }
+  const status = period.official.length ? 'fechada' : period.open ? (period.estimated ? 'em aberto · estimada' : 'em aberto') : 'estimada';
   const [year,number] = month.value.split('-');
   pane.append(tag('h2','Fatura de '+number+'/'+year+(period.amount == null ? '' : ' · '+status)),
     tag('p',period.amount == null ? (period.paid ? 'Pagamento de fatura identificado no mês · '+money(period.paid) : 'Fatura indisponível para este período.') : money(period.amount)));

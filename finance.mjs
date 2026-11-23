@@ -94,8 +94,33 @@ function voucherOccurrence(db, id) {
 }
 
 export function portfolioHistory(db) {
+  const resolveCredit = creditHistory(db);
   return db.prepare('SELECT * FROM portfolio_history ORDER BY day,item').all()
-    .map(({payload,...row}) => ({...row,...JSON.parse(payload)}));
+    .map(({payload,...row}) => {
+      const {accounts,holdings} = JSON.parse(payload);
+      return {...row,accounts:resolveCredit(accounts,row.item,row.day),holdings};
+    });
+}
+
+function creditHistory(db) {
+  const previous = db.prepare('SELECT day,payload FROM portfolio_history WHERE item=? AND day<? ORDER BY day DESC');
+  return (accounts,item,day) => accounts.map(account => {
+    // No XP, a queda do saldo a zero com o vencimento antigo pode vir junto de um salto
+    // no limite utilizado calculado. O último saldo corroborado é uma referência datada.
+    if (account.type !== 'CREDIT' || account.institution !== 'XP' || account.usedFromLimit === false ||
+        account.balance !== 0 || !(account.used > 0) || account.limit == null ||
+        !account.due || account.due >= day || account.close) return account;
+    for (const row of previous.iterate(item,day)) {
+      const prior = JSON.parse(row.payload).accounts.find(a => a.id === account.id);
+      if (!prior || prior.currency !== account.currency || prior.due !== account.due || prior.limit !== account.limit) break;
+      if (prior.balance === 0 && prior.used === account.used) continue;
+      if (prior.balance > 0 && prior.balance === prior.used && prior.used < account.used) {
+        return {...account,used:prior.used,usedAsOf:row.day,reportedUsed:account.used};
+      }
+      break;
+    }
+    return account;
+  });
 }
 export function initFinance(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY, name TEXT NOT NULL, key TEXT UNIQUE NOT NULL, custom INTEGER NOT NULL, internal INTEGER NOT NULL);
@@ -217,8 +242,10 @@ export function overview(db, {frozen = true} = {}) {
       transactions.push({...displayTx, note:notes.get(tx.id) || '', category, manual:manual.has(tx.id)});
     }
   }
+  const resolveCredit = creditHistory(db);
   const sources = db.prepare('SELECT * FROM snapshots ORDER BY item').all().map(row => {
     const snapshot = JSON.parse(row.payload);
+    snapshot.accounts = resolveCredit(snapshot.accounts,row.item,localDay(row.updated));
     append(snapshot);
     return {item:row.item, updated:row.updated,needsCardSync:!Array.isArray(snapshot.bills) && snapshot.accounts.some(a => a.type === 'CREDIT')};
   });
@@ -453,14 +480,15 @@ function accountRecord(itemId, institution, a) {
   const line = totalCreditLine(credit);
   const balance = cents(a.balance);
   const limit = cents(credit.creditLimit ?? line?.customizedLimitAmount ?? line?.limitAmount);
-  // Pela documentação, limite = disponível + saldo da fatura + dívida anterior.
-  const used = cents(line?.usedAmount) ??
+  const reportedUsed = cents(line?.usedAmount);
+  const used = reportedUsed ??
     (credit.creditLimit != null && credit.availableCreditLimit != null ? cents(credit.creditLimit)-cents(credit.availableCreditLimit) : null);
   return {id:a.id, institution, name:a.name || a.subtype, last4:String(a.number || '').slice(-4),
     bankCode:bankCode(a.bankData?.transferNumber), subtype:a.subtype,
     close:credit.balanceCloseDate?.slice(0,10), due:credit.balanceDueDate?.slice(0,10),
     openAmount:a.type === 'CREDIT' && credit.balanceCloseDate && credit.balanceDueDate ? balance : null,
-    used, type:a.type, currency:a.currencyCode, balance, limit,
+    used, usedFromLimit:a.type === 'CREDIT' && used != null ? reportedUsed == null : undefined,
+    type:a.type, currency:a.currencyCode, balance, limit,
     // Cartões do mesmo contrato na mesma conexão informam o mesmo limite e o mesmo saldo.
     // O patrimônio conta essa dívida uma vez só.
     shared:a.type === 'CREDIT' && limit != null && (balance || used) ? JSON.stringify([itemId,a.currencyCode,limit,balance,used]) : undefined,

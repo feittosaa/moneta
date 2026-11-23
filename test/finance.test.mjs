@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { initFinance, synchronize, overview, editFinance } from '../finance.mjs';
+import { initFinance, synchronize, overview, portfolioHistory, editFinance } from '../finance.mjs';
 import { summarize } from '../public/report.mjs';
 
 test('sincronização paginada, classificação e patrimônio por moeda', async () => {
@@ -76,7 +76,11 @@ test('ciclos por cartão, fatura fechada e projeção sem duplicar parcelas info
   const data = {categories:[],holdings:[],accounts:[a,b],bills:[],transactions:[tx,{...tx,account:'b',installments:1},
     {...tx,installment:3,forecast:'2027-02',date:'2027-02-01'}]};
   const day = '2026-11-15';
-  assert.equal(cardPeriod(data,a,'2026-12',day).open,true);
+  const open = cardPeriod(data,a,'2026-12',day);
+  assert.equal(open.open,true);
+  assert.equal(open.estimated,true);
+  const reported = cardPeriod(data,{...a,openAmount:9000},'2026-12',day);
+  assert.deepEqual([reported.amount,reported.estimated],[9000,false]);
   assert.equal(cardPeriod(data,b,'2026-12',day).amount,10000);
   assert.equal(summarize(data,'2026-12','BRL',day).invoices,20000);
   const jan = cardPeriod(data,a,'2027-01',day);
@@ -85,6 +89,7 @@ test('ciclos por cartão, fatura fechada e projeção sem duplicar parcelas info
   assert.equal(cardPeriod(data,a,'2027-02',day).rows.length,1);
   assert.equal(cardPeriod(data,a,'2027-03',day).amount,null);
   data.bills.push({id:'closed',account:'a',due:'2027-01-02',amount:8000,currency:'BRL'});
+  assert.equal(cardPeriod(data,a,'2027-01',day).estimated,false);
   assert.equal(summarize(data,'2027-01','BRL',day).invoices,8000);
 });
 
@@ -255,6 +260,30 @@ test('patrimônio desconta o limite usado do cartão, mesmo com a fatura atual z
   assert.equal(portfolio({holdings:[],accounts},'BRL').cash,210579);
   const holdings = [{currency:'BRL',net:50000,gross:50000}];
   assert.deepEqual([portfolio({holdings,accounts},'BRL').cash,portfolio({holdings,accounts},'BRL').invested],[160579,50000]);
+});
+
+test('XP mostra o último limite utilizado corroborado quando a coleta zera o saldo e mantém o vencimento antigo', () => {
+  const db = new DatabaseSync(':memory:');
+  initFinance(db);
+  const card = {id:'xp',institution:'XP',type:'CREDIT',currency:'BRL',limit:4744000,
+    due:'2026-11-10',balance:485439,used:485439};
+  const jumped = {...card,balance:0,used:794667,usedFromLimit:true};
+  const history = db.prepare('INSERT INTO portfolio_history VALUES(?,?,?)');
+  const snapshot = db.prepare('INSERT OR REPLACE INTO snapshots VALUES(?,?,?)');
+  const payload = account => JSON.stringify({accounts:[account],holdings:[],transactions:[],bills:[]});
+  history.run('xp-item','2026-11-21',payload(card));
+  history.run('xp-item','2026-11-22',payload(jumped));
+  snapshot.run('xp-item',payload(jumped),'2026-11-23T00:58:13.336Z');
+  const data = overview(db);
+  assert.deepEqual([data.accounts[0].used,data.accounts[0].usedAsOf,data.accounts[0].reportedUsed],
+    [485439,'2026-11-21',794667]);
+  assert.equal(summarize(data,'2026-11','BRL').credit,485439);
+  assert.equal(portfolioHistory(db).at(-1).accounts[0].used,485439);
+  for (const override of [{due:'2026-12-10'},{usedFromLimit:false},{balance:794667}]) {
+    snapshot.run('xp-item',payload({...jumped,...override}),'2026-11-23T00:58:13.336Z');
+    assert.equal(overview(db).accounts[0].used,794667);
+  }
+  db.close();
 });
 
 test('Itaú: parcela colada no nome não duplica e pagamento da fatura não abate a aberta', async () => {
