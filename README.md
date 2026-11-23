@@ -29,15 +29,21 @@ Moneta é um painel de finanças pessoais que roda no seu computador, no Android
 
 As imagens usam uma base de demonstração com dados fictícios.
 
-![Visão geral com o resumo do mês, o fluxo mensal e as despesas por categoria](docs/screenshots/visao-geral.png)
+![Visão geral com o resumo do mês, o fluxo mensal e as despesas por categoria](docs/screenshots/resumo-mensal.png)
 
 | Patrimônio no tema claro | Transações |
 | :---: | :---: |
-| ![Gráfico da evolução do patrimônio e dos investimentos ao longo do ano](docs/screenshots/patrimonio.png) | ![Lista de transações com filtros por período, descrição, conta e categoria](docs/screenshots/transacoes.png) |
+| <img src="docs/screenshots/patrimonio-tema-claro.png" alt="Gráfico da evolução do patrimônio e dos investimentos ao longo do ano, no tema claro" width="420"> | <img src="docs/screenshots/lista-transacoes.png" alt="Lista de transações com filtros por período, descrição, conta e categoria" width="420"> |
 
-| Personalização | Moneta no celular |
-| :---: | :---: |
-| ![Configurações de aparência com a cor de destaque roxa selecionada](docs/screenshots/personalizacao.png) | <img src="docs/screenshots/celular.png" alt="Resumo mensal da Moneta na tela do celular" width="200"> |
+**Personalização**
+
+![Configurações de aparência com a cor de destaque roxa selecionada](docs/screenshots/personalizacao.png)
+
+**Moneta no celular**
+
+<p align="center">
+  <img src="docs/screenshots/celular.png" alt="Resumo mensal da Moneta na tela do celular" width="280">
+</p>
 
 ## Instalação
 
