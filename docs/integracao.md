@@ -35,7 +35,7 @@ Ler a chave exige estar logado com o mesmo usuário do sistema. Sem a chave, ou 
 | `GET /api/finance` | Visão completa: `currency`, `accounts`, `transactions`, `bills`, `categories`, `rules`, `vouchers`, `holdings`, `sources`, `catalogRules` |
 | `GET /api/portfolio` | Histórico de patrimônio: lista de `{ item, day, accounts, holdings }` |
 | `GET /api/connections` | Instituições conectadas e se as credenciais da Pluggy estão configuradas |
-| `GET /api/resumo` | Resumo pronto para assistentes: `accounts` (saldos), `cards` (com `openInvoice`, a mesma "Fatura em aberto" da Visão geral, e `upcomingBills`), `totals` do mês por moeda (`income`, `spent`, `result`, `invoices`, `openInvoices`, `netWorth`), os 20 lançamentos mais recentes em `recent`, `today` e `connected` |
+| `GET /api/resumo` | Resumo pronto para assistentes: `accounts` (saldos), `cards` (com `openInvoice`, a mesma "Fatura em aberto" da Visão geral, e `upcomingBills`), `totals` do mês por moeda (`income`, `spent`, `result`, `invoices`, `openInvoices`, `netWorth`), `months` (até 12 meses, do mais antigo ao atual, só os com movimento: `month`, `currency`, `income`, `spent` e `categories`, a lista `{ name, amount }` das despesas por categoria, que soma `spent`; compras no cartão entram pela fatura do mês, e a parte sem detalhamento aparece como "Fatura sem detalhamento"), os 20 lançamentos mais recentes em `recent`, `today` e `connected` |
 
 Formatos:
 

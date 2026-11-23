@@ -33,6 +33,28 @@ export function resumo(data, today = new Date().toLocaleDateString('en-CA')) {
       invoices:summary.invoices,openInvoices:open.length ? open.reduce((a,b) => a+b,0) : null,
       netWorth:summary.net ?? null};
   });
+  // Despesas por categoria nos últimos 12 meses, pela mesma conta da tela de relatórios: compras no
+  // cartão entram pela fatura do mês, e a parte da fatura sem detalhamento vira "Fatura sem detalhamento".
+  const months = [];
+  for (let back = 11; back >= 0; back--) {
+    const [year, number] = month.split('-').map(Number);
+    const date = new Date(Date.UTC(year, number - 1 - back, 1));
+    const key = date.toISOString().slice(0,7);
+    for (const currency of currencies) {
+      const summary = summarize(data,key,currency,today);
+      const spent = new Map();
+      const add = (category, amount) => {
+        const name = category === 'invoice' ? 'Fatura sem detalhamento' : categories.get(category) ?? 'Sem categoria';
+        spent.set(name,(spent.get(name) || 0)+amount);
+      };
+      for (const [category, amount] of summary.byCategory) if (category !== 'invoices') add(category, amount);
+      for (const [category, amount] of summary.invoiceByCategory) add(category, amount);
+      const list = [...spent].filter(([,amount]) => amount).map(([name,amount]) => ({name,amount}))
+        .sort((a,b) => b.amount-a.amount || a.name.localeCompare(b.name));
+      if (summary.spent || summary.income || list.length)
+        months.push({month:key,currency,income:summary.income,spent:summary.spent,categories:list});
+    }
+  }
   const recent = data.transactions.filter(t => t.date <= today).sort((a,b) => byDate(b.date,a.date)).slice(0,20)
     .map(t => ({date:t.date,description:t.description,amount:t.amount,currency:t.currency,pending:Boolean(t.pending),
       account:names.get(t.account) ?? null,category:categories.get(t.category) ?? null}));
@@ -40,7 +62,7 @@ export function resumo(data, today = new Date().toLocaleDateString('en-CA')) {
     today, currency:data.currency,
     accounts:data.accounts.filter(a => a.type !== 'CREDIT').map(a => ({name:a.name,institution:a.institution,type:a.type,
       balance:a.balance ?? null,currency:a.currency})),
-    cards, totals, recent,
+    cards, totals, months, recent,
     connected:data.sources.length > 0,
   };
 }
