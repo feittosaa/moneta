@@ -1,5 +1,5 @@
 import {investmentCategory} from './movement.mjs';
-import {cardPeriod} from './card-periods.mjs';
+import {cardPeriod, cardRows, shift} from './card-periods.mjs';
 const sum = (list, value) => list.reduce((total,row) => total + value(row),0);
 const total = values => values.includes(null) ? null : sum(values,v => v);
 // Legacy snapshots can lack both bill IDs and cycle dates. Only attribute purchases
@@ -25,11 +25,11 @@ function reconcilePaidRows(transactions, paid, date) {
   }
   return found ? days.slice(first,last).flat() : [];
 }
-export function summarize(data, month, currency, today = new Date().toLocaleDateString('en-CA')) {
+// Pagamentos de fatura, dos dois lados: o recebimento no cartão e o débito correspondente na conta.
+function payments(data, currency) {
   const internal = new Set(data.categories.filter(c => c.internal).map(c => c.id));
   const cards = new Set(data.accounts.filter(a => a.type === 'CREDIT').map(a => a.id));
   const paymentCategory = data.categories.find(c => c.key === 'pagamento de fatura')?.id;
-  const rows = data.transactions.filter(t => t.date.startsWith(month) && t.currency === currency && !t.pending);
   const institution = new Map(data.accounts.map(a => [a.id,a.institution]));
   const explicitPayment = t => (paymentCategory != null && t.category === paymentCategory) ||
     ['Pagamento de fatura','Credit card payment'].includes(t.providerCategory) ||
@@ -39,6 +39,12 @@ export function summarize(data, month, currency, today = new Date().toLocaleDate
     /^pagamento para banco /i.test(t.description) && cardReceipts.some(p =>
       p.amount === -t.amount && institution.get(p.account) === institution.get(t.account) &&
       Math.abs(Date.parse(p.date)-Date.parse(t.date)) <= 3*86400000));
+  return {internal,cards,institution,isPayment};
+}
+
+export function summarize(data, month, currency, today = new Date().toLocaleDateString('en-CA')) {
+  const {internal,cards,institution,isPayment} = payments(data,currency);
+  const rows = data.transactions.filter(t => t.date.startsWith(month) && t.currency === currency && !t.pending);
   const bankRows = rows.filter(t => {
     if (t.account.startsWith('wallet-')) return t.kind !== 'adjustment';
     if (cards.has(t.account) || isPayment(t) || internal.has(t.category)) return false;
@@ -176,4 +182,60 @@ export function portfolio(data,currency) {
   const debt = total(debts);
   return {gross,net:netAssets == null || debt == null ? null : netAssets-debt,credit:total(credit),invested,
     investedGross:total(positions.map(p => p.gross)),cash:total(cash)};
+}
+
+// Gasto do mês pela data da compra (e não pelo vencimento da fatura, como no fluxo mensal): cada compra
+// conta no mês em que foi feita, inclusive no cartão; parceladas entram com o valor total no mês da compra;
+// estornos no cartão abatem. Ficam de fora pagamentos de fatura, transferências internas, investimentos e
+// categorias excluídas do fluxo. Pendentes contam: a compra já foi feita.
+export function purchases(data, currency, today = new Date().toLocaleDateString('en-CA')) {
+  const {internal,cards,isPayment} = payments(data,currency);
+  const counted = t => !internal.has(t.category) && !isPayment(t) &&
+    !['Transferência interna','Movimentação de investimentos'].includes(investmentCategory(t));
+  const out = [];
+  for (const t of data.transactions) {
+    if (t.currency !== currency || cards.has(t.account) || !counted(t) || t.amount >= 0) continue;
+    if (t.account.startsWith('wallet-') && t.kind === 'adjustment') continue;
+    out.push({date:t.date,description:t.description,category:t.category,amount:-t.amount,account:t.account});
+  }
+  const groups = new Map();
+  for (const card of data.accounts.filter(a => a.type === 'CREDIT' && a.currency === currency)) {
+    for (const t of cardRows(data,card)) {
+      if (!counted(t)) continue;
+      const n = t.installment, count = t.installments;
+      if (t.amount < 0 && Number.isInteger(n) && Number.isInteger(count) && count > 1 && n >= 1 && n <= count) {
+        const date = t.purchaseDate || shift(t.date,1-n);
+        const merchant = (t.description || '').replace(/(?<!\d)\d{1,3}\s*\/\s*\d{1,3}(?!\d)/g,'').trim().toLowerCase();
+        const key = JSON.stringify([card.id,merchant,date,count]);
+        if (!groups.has(key)) groups.set(key,[]);
+        groups.get(key).push({t,date});
+        continue;
+      }
+      out.push({date:t.purchaseDate || t.date,description:t.description,category:t.category,amount:-t.amount,account:t.account});
+    }
+  }
+  for (const group of groups.values()) {
+    // Compras iguais no mesmo dia seguem separadas, como no cartão (card-periods.mjs).
+    const list = [];
+    for (const entry of group) {
+      const same = list.find(p => !p.some(e => e.t.installment === entry.t.installment) && Math.abs(p[0].t.amount - entry.t.amount) <= entry.t.installments);
+      if (same) same.push(entry); else list.push([entry]);
+    }
+    for (const purchase of list) {
+      purchase.sort((a,b) => a.t.installment - b.t.installment);
+      const {t,date} = purchase[0], count = t.installments;
+      const first = purchase.find(e => e.t.installment === 1)?.t.amount;
+      const typical = (purchase.find(e => e.t.installment > 1) || purchase[0]).t.amount;
+      const amount = -((first ?? typical) + typical*(count-1));
+      out.push({date,description:t.description.replace(/(?<!\d)\d{1,3}\s*\/\s*\d{1,3}(?!\d)/g,'').trim(),category:t.category,amount,account:t.account,installments:count});
+    }
+  }
+  return out.filter(p => p.date <= today);
+}
+
+export function spending(data, month, currency, today = new Date().toLocaleDateString('en-CA'), all = purchases(data,currency,today)) {
+  const rows = all.filter(p => p.date.startsWith(month)).sort((a,b) => b.amount-a.amount || b.date.localeCompare(a.date));
+  const byCategory = new Map();
+  for (const p of rows) byCategory.set(p.category ?? null,(byCategory.get(p.category ?? null) || 0)+p.amount);
+  return {total:sum(rows,p => p.amount),byCategory,rows};
 }

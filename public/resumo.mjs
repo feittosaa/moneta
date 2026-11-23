@@ -1,7 +1,7 @@
 // Resumo de leitura para programas locais (a Ayla): as mesmas contas da interface, prontas para
 // responder perguntas como "qual o valor da minha fatura em aberto?". Valores em centavos.
 import {cardPeriod} from './card-periods.mjs';
-import {summarize} from './report.mjs';
+import {summarize, purchases, spending} from './report.mjs';
 
 const byDate = (a,b) => a.localeCompare(b);
 
@@ -33,9 +33,12 @@ export function resumo(data, today = new Date().toLocaleDateString('en-CA')) {
       invoices:summary.invoices,openInvoices:open.length ? open.reduce((a,b) => a+b,0) : null,
       netWorth:summary.net ?? null};
   });
-  // Despesas por categoria nos últimos 12 meses, pela mesma conta da tela de relatórios: compras no
-  // cartão entram pela fatura do mês, e a parte da fatura sem detalhamento vira "Fatura sem detalhamento".
+  // Despesas por categoria nos últimos 12 meses, de dois jeitos. `spent`/`categories`: fluxo mensal, como
+  // no Resumo mensal (compras no cartão entram pela fatura que vence no mês; a parte sem detalhamento vira
+  // "Fatura sem detalhamento"). `purchases`: gasto mensal, como na aba Gasto mensal (cada compra no mês
+  // em que foi feita; parceladas com o valor total).
   const months = [];
+  const bought = new Map(currencies.map(currency => [currency, purchases(data,currency,today)]));
   for (let back = 11; back >= 0; back--) {
     const [year, number] = month.split('-').map(Number);
     const date = new Date(Date.UTC(year, number - 1 - back, 1));
@@ -51,8 +54,13 @@ export function resumo(data, today = new Date().toLocaleDateString('en-CA')) {
       for (const [category, amount] of summary.invoiceByCategory) add(category, amount);
       const list = [...spent].filter(([,amount]) => amount).map(([name,amount]) => ({name,amount}))
         .sort((a,b) => b.amount-a.amount || a.name.localeCompare(b.name));
-      if (summary.spent || summary.income || list.length)
-        months.push({month:key,currency,income:summary.income,spent:summary.spent,categories:list});
+      const made = spending(data,key,currency,today,bought.get(currency));
+      const madeList = [...made.byCategory].filter(([,amount]) => amount)
+        .map(([category,amount]) => ({name:categories.get(category) ?? 'Sem categoria',amount}))
+        .sort((a,b) => b.amount-a.amount || a.name.localeCompare(b.name));
+      if (summary.spent || summary.income || list.length || made.total)
+        months.push({month:key,currency,income:summary.income,spent:summary.spent,categories:list,
+          purchases:{total:made.total,categories:madeList}});
     }
   }
   const recent = data.transactions.filter(t => t.date <= today).sort((a,b) => byDate(b.date,a.date)).slice(0,20)

@@ -2,7 +2,7 @@ import {cardPeriod} from './card-periods.mjs';
 import { renderPortfolio } from './portfolio.js';
 import { localDateField } from './date-field.mjs';
 import { showGuide } from './guide.js';
-import { summarize } from './report.mjs';
+import { summarize, spending, purchases } from './report.mjs';
 import { setupDrawer } from './drawer.mjs';
 import { setupAppearance } from './appearance.mjs';
 setupDrawer();
@@ -14,7 +14,7 @@ function currentMonth() {
 }
 month.value = currentMonth();
 let data, request, notify;
-let portfolioTab = false, historyRequest, ledgerScope, ledgerLink;
+let overviewTab = 'monthly', historyRequest, ledgerScope, ledgerLink;
 const tag = (name, text) => {
   const element = document.createElement(name);
   if (text != null) element.textContent = text;
@@ -241,6 +241,58 @@ function report() {
   for (const [name,value] of [['Patrimônio bruto',summary.gross],['Investimentos líquidos',summary.invested],['Dívida de cartões',summary.credit]]) {
     position.append(tag('dt',name),tag('dd',amount(value)));
   }
+}
+// Gasto mensal: cada compra no mês em que foi feita (cartão pela data da compra, parceladas com o total).
+function showSpending() {
+  const loaded = data.sources.length > 0 || data.accounts.some(a => a.type === 'CASH' && a.currency === currency.value);
+  const period = month.value || 'invalid';
+  const all = purchases(data,currency.value);
+  const current = spending(data,period,currency.value,undefined,all);
+  const series = [];
+  if (month.value) {
+    const [year,number] = month.value.split('-').map(Number);
+    for (let i = 0; i < 6; i++) {
+      const date = new Date(year,number-6+i,1);
+      const key = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
+      series.push({date,total:spending(data,key,currency.value,undefined,all).total});
+    }
+  }
+  const previous = series.slice(0,-1).filter(p => p.total);
+  const average = previous.length ? Math.round(sum(previous,p => p.total)/previous.length) : null;
+  const [topId,topValue] = [...current.byCategory].sort((a,b) => b[1]-a[1])[0] || [];
+  $('#spending-metrics').replaceChildren(metrics([
+    ['Gasto no mês', loaded ? current.total : null],
+    ['Média dos meses anteriores', loaded ? average : null],
+    [topValue ? 'Maior categoria: '+categoryName(topId) : 'Maior categoria', loaded && topValue ? topValue : null],
+  ]));
+  const flow = $('#spending-flow');
+  flow.replaceChildren();
+  const peak = Math.max(1,...series.map(p => p.total));
+  for (const point of series) {
+    const col = tag('div'), bars = tag('div'), bar = tag('i');
+    const label = point.date.toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+    col.title = label+' · Gasto '+(loaded ? money(point.total) : '—');
+    col.setAttribute('aria-label',col.title);
+    col.tabIndex = 0;
+    bars.className = 'bars';
+    bar.style.height = (point.total/peak*100)+'%';
+    bars.append(bar);
+    col.append(bars,tag('small',label));
+    flow.append(col);
+  }
+  const breakdown = $('#spending-breakdown');
+  breakdown.replaceChildren();
+  for (const [id,value] of [...current.byCategory].filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1])) {
+    const row = tag('div'), track = tag('progress');
+    track.max = Math.max(1,current.total); track.value = value;
+    track.style.setProperty('--category-color',categoryColor(id));
+    track.setAttribute('aria-label',categoryName(id));
+    row.append(categoryLabel(id),tag('strong',money(value)),track);
+    breakdown.append(row);
+  }
+  if (!breakdown.childElementCount) breakdown.append(tag('p','Nenhuma compra neste mês.'));
+  $('#spending-top').replaceChildren(table(['Data','Descrição','Categoria','Valor'],current.rows.slice(0,8).map(p =>
+    [formatDate(p.date),p.description+(p.installments ? ' ('+p.installments+'x)' : ''),categoryName(p.category),money(-p.amount)]),'Nenhuma compra neste mês.'));
 }
 let ledgerLimit = 100;
 function ledger() {
@@ -640,7 +692,7 @@ export function navigate() {
   const current = document.querySelector('nav a[aria-current=page]');
   $('#page-title').textContent = current.dataset.title || current.lastChild.textContent;
   $('.toolbar').hidden = !['relatorio','transacoes','cartoes','vales','carteira','conexoes'].includes(page);
-  $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && portfolioTab) || (page === 'transacoes' && allMonths());
+  $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && overviewTab === 'portfolio') || (page === 'transacoes' && allMonths());
   if (page === 'guia') { const query = new URLSearchParams(search || ''); showGuide($('#guide'),query.get('secao'),query.get('aba') || 'bancos'); }
   if (!data) return;
   if (page !== 'transacoes' || !search) {
@@ -666,11 +718,12 @@ export function navigate() {
     ledgerLimit = 100;
   }
   if (page === 'relatorio') {
-    $('#report').hidden = portfolioTab;
-    $('#portfolio').hidden = !portfolioTab;
-    $('#monthly-tab').setAttribute('aria-pressed',String(!portfolioTab));
-    $('#portfolio-tab').setAttribute('aria-pressed',String(portfolioTab));
-    if (portfolioTab) showPortfolio();
+    for (const [tab,pane] of [['monthly','report'],['spending','spending'],['portfolio','portfolio']]) {
+      $('#'+pane).hidden = overviewTab !== tab;
+      $('#'+tab+'-tab').setAttribute('aria-pressed',String(overviewTab === tab));
+    }
+    if (overviewTab === 'portfolio') showPortfolio();
+    else if (overviewTab === 'spending') showSpending();
     else report();
   }
   if (page === 'carteira') {
@@ -765,8 +818,9 @@ export function initializeFinance(api, message) {
   localDateField(month,'month');
   for (const input of document.querySelectorAll('input[type=date]')) localDateField(input);
   $('#expense-scope').onchange = navigate;
-  $('#monthly-tab').onclick = () => { portfolioTab = false; navigate(); };
-  $('#portfolio-tab').onclick = () => { portfolioTab = true; navigate(); };
+  $('#monthly-tab').onclick = () => { overviewTab = 'monthly'; navigate(); };
+  $('#spending-tab').onclick = () => { overviewTab = 'spending'; navigate(); };
+  $('#portfolio-tab').onclick = () => { overviewTab = 'portfolio'; navigate(); };
   $('#clear-ledger-context').onclick = () => { location.hash = 'transacoes'; };
   for (const id of ['portfolio-range','portfolio-year','portfolio-from','portfolio-to']) $('#'+id).onchange = showPortfolio;
   const privacy = $('#privacy');

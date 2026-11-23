@@ -1,11 +1,27 @@
 // Use civil dates: the statement month is the month of its due date.
-function shift(date, months) {
+export function shift(date, months) {
   const [y,m,d] = date.split('-').map(Number);
   const last = new Date(Date.UTC(y,m+months,0));
   last.setUTCDate(Math.min(d || 1,last.getUTCDate()));
   return last.toISOString().slice(0,10);
 }
 const monthOf = day => day?.slice(0,7);
+// A Pluggy às vezes repete uma compra pendente: no XP veio uma vez como "MULTIMIX" e outra como
+// "MULTIMIX  PETROPOLIS  BR". Enquanto nenhuma fatura confirma, pendentes de mesma data e valor cuja
+// descrição é igual ao começo da outra contam uma vez só, ficando a descrição mais completa.
+export function cardRows(data, card, byId = new Map((data.bills || []).map(b => [b.id,b]))) {
+  const words = t => (t.description || '').trim().replace(/\s+/g,' ').toLowerCase();
+  const own = data.transactions.filter(t => t.account === card.id && t.currency === card.currency);
+  const loose = own.filter(t => t.pending && !byId.has(t.billId)).sort((a,b) => words(b).length - words(a).length);
+  const kept = [], repeated = new Set();
+  for (const t of loose) {
+    const text = words(t);
+    const twin = kept.find(k => k.date === t.date && k.amount === t.amount && (k.installment ?? null) === (t.installment ?? null) &&
+      (words(k) === text || words(k).startsWith(text+' ')));
+    if (twin) repeated.add(t); else kept.push(t);
+  }
+  return own.filter(t => !repeated.has(t));
+}
 export function cardPeriod(data, card, month, today) {
   const bills = (data.bills || []).filter(b => b.account === card.id && b.currency === card.currency);
   const official = bills.filter(b => monthOf(b.due) === month);
@@ -27,20 +43,7 @@ export function cardPeriod(data, card, month, today) {
     const offset = (y-cy)*12+m-cm;
     return monthOf(shift(due,offset + Number(day > shift(close,offset))));
   }
-  // A Pluggy às vezes repete uma compra pendente: no XP veio uma vez como "MULTIMIX" e outra como
-  // "MULTIMIX  PETROPOLIS  BR". Enquanto nenhuma fatura confirma, pendentes de mesma data e valor cuja
-  // descrição é igual ao começo da outra contam uma vez só, ficando a descrição mais completa.
-  const words = t => (t.description || '').trim().replace(/\s+/g,' ').toLowerCase();
-  const own = data.transactions.filter(t => t.account === card.id && t.currency === card.currency);
-  const loose = own.filter(t => t.pending && !byId.has(t.billId)).sort((a,b) => words(b).length - words(a).length);
-  const kept = [], repeated = new Set();
-  for (const t of loose) {
-    const text = words(t);
-    const twin = kept.find(k => k.date === t.date && k.amount === t.amount && (k.installment ?? null) === (t.installment ?? null) &&
-      (words(k) === text || words(k).startsWith(text+' ')));
-    if (twin) repeated.add(t); else kept.push(t);
-  }
-  const transactions = own.filter(t => !repeated.has(t));
+  const transactions = cardRows(data, card, byId);
   // O mês previsto pela Pluggy nem sempre é o do vencimento: no XP vem um mês antes. As compras à vista
   // já vinculadas a faturas fechadas mostram o deslocamento de cada cartão; sem maioria clara, nenhum.
   const offsets = new Map();
