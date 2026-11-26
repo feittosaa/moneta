@@ -1,5 +1,6 @@
 import { createHash, randomInt } from 'node:crypto';
 import {investmentCategory} from './public/movement.mjs';
+import {cardPeriod, shift} from './public/card-periods.mjs';
 import { initRuleCatalog, editCatalogRule, validPriority, catalogRules, importRuleCatalog, categoryKey, receiverDocument, condition, validateConditions, removeCatalogRule } from './category-rules.mjs';
 const templates = [
   ['Moradia', 'Housing', 'Telecommunications', 'Utilities', 'Rent'], ['Alimentação', 'Food and drinks', 'Restaurants', 'Food delivery'],
@@ -64,6 +65,10 @@ export function restoreBankNames(db) {
   } catch (error) { db.exec('ROLLBACK'); throw error; }
 }
 const localDay = timestamp => new Date(timestamp).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+// Dia de uma data da Pluggy no horário de Brasília. Ela manda o instante em UTC: uma compra às 22h55
+// do dia 24 chega como 01h55 do dia 25. Data sem hora, ou meia-noite UTC exata (só a data), vale como veio.
+const pluggyDay = value => typeof value !== 'string' ? undefined :
+  value.length <= 10 || /T00:00(?::00(?:\.0+)?)?Z$/.test(value) ? value.slice(0,10) : localDay(Date.parse(value));
 
 // Vales (transporte, alimentação, bônus) não chegam pela Pluggy. Cada crédito vira, na mesma data,
 // uma receita em Benefícios e uma despesa na categoria do vale.
@@ -523,6 +528,26 @@ async function redeemed(get,holding,due,transactions) {
     .reduce((sum,t) => sum+t.amount,0);
   return credited >= Math.abs(holding.net || holding.gross)*0.9;
 }
+// Valor que a instituição já soma no saldo do cartão, mas ainda não listou como lançamento. Na XP,
+// a compra parcelada só aparece quando a primeira parcela é lançada, enquanto a compra à vista
+// aparece pendente na hora. É o saldo menos a fatura em aberto e as parcelas futuras. Só é calculado
+// quando a fatura em aberto é estimada pelas compras: com fatura fechada ainda por vencer, ou com o
+// valor da fatura aberta informado pela instituição, o saldo não fecha com as compras.
+const unlistedMinimum = 500;
+function unlistedAmount(card, data, today) {
+  if (card.type !== 'CREDIT' || !(card.balance > 0) ||
+      data.accounts.some(other => other !== card && other.shared && other.shared === card.shared) ||
+      data.bills.some(b => b.account === card.id && b.currency === card.currency && b.due >= today)) return 0;
+  const current = cardPeriod(data,card,today.slice(0,7),today);
+  const month = current.openMonth;
+  const open = month && cardPeriod(data,card,month,today);
+  if (!open?.open || !open.estimated) return 0;
+  let listed = 0;
+  // Parcelas futuras: cinco anos cobrem qualquer parcelamento.
+  for (let n = 0; n < 60; n++) listed += cardPeriod(data,card,shift(month+'-01',n).slice(0,7),today).amount || 0;
+  const gap = card.balance - listed;
+  return gap >= unlistedMinimum ? gap : 0;
+}
 export async function synchronize(db, get) {
   const records = [];
   for (const item of db.prepare('SELECT * FROM connections').all()) {
@@ -545,10 +570,12 @@ export async function synchronize(db, get) {
         const amount = cents(t.amountInAccountCurrency ?? t.amount);
         if (!t.id || amount == null || !t.date) throw new Error('Transação incompleta.');
         const debit = t.type ? t.type === 'DEBIT' : (a.type === 'CREDIT' ? amount > 0 : amount < 0);
-        transactions.set(t.id,{id:t.id, account:a.id, date:t.date.slice(0,10), description:t.description || t.descriptionRaw || 'Sem descrição',
+        const forecast = t.creditCardMetadata?.billForecastDate;
+        transactions.set(t.id,{id:t.id, account:a.id, date:pluggyDay(t.date), description:t.description || t.descriptionRaw || 'Sem descrição',
           receiverDocument:receiverDocument(t.paymentData?.receiver?.documentNumber?.value), operation:t.operationType,installment:t.creditCardMetadata?.installmentNumber,installments:t.creditCardMetadata?.totalInstallments,
-          forecast:t.creditCardMetadata?.billForecastDate, billPostDate:t.creditCardMetadata?.billPostDate?.slice(0,10),
-          purchaseDate:t.creditCardMetadata?.purchaseDate?.slice(0,10),billId:t.creditCardMetadata?.billId || null,
+          // A XP manda "0001-01" quando ainda não sabe a fatura; sem previsão, a compra vai pelo ciclo.
+          forecast:/^(?:19|20)\d\d-(?:0[1-9]|1[0-2])/.test(forecast ?? '') ? forecast : undefined, billPostDate:t.creditCardMetadata?.billPostDate?.slice(0,10),
+          purchaseDate:pluggyDay(t.creditCardMetadata?.purchaseDate),billId:t.creditCardMetadata?.billId || null,
           providerCategory:t.operationType === 'PAGAMENTO_FATURA' ? 'Pagamento de fatura' : t.category || '', pending:t.status === 'PENDING', currency, amount:Math.abs(amount)*(debit?-1:1)});
       }
     }
@@ -568,6 +595,14 @@ export async function synchronize(db, get) {
       for (const t of prior.transactions) {
         if (archived.has(t.billId) && !transactions.has(t.id)) transactions.set(t.id,t);
       }
+    }
+    // Desde quando há valor não detalhado: a data em que ele apareceu, mantida nas coletas seguintes.
+    const today = localDay(Date.now());
+    const listing = {accounts,bills:[...bills.values()],transactions:[...transactions.values()]};
+    for (const account of accounts) {
+      const amount = unlistedAmount(account,listing,today);
+      const before = prior?.accounts?.find(a => a.id === account.id)?.unlisted;
+      if (amount) account.unlisted = {amount,since:before?.since ?? today};
     }
     const positions = await collect(get,'/investments',{itemId:item.id});
     const gone = new Set(prior?.gone || []);

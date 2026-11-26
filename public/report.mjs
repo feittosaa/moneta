@@ -1,5 +1,5 @@
 import {investmentCategory} from './movement.mjs';
-import {cardPeriod, cardRows, shift} from './card-periods.mjs';
+import {cardPeriod, cardRows, shift, unlistedDescription} from './card-periods.mjs';
 const sum = (list, value) => list.reduce((total,row) => total + value(row),0);
 const total = values => values.includes(null) ? null : sum(values,v => v);
 // Legacy snapshots can lack both bill IDs and cycle dates. Only attribute purchases
@@ -200,6 +200,9 @@ export function purchases(data, currency, today = new Date().toLocaleDateString(
   }
   const groups = new Map();
   for (const card of data.accounts.filter(a => a.type === 'CREDIT' && a.currency === currency)) {
+    // Compra que a instituição já cobra no saldo, mas ainda não listou: conta no dia em que apareceu.
+    if (card.unlisted?.amount > 0) out.push({date:card.unlisted.since,description:unlistedDescription,category:null,
+      amount:card.unlisted.amount,account:card.id,unlisted:true});
     for (const t of cardRows(data,card)) {
       if (!counted(t)) continue;
       const n = t.installment, count = t.installments;

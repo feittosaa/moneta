@@ -47,7 +47,7 @@ await mkdir(join(out,'guia'),{recursive:true});
 for (const name of await readdir(join(root,'docs/guia'))) await emit('guia/'+name,await readFile(join(root,'docs/guia',name)));
 await emit('guia/celular.md',await read('docs/guia-celular.md'));
 const finance = replace(await read('finance.mjs'),"'node:crypto'","'./browser-crypto.mjs'")
-  .replace("'./public/movement.mjs'","'./movement.mjs'");
+  .replace("'./public/movement.mjs'","'./movement.mjs'").replace("'./public/card-periods.mjs'","'./card-periods.mjs'");
 await emit('finance.mjs',finance);
 await emit('peer-data.mjs',replace(await read('peer-data.mjs'),"'node:crypto'","'./browser-crypto.mjs'"));
 await mkdir(join(out,'vendor'),{recursive:true});

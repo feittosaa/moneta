@@ -365,3 +365,67 @@ test('Itaú: parcela colada no nome não duplica e pagamento da fatura não abat
   assert.equal(cardPeriod({bills,transactions},card,'2027-01',day).amount,21505);
   assert.equal(cardPeriod({bills,transactions},card,'2027-02',day).amount,21505);
 });
+
+test('data da transação no horário de Brasília e previsão de fatura de preenchimento descartada', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE connections(id TEXT, institution TEXT); INSERT INTO connections VALUES('item','XP')");
+  initFinance(db);
+  const tx = (id,date,extra={}) => ({id,date,amount:10,type:'DEBIT',description:id,currencyCode:'BRL',...extra});
+  await synchronize(db,async path => {
+    const {pathname,searchParams:q} = new URL(path,'https://example.test');
+    if (pathname === '/accounts') return {results:[{id:'card',type:'CREDIT',balance:0,currencyCode:'BRL'}]};
+    if (q.get('accountId') === 'card' && pathname === '/v2/transactions') return {results:[
+      tx('noite','2026-11-25T01:55:48.780Z',{creditCardMetadata:{billForecastDate:'0001-01',purchaseDate:'2026-11-25T01:55:48.780Z'}}),
+      tx('meia-noite-local','2026-11-20T03:00:00.000Z',{creditCardMetadata:{billForecastDate:'2026-11'}}),
+      tx('so-data','2026-11-03T00:00:00.000Z'),tx('dia','2026-11-03')]};
+    return {results:[]};
+  });
+  const byId = new Map(overview(db).transactions.map(t => [t.id,t]));
+  assert.deepEqual(['noite','meia-noite-local','so-data','dia'].map(id => byId.get(id).date),['2026-11-24','2026-11-20','2026-11-03','2026-11-03']);
+  assert.equal(byId.get('noite').purchaseDate,'2026-11-24');
+  assert.equal(byId.get('noite').forecast,undefined);
+  assert.equal(byId.get('meia-noite-local').forecast,'2026-11');
+  db.close();
+});
+
+test('saldo do cartão acima das compras listadas vira compra não detalhada até a instituição listar', async () => {
+  const {cardPeriod} = await import('../public/card-periods.mjs');
+  const {purchases} = await import('../public/report.mjs');
+  const day = offset => new Date(Date.now()+offset*86400000).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+  const today = day(0);
+  const db = new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE connections(id TEXT, institution TEXT); INSERT INTO connections VALUES('item','XP')");
+  initFinance(db);
+  let balance = 500, listed = [{id:'mercado',date:today+'T15:00:00.000Z',amount:100,type:'DEBIT',description:'Mercado',status:'PENDING',currencyCode:'BRL'}];
+  const get = async path => {
+    const {pathname,searchParams:q} = new URL(path,'https://example.test');
+    if (pathname === '/accounts') return {results:[{id:'card',type:'CREDIT',balance,currencyCode:'BRL'}]};
+    if (pathname === '/bills') return {results:[{id:'antiga',dueDate:day(-3),billClosingDate:day(-10),totalAmount:50,totalAmountCurrencyCode:'BRL'}]};
+    if (q.get('accountId') === 'card' && pathname === '/v2/transactions') return {results:listed};
+    return {results:[]};
+  };
+  await synchronize(db,get);
+  let data = overview(db);
+  let card = data.accounts.find(a => a.id === 'card');
+  assert.deepEqual(card.unlisted,{amount:40000,since:today});
+  const open = cardPeriod(data,card,cardPeriod(data,card,today.slice(0,7),today).openMonth,today);
+  assert.equal(open.amount,50000);
+  assert.ok(open.rows.some(t => t.unlisted && t.amount === -40000));
+  assert.ok(purchases(data,'BRL',today).some(p => p.unlisted && p.amount === 40000 && p.date === today));
+  // A data em que o valor apareceu se mantém nas coletas seguintes.
+  db.prepare('UPDATE snapshots SET payload=replace(payload,?,?)').run('"since":"'+today+'"','"since":"'+day(-1)+'"');
+  await synchronize(db,get);
+  assert.equal(overview(db).accounts.find(a => a.id === 'card').unlisted.since,day(-1));
+  // Listada a primeira de seis parcelas, as seguintes são projetadas e não sobra nada sem detalhe.
+  listed = [...listed,{id:'loja',date:today+'T12:00:00.000Z',amount:66.67,type:'DEBIT',description:'Loja',status:'PENDING',currencyCode:'BRL',
+    creditCardMetadata:{installmentNumber:1,totalInstallments:6,purchaseDate:today+'T12:00:00.000Z'}}];
+  balance = 100+400.02;
+  await synchronize(db,get);
+  card = overview(db).accounts.find(a => a.id === 'card');
+  assert.equal(card.unlisted,undefined);
+  // Fatura fechada ainda por vencer: o saldo inclui o que ela cobra, e a conta não é feita.
+  balance = 900;
+  await synchronize(db,async path => path.startsWith('/bills') ? {results:[{id:'nova',dueDate:day(5),billClosingDate:day(-2),totalAmount:400,totalAmountCurrencyCode:'BRL'}]} : get(path));
+  assert.equal(overview(db).accounts.find(a => a.id === 'card').unlisted,undefined);
+  db.close();
+});
