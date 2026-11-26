@@ -325,7 +325,7 @@ function ledger() {
     }
     const value = tag('span',money(t.amount));
     if (t.amount > 0) value.className = 'amount-income';
-    return [t.category === 'invoice' || t.projected ? '—' : formatDate(t.date),t.projected ? t.description : open,
+    return [t.category === 'invoice' || t.projected ? '—' : t.unlisted ? 'Desde '+formatDate(t.date) : formatDate(t.date),t.projected ? t.description : open,
       accounts.get(t.account) || '—',categoryLabel(t.category),t.projected ? (t.category === 'invoice' ? 'Sem detalhamento' : 'Prevista') : t.pending?'Pendente':'Efetivada',value];
   });
   $('#ledger').replaceChildren(table(['Data','Descrição','Conta','Categoria','Situação','Valor'],records,'Nenhuma transação para estes filtros.'));
