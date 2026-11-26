@@ -118,7 +118,8 @@ export function cardPeriod(data, card, month, today) {
         const installment = tx.installment + (year-y)*12 + number-m;
         if (installment > tx.installments || installments.some(entry => entry.tx.installment === installment)) continue;
         // A parcela 1 pode carregar a sobra; as seguintes repetem o valor de qualquer outra parcela.
-        const amount = (prior.find(entry => entry.tx.installment > 1) || prior[0]).tx.amount;
+        // Parcela 1 deduzida do saldo (finance.mjs): o valor das seguintes vem calculado junto.
+        const amount = prior.find(entry => entry.tx.installment > 1)?.tx.amount ?? prior[0].tx.laterAmount ?? prior[0].tx.amount;
         rows.push({...tx,amount,installment,projected:true});
       }
     }

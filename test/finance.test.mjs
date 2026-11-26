@@ -389,7 +389,7 @@ test('data da transação no horário de Brasília e previsão de fatura de pree
 });
 
 test('saldo do cartão acima das compras listadas vira compra não detalhada até a instituição listar', async () => {
-  const {cardPeriod, unlistedRows} = await import('../public/card-periods.mjs');
+  const {cardPeriod, unlistedRows, shift} = await import('../public/card-periods.mjs');
   const {purchases} = await import('../public/report.mjs');
   const day = offset => new Date(Date.now()+offset*86400000).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
   const today = day(0);
@@ -407,7 +407,7 @@ test('saldo do cartão acima das compras listadas vira compra não detalhada at�
   await synchronize(db,get);
   let data = overview(db);
   let card = data.accounts.find(a => a.id === 'card');
-  assert.deepEqual(card.unlisted,{amount:40000,since:today});
+  assert.deepEqual(card.unlisted,{amount:40000,since:today,known:['mercado']});
   const open = cardPeriod(data,card,cardPeriod(data,card,today.slice(0,7),today).openMonth,today);
   assert.equal(open.amount,50000);
   assert.ok(open.rows.some(t => t.unlisted && t.amount === -40000));
@@ -418,7 +418,9 @@ test('saldo do cartão acima das compras listadas vira compra não detalhada at�
   // A data em que o valor apareceu se mantém nas coletas seguintes.
   db.prepare('UPDATE snapshots SET payload=replace(payload,?,?)').run('"since":"'+today+'"','"since":"'+day(-1)+'"');
   await synchronize(db,get);
-  assert.equal(overview(db).accounts.find(a => a.id === 'card').unlisted.since,day(-1));
+  // A compra à vista que já estava listada não vira parcela, mesmo sendo R$ 400 quatro vezes R$ 100.
+  assert.deepEqual(overview(db).accounts.find(a => a.id === 'card').unlisted,{amount:40000,since:day(-1),known:['mercado']});
+  assert.equal(overview(db).transactions.find(t => t.id === 'mercado').installments,undefined);
   // Listada a primeira de seis parcelas, as seguintes são projetadas e não sobra nada sem detalhe.
   listed = [...listed,{id:'loja',date:today+'T12:00:00.000Z',amount:66.67,type:'DEBIT',description:'Loja',status:'PENDING',currencyCode:'BRL',
     creditCardMetadata:{installmentNumber:1,totalInstallments:6,purchaseDate:today+'T12:00:00.000Z'}}];
@@ -426,6 +428,36 @@ test('saldo do cartão acima das compras listadas vira compra não detalhada at�
   await synchronize(db,get);
   card = overview(db).accounts.find(a => a.id === 'card');
   assert.equal(card.unlisted,undefined);
+  // Na XP a parcela 1 chega pendente sem o número da parcela, depois que o saldo já soma a compra inteira:
+  // o valor não detalhado que for múltiplo dela são as parcelas seguintes, projetadas nas próximas faturas.
+  listed = [listed[0]];
+  balance = 100+413.76;
+  await synchronize(db,get);
+  assert.equal(overview(db).accounts.find(a => a.id === 'card').unlisted.amount,41376);
+  listed = [...listed,{id:'goodspine',date:day(-1)+'T12:00:00.000Z',amount:69,type:'DEBIT',description:'MP*GOODSPINE',status:'PENDING',currencyCode:'BRL'}];
+  for (const round of [1,2]) {
+    // Na coleta seguinte, a parcela deduzida continua valendo.
+    await synchronize(db,get);
+    data = overview(db);
+    card = data.accounts.find(a => a.id === 'card');
+    assert.equal(card.unlisted,undefined,'coleta '+round);
+    const first = data.transactions.find(t => t.id === 'goodspine');
+    assert.deepEqual([first.installment,first.installments,first.laterAmount],[1,6,-6895]);
+  }
+  assert.deepEqual(unlistedRows(data,'BRL'),[]);
+  const month = cardPeriod(data,card,today.slice(0,7),today).openMonth;
+  assert.ok(cardPeriod(data,card,month,today).rows.some(t => t.id === 'goodspine' && t.amount === -6900));
+  assert.ok(cardPeriod(data,card,shift(month+'-01',1).slice(0,7),today).rows.some(t => t.projected && t.installment === 2 && t.amount === -6895));
+  assert.equal(cardPeriod(data,card,shift(month+'-01',5).slice(0,7),today).rows.find(t => t.projected)?.installment,6);
+  assert.ok(purchases(data,'BRL',today).some(p => p.installments === 6 && p.amount === 6900+5*6895));
+  // Duas compras novas que explicariam o valor: não dá para saber qual é, e ele segue sem detalhe.
+  listed = [listed[0]];
+  balance = 100+586.14;
+  await synchronize(db,get);
+  listed = [...listed,{id:'loja-a',date:today+'T12:00:00.000Z',amount:69,type:'DEBIT',description:'Loja A',status:'PENDING',currencyCode:'BRL'},
+    {id:'loja-b',date:today+'T13:00:00.000Z',amount:172.38,type:'DEBIT',description:'Loja B',status:'PENDING',currencyCode:'BRL'}];
+  await synchronize(db,get);
+  assert.equal(overview(db).accounts.find(a => a.id === 'card').unlisted?.amount,34476);
   // Fatura fechada ainda por vencer: o saldo inclui o que ela cobra, e a conta não é feita.
   balance = 900;
   await synchronize(db,async path => path.startsWith('/bills') ? {results:[{id:'nova',dueDate:day(5),billClosingDate:day(-2),totalAmount:400,totalAmountCurrencyCode:'BRL'}]} : get(path));

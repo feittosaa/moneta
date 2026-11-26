@@ -228,7 +228,7 @@ export function purchases(data, currency, today = new Date().toLocaleDateString(
       purchase.sort((a,b) => a.t.installment - b.t.installment);
       const {t,date} = purchase[0], count = t.installments;
       const first = purchase.find(e => e.t.installment === 1)?.t.amount;
-      const typical = (purchase.find(e => e.t.installment > 1) || purchase[0]).t.amount;
+      const typical = purchase.find(e => e.t.installment > 1)?.t.amount ?? purchase[0].t.laterAmount ?? purchase[0].t.amount;
       const amount = -((first ?? typical) + typical*(count-1));
       out.push({date,description:t.description.replace(/(?<!\d)\d{1,3}\s*\/\s*\d{1,3}(?!\d)/g,'').trim(),category:t.category,amount,account:t.account,installments:count});
     }

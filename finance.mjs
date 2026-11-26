@@ -548,6 +548,28 @@ function unlistedAmount(card, data, today) {
   const gap = card.balance - listed;
   return gap >= unlistedMinimum ? gap : 0;
 }
+// Na XP, a parcela 1 de uma compra parcelada chega pendente sem o número da parcela (ele só vem quando
+// a fatura fecha), enquanto o saldo já soma a compra inteira desde antes. Se depois que o valor não
+// detalhado apareceu surge uma compra pendente de que ele é k vezes o valor, ela é a parcela 1 de k+1
+// e o valor são as parcelas seguintes. A parcela 1 carrega a sobra do arredondamento: menos de um
+// centavo por parcela acima das outras. Compras que já estavam listadas quando o valor apareceu
+// (`known`) não contam: uma compra à vista de R$ 100 não explica R$ 400 de outra.
+const loose = (card, t) => t.account === card.id && t.currency === card.currency && t.pending && !t.billId &&
+  t.installments == null && t.amount < 0;
+function inferInstallments(card, data, today, known) {
+  const gap = unlistedAmount(card,data,today);
+  if (!gap) return;
+  const matches = [];
+  for (const t of data.transactions) {
+    if (!loose(card,t) || known.has(t.id) || t.date > today) continue;
+    const k = Math.round(gap/-t.amount);
+    if (k >= 1 && k <= 23 && Math.abs(gap+k*t.amount) <= k*(k+1)) matches.push({t,k});
+  }
+  // Mais de uma compra possível: não dá para saber qual é. A mesma compra repetida pela Pluggy
+  // (cardRows) conta uma vez só.
+  if (new Set(matches.map(({t,k}) => [t.date,t.amount,k].join())).size !== 1) return;
+  for (const {t,k} of matches) Object.assign(t,{installment:1,installments:k+1,purchaseDate:t.date,laterAmount:-Math.round(gap/k),inferred:true});
+}
 export async function synchronize(db, get) {
   const records = [];
   for (const item of db.prepare('SELECT * FROM connections').all()) {
@@ -600,9 +622,17 @@ export async function synchronize(db, get) {
     const today = localDay(Date.now());
     const listing = {accounts,bills:[...bills.values()],transactions:[...transactions.values()]};
     for (const account of accounts) {
-      const amount = unlistedAmount(account,listing,today);
       const before = prior?.accounts?.find(a => a.id === account.id)?.unlisted;
-      if (amount) account.unlisted = {amount,since:before?.since ?? today};
+      // A parcela deduzida segue valendo nas coletas seguintes, até a instituição numerar a parcela.
+      for (const t of listing.transactions) {
+        const was = prior?.transactions?.find(p => p.id === t.id && p.inferred);
+        if (was && loose(account,t)) Object.assign(t,{installment:1,installments:was.installments,purchaseDate:was.purchaseDate,laterAmount:was.laterAmount,inferred:true});
+      }
+      // Coleta de antes da 1.5.10, sem a lista das compras já conhecidas: vale qualquer compra.
+      if (before) inferInstallments(account,listing,today,new Set(before.known));
+      const amount = unlistedAmount(account,listing,today);
+      if (amount) account.unlisted = {amount,since:before?.since ?? today,
+        known:before?.known ?? listing.transactions.filter(t => loose(account,t)).map(t => t.id)};
     }
     const positions = await collect(get,'/investments',{itemId:item.id});
     const gone = new Set(prior?.gone || []);
