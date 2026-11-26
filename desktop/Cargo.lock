@@ -2165,7 +2165,7 @@ dependencies = [
 
 [[package]]
 name = "moneta-desktop"
-version = "1.5.7"
+version = "1.5.8"
 dependencies = [
  "tauri",
  "tauri-build",
