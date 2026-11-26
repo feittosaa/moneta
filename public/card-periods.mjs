@@ -6,6 +6,7 @@ export function shift(date, months) {
   return last.toISOString().slice(0,10);
 }
 const monthOf = day => day?.slice(0,7);
+export const unlistedDescription = 'Compra ainda não detalhada pela instituição';
 // A Pluggy às vezes repete uma compra pendente: no XP veio uma vez como "MULTIMIX" e outra como
 // "MULTIMIX  PETROPOLIS  BR". Enquanto nenhuma fatura confirma, pendentes de mesma data e valor cuja
 // descrição é igual ao começo da outra contam uma vez só, ficando a descrição mais completa.
@@ -129,6 +130,12 @@ export function cardPeriod(data, card, month, today) {
   }
   const open = month === openMonth && !official.length;
   const reportedOpen = open && monthOf(card.due) === month && card.openAmount != null;
+  // O que a instituição já soma no saldo do cartão sem ter listado a compra (finance.mjs) entra na
+  // fatura em aberto até ela detalhar o lançamento.
+  if (open && !reportedOpen && card.unlisted?.amount > 0) {
+    rows.push({id:'unlisted-'+card.id,account:card.id,currency:card.currency,date:card.unlisted.since,
+      description:unlistedDescription,amount:-card.unlisted.amount,pending:true,unlisted:true,category:null});
+  }
   let amount = null;
   if (official.length) amount = official.reduce((s,b) => s+Math.max(0,b.amount),0);
   else if (reportedOpen) amount = Math.max(0,card.openAmount);

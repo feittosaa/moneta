@@ -23,6 +23,8 @@ export function resumo(data, today = new Date().toLocaleDateString('en-CA')) {
       openInvoice:bill?.open && bill.amount != null ? {month:current.openMonth,amount:bill.amount,
         closingDate:bill.closingDate ?? null,dueDate:bill.dueDate ?? null,estimated:!bill.official.length} : null,
       upcomingBills:upcoming,
+      // Já somado na fatura em aberto: valor no saldo do cartão que a instituição ainda não listou.
+      unlisted:card.unlisted ?? null,
     };
   });
   const currencies = [...new Set([data.currency, ...data.accounts.map(a => a.currency)].filter(Boolean))];

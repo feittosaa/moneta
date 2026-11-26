@@ -411,8 +411,12 @@ function cards() {
     pane.append(tag('p',[bill.close && 'Fechamento em '+formatDate(bill.close),'Vencimento em '+formatDate(bill.due)].filter(Boolean).join(' · ')));
   }
   pane.append(table(['Data','Descrição','Parcela','Categoria','Valor'],period.rows.map(t => [
-    t.projected ? 'Prevista' : formatDate(t.date),t.description,t.installment ? t.installment+'/'+t.installments : '—',categoryName(t.category),cardAmount(t)
+    t.projected ? 'Prevista' : t.unlisted ? 'Desde '+formatDate(t.date) : formatDate(t.date),t.description,t.installment ? t.installment+'/'+t.installments : '—',categoryName(t.category),cardAmount(t)
   ]),'Nenhum lançamento vinculado a esta fatura.'));
+  if (period.rows.some(t => t.unlisted)) {
+    pane.append(tag('p','O saldo do cartão informado pela instituição tem '+money(card.unlisted.amount)+' a mais do que as compras listadas. '+
+      'Em geral é uma compra parcelada, que só aparece quando a primeira parcela é lançada. O valor fica nesta fatura até a instituição detalhar a compra.'));
+  }
 }
 const weekdayNames = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
 function recurrence(v) {
