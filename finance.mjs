@@ -495,6 +495,34 @@ function accountRecord(itemId, institution, a) {
     // Valor aplicado automaticamente, como a instituição o informa (nulo quando ela não informa).
     auto:cents(a.bankData?.automaticallyInvestedBalance) || 0};
 }
+const held = h => Boolean(h) && (h.net || h.gross);
+// Por quantos dias uma posição que a Pluggy deixou de informar, sem rastro de resgate, continua
+// com o último saldo conhecido. Depois disso, sai do patrimônio.
+const staleDays = 15;
+// Posições registradas no histórico dos últimos dias, a mais recente de cada uma.
+function recentHoldings(db,item) {
+  const since = localDay(Date.now()-staleDays*86400000);
+  const found = new Map();
+  for (const row of db.prepare('SELECT payload FROM portfolio_history WHERE item=? AND day>=? ORDER BY day').all(item,since)) {
+    for (const h of JSON.parse(row.payload).holdings || []) found.set(h.id,h);
+  }
+  return found.values();
+}
+// Rastro de que a posição saiu de fato: venceu, tem venda no extrato do investimento ou entrou
+// dinheiro de investimento nas contas da conexão desde a última vez em que ela apareceu.
+async function redeemed(get,holding,due,transactions) {
+  const today = localDay(Date.now());
+  if (due && due.slice(0,10) <= today) return true;
+  const since = localDay(Date.parse(holding.lastSeen || 0)-3*86400000);
+  try {
+    const moves = await collect(get,`/investments/${encodeURIComponent(holding.id)}/transactions`,{});
+    if (moves.some(m => m.type === 'SELL' && m.date?.slice(0,10) >= since)) return true;
+  } catch {}
+  const credited = [...transactions.values()]
+    .filter(t => t.amount > 0 && t.date >= since && t.currency === holding.currency && investmentCategory(t) === 'Movimentação de investimentos')
+    .reduce((sum,t) => sum+t.amount,0);
+  return credited >= Math.abs(holding.net || holding.gross)*0.9;
+}
 export async function synchronize(db, get) {
   const records = [];
   for (const item of db.prepare('SELECT * FROM connections').all()) {
@@ -542,22 +570,38 @@ export async function synchronize(db, get) {
       }
     }
     const positions = await collect(get,'/investments',{itemId:item.id});
+    const gone = new Set(prior?.gone || []);
     const previous = new Map((prior?.holdings || []).map(h => [h.id,h]));
+    // Posições descartadas por versões anteriores sem prova de resgate voltam a ser conferidas.
+    for (const h of recentHoldings(db,item.id)) if (!previous.has(h.id) && !gone.has(h.id)) previous.set(h.id,h);
     const holdings = [];
+    const keep = (h,due) => {
+      const lastSeen = h.lastSeen || saved?.updated;
+      if (Date.now()-Date.parse(lastSeen) > staleDays*86400000) gone.add(h.id);
+      else holdings.push({...h,due:due ?? h.due,stale:true,lastSeen});
+    };
     for (const p of positions) {
       if (!p.id) throw new Error('Posição de investimento incompleta.');
       const cached = previous.get(p.id);
       previous.delete(p.id);
-      // Posição totalmente resgatada: a Pluggy a mantém na lista com saldo zero.
-      if (p.status === 'TOTAL_WITHDRAWAL') continue;
+      // A Pluggy às vezes marca como resgatada uma posição que continua na corretora. Só aceita o
+      // resgate com rastro; sem ele, mantém o último saldo conhecido.
+      if (p.status === 'TOTAL_WITHDRAWAL') {
+        if (!held(cached) || await redeemed(get,cached,p.dueDate,transactions)) gone.add(p.id);
+        else keep(cached,p.dueDate?.slice(0,10));
+        continue;
+      }
+      gone.delete(p.id);
       holdings.push({id:p.id,name:p.name || cached?.name || 'Investimento',currency:p.currencyCode || cached?.currency,
-        net:cents(p.balance) ?? cached?.net ?? null,gross:cents(p.amount) ?? cached?.gross ?? null,
+        net:cents(p.balance) ?? cached?.net ?? null,gross:cents(p.amount) ?? cached?.gross ?? null,due:p.dueDate?.slice(0,10) || cached?.due,
         stale:p.balance == null, lastSeen:p.balance == null ? cached?.lastSeen ?? saved?.updated : new Date().toISOString()});
     }
     for (const h of previous.values()) {
-      if (h.net !== 0 || h.gross !== 0) holdings.push({...h,stale:true,lastSeen:h.lastSeen || saved.updated});
+      if (!held(h)) continue;
+      if (await redeemed(get,h,h.due,transactions)) gone.add(h.id);
+      else keep(h);
     }
-    records.push([item.id,institution,JSON.stringify({accounts,bills:[...bills.values()],transactions:[...transactions.values()],holdings})]);
+    records.push([item.id,institution,JSON.stringify({accounts,bills:[...bills.values()],transactions:[...transactions.values()],holdings,gone:[...gone]})]);
   }
   const stamp = new Date().toISOString();
   db.exec('BEGIN IMMEDIATE');
