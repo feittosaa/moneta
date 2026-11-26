@@ -389,7 +389,7 @@ test('data da transação no horário de Brasília e previsão de fatura de pree
 });
 
 test('saldo do cartão acima das compras listadas vira compra não detalhada até a instituição listar', async () => {
-  const {cardPeriod} = await import('../public/card-periods.mjs');
+  const {cardPeriod, unlistedRows} = await import('../public/card-periods.mjs');
   const {purchases} = await import('../public/report.mjs');
   const day = offset => new Date(Date.now()+offset*86400000).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
   const today = day(0);
@@ -412,6 +412,9 @@ test('saldo do cartão acima das compras listadas vira compra não detalhada at�
   assert.equal(open.amount,50000);
   assert.ok(open.rows.some(t => t.unlisted && t.amount === -40000));
   assert.ok(purchases(data,'BRL',today).some(p => p.unlisted && p.amount === 40000 && p.date === today));
+  // Em Transações, entra como pendente na data em que apareceu.
+  assert.deepEqual(unlistedRows(data,'BRL').map(t => [t.account,t.date,t.amount,t.pending]),[['card',today,-40000,true]]);
+  assert.deepEqual(unlistedRows(data,'USD'),[]);
   // A data em que o valor apareceu se mantém nas coletas seguintes.
   db.prepare('UPDATE snapshots SET payload=replace(payload,?,?)').run('"since":"'+today+'"','"since":"'+day(-1)+'"');
   await synchronize(db,get);

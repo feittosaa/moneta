@@ -1,4 +1,4 @@
-import {cardPeriod} from './card-periods.mjs';
+import {cardPeriod, unlistedRows} from './card-periods.mjs';
 import { renderPortfolio } from './portfolio.js';
 import { localDateField } from './date-field.mjs';
 import { showGuide } from './guide.js';
@@ -298,7 +298,10 @@ let ledgerLimit = 100;
 function ledger() {
   const query = $('#search').value.trim().toLocaleLowerCase();
   const selected = $('#filter-category').value;
-  let transactions = allMonths() ? data.transactions.filter(t => t.currency === currency.value) : periodRows();
+  // A compra que a instituição já cobra no saldo do cartão, mas ainda não listou, aparece como pendente.
+  const unlisted = unlistedRows(data,currency.value).filter(t => allMonths() || t.date.startsWith(month.value || 'invalid'));
+  let transactions = [...unlisted,...(allMonths() ? data.transactions.filter(t => t.currency === currency.value) : periodRows())]
+    .sort((a,b) => b.date.localeCompare(a.date));
   if (ledgerScope) {
     const summary = summarize(data,month.value,currency.value);
     transactions = ledgerScope === 'faturas' ? summary.invoiceRows : summary.expenses;
@@ -315,9 +318,11 @@ function ledger() {
     (!selected || String(t.category ?? 'none') === selected) && t.description.toLocaleLowerCase().includes(query));
   const accounts = new Map(data.accounts.map(a => [a.id,accountName(a)]));
   const records = rows.slice(0,ledgerLimit).map(t => {
-    const open = tag('button',t.description);
-    open.className = 'transaction-link';
-    open.onclick = () => openTransaction(t);
+    const open = t.unlisted ? t.description : tag('button',t.description);
+    if (!t.unlisted) {
+      open.className = 'transaction-link';
+      open.onclick = () => openTransaction(t);
+    }
     const value = tag('span',money(t.amount));
     if (t.amount > 0) value.className = 'amount-income';
     return [t.category === 'invoice' || t.projected ? '—' : formatDate(t.date),t.projected ? t.description : open,
