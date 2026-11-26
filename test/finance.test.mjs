@@ -205,7 +205,7 @@ test('sincronização preserva posição omitida e remove resgate total confirma
   db.exec("CREATE TABLE connections(id TEXT, institution TEXT); INSERT INTO connections VALUES('i','XP')");
   initFinance(db);
   const holdings = [{id:'x',name:'CDB',currency:'BRL',net:9000,gross:10000}];
-  db.prepare('INSERT INTO snapshots VALUES (?,?,?)').run('i',JSON.stringify({accounts:[],transactions:[],holdings}),'2025-02-10T15:00:00.000Z');
+  db.prepare('INSERT INTO snapshots VALUES (?,?,?)').run('i',JSON.stringify({accounts:[],transactions:[],holdings}),new Date(Date.now()-5*86400000).toISOString());
   initFinance(db);
   let positions = [{id:'y',name:'Tesouro',currencyCode:'BRL',balance:25,amount:25,status:'ACTIVE'}];
   const get = async path => ({results:path.startsWith('/investments?') ? positions : []});
@@ -213,8 +213,68 @@ test('sincronização preserva posição omitida e remove resgate total confirma
   assert.deepEqual(overview(db).holdings.map(h => [h.id,h.net,h.stale]),[['y',2500,false],['x',9000,true]]);
   positions = [...positions,{id:'x',status:'TOTAL_WITHDRAWAL'}];
   await synchronize(db,get);
+  // Resgate total sem rastro: mantém o último saldo conhecido.
+  assert.deepEqual(overview(db).holdings.map(h => [h.id,h.net,h.stale]),[['y',2500,false],['x',9000,true]]);
+  // Com a venda no extrato do investimento, o resgate vale.
+  const sold = async path => ({results:path.startsWith('/investments?') ? positions :
+    path.startsWith('/investments/x/transactions') ? [{type:'SELL',date:new Date().toISOString()}] : []});
+  await synchronize(db,sold);
   assert.deepEqual(overview(db).holdings.map(h => h.id),['y']);
   assert.deepEqual(portfolioHistory(db).map(point => point.holdings.map(h => h.id)),[['x'],['y']]);
+  // Confirmado o resgate, o histórico recente não traz a posição de volta.
+  await synchronize(db,async path => ({results:path.startsWith('/investments?') ? positions.slice(0,1) : []}));
+  assert.deepEqual(overview(db).holdings.map(h => h.id),['y']);
+  db.close();
+});
+
+test('posição que some só sai com vencimento ou dinheiro de resgate na conta', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE connections(id TEXT, institution TEXT); INSERT INTO connections VALUES('i','XP')");
+  initFinance(db);
+  const now = new Date().toISOString(), today = new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+  let positions = [{id:'ntnb',name:'NTNB PRINC',currencyCode:'BRL',balance:7000,amount:7000,status:'ACTIVE',dueDate:'2035-05-15'},
+    {id:'cdb',name:'CDB',currencyCode:'BRL',balance:1000,amount:1000,status:'ACTIVE'}];
+  let credits = [];
+  const get = async path => ({results:path.startsWith('/investments?') ? positions :
+    path.startsWith('/accounts?') ? [{id:'conta',type:'BANK',currencyCode:'BRL',balance:0}] :
+    path.startsWith('/v2/transactions') ? credits : []});
+  await synchronize(db,get);
+  positions = [{id:'ntnb',status:'TOTAL_WITHDRAWAL'}];
+  await synchronize(db,get);
+  assert.deepEqual(overview(db).holdings.map(h => [h.id,h.stale,h.due]),[['ntnb',true,'2035-05-15'],['cdb',true,undefined]]);
+  credits = [{id:'t',date:now,description:'Resgate de CDB',type:'CREDIT',amount:1000,category:'Fixed income'}];
+  await synchronize(db,get);
+  assert.deepEqual(overview(db).holdings.map(h => h.id),['ntnb']);
+  positions = [{id:'ntnb',status:'TOTAL_WITHDRAWAL',dueDate:today}];
+  await synchronize(db,get);
+  assert.deepEqual(overview(db).holdings.map(h => h.id),[]);
+  db.close();
+});
+
+test('posição descartada sem rastro por versão anterior volta pelo histórico recente', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE connections(id TEXT, institution TEXT); INSERT INTO connections VALUES('i','XP')");
+  initFinance(db);
+  const yesterday = new Date(Date.now()-86400000);
+  const day = yesterday.toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+  db.prepare('INSERT INTO portfolio_history VALUES (?,?,?)').run('i',day,
+    JSON.stringify({accounts:[],holdings:[{id:'ntnb',name:'NTNB PRINC',currency:'BRL',net:714366,gross:714366,lastSeen:yesterday.toISOString()}]}));
+  db.prepare('INSERT INTO snapshots VALUES (?,?,?)').run('i',JSON.stringify({accounts:[],transactions:[],holdings:[]}),new Date().toISOString());
+  await synchronize(db,async () => ({results:[]}));
+  assert.deepEqual(overview(db).holdings.map(h => [h.id,h.net,h.stale]),[['ntnb',714366,true]]);
+  db.close();
+});
+
+test('posição sumida sem rastro sai depois de 15 dias com o último saldo conhecido', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE connections(id TEXT, institution TEXT); INSERT INTO connections VALUES('i','XP')");
+  initFinance(db);
+  const ago = days => new Date(Date.now()-days*86400000).toISOString();
+  const holdings = [{id:'recente',name:'CDB',currency:'BRL',net:1000,gross:1000,stale:true,lastSeen:ago(14)},
+    {id:'antiga',name:'LCI',currency:'BRL',net:2000,gross:2000,stale:true,lastSeen:ago(16)}];
+  db.prepare('INSERT INTO snapshots VALUES (?,?,?)').run('i',JSON.stringify({accounts:[],transactions:[],holdings}),ago(1));
+  await synchronize(db,async () => ({results:[]}));
+  assert.deepEqual(overview(db).holdings.map(h => h.id),['recente']);
   db.close();
 });
 
