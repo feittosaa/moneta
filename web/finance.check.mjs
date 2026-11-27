@@ -34,3 +34,18 @@ test('o cofre web restaura os lançamentos e rejeita senha errada ou backup alte
     assert.equal(row.category,category);
   } finally { restored.close(); }
 });
+
+test('cofre web de antes das metas abre e passa a guardar metas', async () => {
+  const SQL = await initSqlJs();
+  const fresh = openFinance(SQL);
+  fresh.db.exec('DROP TABLE goals; DROP TABLE goal_deposits');
+  const bytes = fresh.snapshot();
+  fresh.close();
+  const opened = openFinance(SQL,bytes);
+  try {
+    opened.edit('goals',{kind:'save',name:'Reserva',amount:100000,currency:'BRL'});
+    const [goal] = opened.read('finance').goals;
+    opened.edit('goals/deposit',{id:'goal-'+crypto.randomUUID(),goal:goal.id,date:'2026-11-27',amount:25000});
+    assert.equal(opened.read('finance').goals[0].saved,25000);
+  } finally { opened.close(); }
+});

@@ -148,7 +148,7 @@ function autoBackup() {
 autoBackup();
 let syncJob;
 let restarting = false;
-const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment','/api/vouchers','/api/vouchers/remove'];
+const edits = ['/api/categories/edit','/api/categories/remove','/api/wallet','/api/categories/color','/api/rules/edit','/api/transaction','/api/settings/currency','/api/categories','/api/rules','/api/rules/remove','/api/rules/import','/api/rules/apply','/api/assignment','/api/vouchers','/api/vouchers/remove','/api/goals','/api/goals/remove','/api/goals/deposit','/api/goals/deposit/remove'];
 const assets = new Map([
   ['/peer-ui.mjs',['text/javascript','peer-ui.mjs']],
   ['/device-unlock.mjs',['text/javascript','device-unlock.mjs']],
@@ -161,6 +161,7 @@ const assets = new Map([
   ['/theme.js', ['text/javascript', 'theme.js']],
   ['/movement.mjs', ['text/javascript','movement.mjs']],
   ['/card-periods.mjs', ['text/javascript','card-periods.mjs']],
+  ['/forecast.mjs', ['text/javascript','forecast.mjs']],
   ['/portfolio.js', ['text/javascript', 'portfolio.js']],
   ['/report.mjs', ['text/javascript', 'report.mjs']],
   ['/guide.js', ['text/javascript', 'guide.js']],
@@ -300,7 +301,7 @@ function enablePassword(password, idle) {
 // pela primeira abertura pode trazer a senha do cofre de origem.
 function fresh() {
   if (unlockedWith || peer.status().devices.length || webPeer.status().devices.length) return false;
-  return ['connections', 'snapshots', 'wallet', 'vouchers', 'rules', 'assignments', 'notes']
+  return ['connections', 'snapshots', 'wallet', 'vouchers', 'goals', 'rules', 'assignments', 'notes']
     .every(table => !db.prepare('SELECT 1 FROM ' + table + ' LIMIT 1').get());
 }
 // Vínculos feitos numa instalação nova com uma Moneta que usa senha, até a senha ser conferida.

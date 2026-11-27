@@ -1,5 +1,5 @@
 import { snapshot, merge, revision, track, prepareMeta } from './peer-data.mjs';
-import { editFinance, initFinance, overview, portfolioHistory, ruleChanges } from './finance.mjs';
+import { editFinance, initFinance, initGoals, overview, portfolioHistory, ruleChanges } from './finance.mjs';
 
 export function openFinance(SQL, bytes) {
   const raw = new SQL.Database(bytes);
@@ -33,6 +33,8 @@ export function openFinance(SQL, bytes) {
     db.exec('CREATE TABLE IF NOT EXISTS sync_peers (id TEXT PRIMARY KEY, revision TEXT NOT NULL)');
     prepareMeta(db);
     if (bytes) {
+      // Cofres e backups de antes das metas: as tabelas novas entram antes da conferência do esquema.
+      initGoals(db);
       const reference = openFinance(SQL);
       try {
         if (reference.schema() !== schema() || db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok')
