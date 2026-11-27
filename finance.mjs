@@ -127,6 +127,13 @@ function creditHistory(db) {
     return account;
   });
 }
+// Metas: juntar dinheiro (save), com aportes e retiradas registrados à mão, ou limite de gasto mensal
+// (limit) numa categoria ou no total, medido pela data da compra, como no Gasto mensal.
+export function initGoals(db) {
+  db.exec(`CREATE TABLE IF NOT EXISTS goals(id INTEGER PRIMARY KEY, kind TEXT NOT NULL, name TEXT NOT NULL, currency TEXT NOT NULL,
+      amount INTEGER NOT NULL, category INTEGER, deadline TEXT, created TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS goal_deposits(id TEXT PRIMARY KEY, goal INTEGER NOT NULL, date TEXT NOT NULL, amount INTEGER NOT NULL, description TEXT NOT NULL);`);
+}
 export function initFinance(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY, name TEXT NOT NULL, key TEXT UNIQUE NOT NULL, custom INTEGER NOT NULL, internal INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rules(id INTEGER PRIMARY KEY, term TEXT NOT NULL, category INTEGER NOT NULL);
@@ -138,6 +145,7 @@ export function initFinance(db) {
     CREATE TABLE IF NOT EXISTS snapshots(item TEXT PRIMARY KEY, payload TEXT NOT NULL, updated TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY, name TEXT NOT NULL, currency TEXT NOT NULL, amount INTEGER NOT NULL,
       category INTEGER, frequency TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT, weekdays INTEGER NOT NULL DEFAULT 0);`);
+  initGoals(db);
   const seedHistory = db.prepare('INSERT OR IGNORE INTO portfolio_history VALUES (?,?,?)');
   for (const row of db.prepare('SELECT * FROM snapshots').all()) {
     const {accounts,holdings} = JSON.parse(row.payload);
@@ -276,8 +284,17 @@ export function overview(db, {frozen = true} = {}) {
     }
   }
   transactions.sort((a,b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
+  const deposits = new Map();
+  for (const deposit of db.prepare('SELECT * FROM goal_deposits ORDER BY date DESC,id').all()) {
+    if (!deposits.has(deposit.goal)) deposits.set(deposit.goal,[]);
+    deposits.get(deposit.goal).push(deposit);
+  }
+  const goals = db.prepare('SELECT * FROM goals ORDER BY kind,name,id').all().map(goal => {
+    const list = deposits.get(goal.id) || [];
+    return {...goal,deposits:list,saved:list.reduce((sum,d) => sum+d.amount,0)};
+  });
   const currency = db.prepare("SELECT value FROM preferences WHERE name='currency'").get()?.value || 'BRL';
-  return {currency,bills,categories,rules,vouchers,catalogRules:inherited.map(({matches,...rule}) => rule),accounts,holdings,transactions,sources};
+  return {currency,bills,categories,rules,vouchers,goals,catalogRules:inherited.map(({matches,...rule}) => rule),accounts,holdings,transactions,sources};
 }
 // Lançamentos cuja categoria muda quando as regras passam a valer para todo o histórico.
 export function ruleChanges(db) {
@@ -333,6 +350,59 @@ export function editFinance(db, path, body) {
       for (const table of ['assignments','notes']) db.prepare('DELETE FROM '+table+" WHERE tx GLOB ?").run('voucher-'+body.id+'-*');
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
+    return;
+  }
+  if (path === '/api/goals') {
+    const previous = body.id == null ? null : db.prepare('SELECT * FROM goals WHERE id=?').get(body.id);
+    if (body.id != null && (!Number.isSafeInteger(body.id) || !previous)) bad('Meta desconhecida.');
+    const kind = previous?.kind ?? body.kind;
+    if (!['save','limit'].includes(kind)) bad('Tipo de meta inválido.');
+    const goal = {kind,name:label(body.name),currency:previous?.currency ?? body.currency,amount:body.amount,
+      category:kind === 'limit' ? body.category ?? null : null,deadline:kind === 'save' ? body.deadline || null : null};
+    if (!Number.isSafeInteger(goal.amount) || goal.amount <= 0) bad('Informe um valor maior que zero.');
+    if (!Intl.supportedValuesOf('currency').includes(goal.currency)) bad('Moeda inválida.');
+    if (goal.deadline != null && !validDate(goal.deadline)) bad('Data inválida.');
+    if (goal.category != null && (!Number.isInteger(goal.category) ||
+        !db.prepare('SELECT 1 FROM categories WHERE id=? AND deleted=0 AND internal=0').get(goal.category))) bad('Selecione uma categoria.');
+    // Um limite por categoria (ou para o total) em cada moeda: dois limites para o mesmo gasto se contradizem.
+    if (kind === 'limit' && db.prepare('SELECT 1 FROM goals WHERE kind=? AND currency=? AND category IS ? AND id IS NOT ?')
+        .get('limit',goal.currency,goal.category,body.id ?? null)) bad(goal.category == null ? 'Já existe um limite para o total de despesas.' : 'Já existe um limite para essa categoria.');
+    const fields = Object.keys(goal);
+    if (previous) db.prepare('UPDATE goals SET '+fields.map(f => f+'=?')+' WHERE id=?').run(...Object.values(goal),body.id);
+    else db.prepare('INSERT INTO goals(id,created,'+fields+') VALUES (?,?,'+fields.map(() => '?')+')')
+      .run(randomInt(1,2**47),localDay(Date.now()),...Object.values(goal));
+    return;
+  }
+  if (path === '/api/goals/remove') {
+    if (!Number.isSafeInteger(body.id)) bad('Meta desconhecida.');
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare('DELETE FROM goals WHERE id=?').run(body.id);
+      db.prepare('DELETE FROM goal_deposits WHERE goal=?').run(body.id);
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+    return;
+  }
+  if (path === '/api/goals/deposit') {
+    // O id vem da página, como na carteira: reenviar o mesmo aporte não o registra duas vezes.
+    if (typeof body.id !== 'string' || !/^goal-[0-9a-f-]{36}$/.test(body.id)) bad('Aporte inválido.');
+    const goal = Number.isSafeInteger(body.goal) && db.prepare("SELECT * FROM goals WHERE id=? AND kind='save'").get(body.goal);
+    if (!goal) bad('Meta desconhecida.');
+    if (!Number.isSafeInteger(body.amount) || !body.amount) bad('Informe um valor diferente de zero.');
+    if (!validDate(body.date)) bad('Data inválida.');
+    const description = typeof body.description === 'string' && body.description.trim() ? label(body.description) : body.amount > 0 ? 'Aporte' : 'Retirada';
+    const previous = db.prepare('SELECT * FROM goal_deposits WHERE id=?').get(body.id);
+    if (previous) {
+      if (previous.goal !== goal.id || previous.amount !== body.amount || previous.date !== body.date) bad('Aporte já registrado.');
+      return;
+    }
+    const saved = db.prepare('SELECT coalesce(sum(amount),0) AS total FROM goal_deposits WHERE goal=?').get(goal.id).total;
+    if (saved+body.amount < 0) bad('A retirada é maior que o valor guardado na meta.');
+    db.prepare('INSERT INTO goal_deposits VALUES (?,?,?,?,?)').run(body.id,goal.id,body.date,body.amount,description);
+    return;
+  }
+  if (path === '/api/goals/deposit/remove') {
+    if (typeof body.id !== 'string' || !db.prepare('DELETE FROM goal_deposits WHERE id=?').run(body.id).changes) bad('Aporte desconhecido.');
     return;
   }
   if (path === '/api/transaction') {
@@ -405,6 +475,8 @@ export function editFinance(db, path, body) {
       db.prepare('UPDATE categories SET deleted=1 WHERE id=?').run(body.id);
       for (const table of ['rules','assignments','rule_history']) db.prepare('DELETE FROM '+table+' WHERE category=?').run(body.id);
       db.prepare('UPDATE vouchers SET category=NULL WHERE category=?').run(body.id);
+      // Sem a categoria, o limite viraria limite do total: ele sai junto.
+      db.prepare("DELETE FROM goals WHERE kind='limit' AND category=?").run(body.id);
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
     return;

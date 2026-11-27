@@ -29,10 +29,10 @@ export function cardRows(data, card, byId = new Map((data.bills || []).map(b => 
   }
   return own.filter(t => !repeated.has(t));
 }
-export function cardPeriod(data, card, month, today) {
+// Ciclo do cartão: em que fatura cai uma compra feita num dia e as datas de fechamento e vencimento de
+// cada fatura. Usa as faturas fechadas e, sem elas, o fechamento e o vencimento atuais do cartão.
+export function cardCycle(data, card) {
   const bills = (data.bills || []).filter(b => b.account === card.id && b.currency === card.currency);
-  const official = bills.filter(b => monthOf(b.due) === month);
-  const byId = new Map(bills.map(b => [b.id,b]));
   const dated = bills.filter(b => b.close).sort((a,b) => a.close.localeCompare(b.close));
   const last = dated.at(-1);
   const close = card.close && card.due ? card.close : last?.close;
@@ -50,6 +50,22 @@ export function cardPeriod(data, card, month, today) {
     const offset = (y-cy)*12+m-cm;
     return monthOf(shift(due,offset + Number(day > shift(close,offset))));
   }
+  function dates(month) {
+    if (due && close) {
+      const [y,m] = month.split('-').map(Number);
+      const [dy,dm] = due.split('-').map(Number);
+      const offset = (y-dy)*12 + m-dm;
+      return {closingDate:shift(close,offset),dueDate:shift(due,offset)};
+    }
+    return {dueDate:monthOf(card.due) === month ? card.due : undefined};
+  }
+  return {cycle,dates,known:Boolean(close && due)};
+}
+export function cardPeriod(data, card, month, today) {
+  const bills = (data.bills || []).filter(b => b.account === card.id && b.currency === card.currency);
+  const official = bills.filter(b => monthOf(b.due) === month);
+  const byId = new Map(bills.map(b => [b.id,b]));
+  const {cycle,dates} = cardCycle(data,card);
   const transactions = cardRows(data, card, byId);
   // O mês previsto pela Pluggy nem sempre é o do vencimento: no XP vem um mês antes. As compras à vista
   // já vinculadas a faturas fechadas mostram o deslocamento de cada cartão; sem maioria clara, nenhum.
@@ -144,14 +160,7 @@ export function cardPeriod(data, card, month, today) {
   if (official.length) amount = official.reduce((s,b) => s+Math.max(0,b.amount),0);
   else if (reportedOpen) amount = Math.max(0,card.openAmount);
   else if (rows.length) amount = Math.max(0,-rows.reduce((s,t) => s+t.amount,0));
-  let closingDate, dueDate;
-  if (due && close) {
-    const [y,m] = month.split('-').map(Number);
-    const [dy,dm] = due.split('-').map(Number);
-    const offset = (y-dy)*12 + m-dm;
-    closingDate = shift(close,offset);
-    dueDate = shift(due,offset);
-  } else if (monthOf(card.due) === month) dueDate = card.due;
+  const {closingDate,dueDate} = dates(month);
   // Prefer explicit membership when the bank supplies it for a closed statement.
   const linkedRows = rows.filter(t => official.some(b => b.id === t.billId));
   const statementRows = linkedRows.length ? linkedRows : rows;

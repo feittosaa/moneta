@@ -1,4 +1,5 @@
-import {cardPeriod, unlistedRows} from './card-periods.mjs';
+import {cardCycle, cardPeriod, shift, unlistedRows} from './card-periods.mjs';
+import {addDays, availableLimit, bestMoment, simulate} from './forecast.mjs';
 import { renderPortfolio } from './portfolio.js';
 import { localDateField } from './date-field.mjs';
 import { showGuide } from './guide.js';
@@ -493,6 +494,276 @@ function editVoucher(voucher) {
   };
   dialog.showModal();
 }
+// Metas: economia, com aportes registrados, e limites de gasto do mês (pela data da compra).
+const todayIso = () => new Date().toLocaleDateString('en-CA');
+const monthLabel = value => value.split('-').reverse().join('/');
+const monthsBetween = (from, to) => {
+  const [fy,fm] = from.split('-').map(Number), [ty,tm] = to.split('-').map(Number);
+  return (ty-fy)*12+tm-fm;
+};
+const percent = (value, total) => total > 0 ? Math.floor(value/total*100)+'%' : '—';
+function goalProgress(value, target, tone) {
+  const bar = tag('progress');
+  bar.max = Math.max(target,1);
+  bar.value = Math.max(0,Math.min(value,target));
+  if (tone) bar.className = tone;
+  return bar;
+}
+function goalActions(...buttons) {
+  const box = tag('div');
+  box.className = 'rule-actions';
+  for (const [text,action,tone] of buttons) {
+    const button = tag('button',text);
+    button.type = 'button';
+    button.className = tone || 'secondary';
+    button.onclick = action;
+    box.append(button);
+  }
+  return box;
+}
+function savingCard(goal, today) {
+  const card = tag('article'), remaining = goal.amount-goal.saved;
+  card.className = 'goal-card'+(remaining <= 0 ? ' done' : '');
+  const head = tag('div');
+  head.className = 'goal-head';
+  head.append(tag('h3',goal.name),tag('span',percent(goal.saved,goal.amount)));
+  const total = tag('p');
+  total.className = 'goal-total';
+  total.append(tag('strong',money(goal.saved)),' de '+money(goal.amount));
+  card.append(head,goalProgress(goal.saved,goal.amount),total);
+  const notes = [];
+  if (remaining <= 0) notes.push(['Meta alcançada.','ok']);
+  else {
+    notes.push(['Faltam '+money(remaining)+'.']);
+    if (goal.deadline && goal.deadline < today) notes.push(['O prazo terminou em '+formatDate(goal.deadline)+'.','warn']);
+    else if (goal.deadline) {
+      // Conta o mês atual quando ainda dá para guardar nele antes do dia do prazo.
+      const count = Math.max(1,monthsBetween(today.slice(0,7),goal.deadline.slice(0,7))+Number(goal.deadline.slice(8) >= today.slice(8)));
+      notes.push(['Guarde '+money(Math.ceil(remaining/count))+' por mês até '+formatDate(goal.deadline)+' ('+count+(count > 1 ? ' meses' : ' mês')+').']);
+    }
+    // Ritmo dos últimos três meses: a média dos aportes, menos as retiradas.
+    const since = shift(today,-3);
+    const recent = goal.deposits.filter(d => d.date > since && d.date <= today).reduce((total,d) => total+d.amount,0);
+    if (recent > 0) {
+      const pace = Math.round(recent/3), months = Math.ceil(remaining/pace);
+      const reach = shift(today,months).slice(0,7);
+      const late = goal.deadline && reach > goal.deadline.slice(0,7);
+      notes.push(['No ritmo dos últimos 3 meses ('+money(pace)+' por mês), você chega lá em '+monthLabel(reach)+(late ? ', depois do prazo.' : '.'),late ? 'warn' : '']);
+    }
+  }
+  for (const [text,tone] of notes) {
+    const line = tag('p',text);
+    line.className = 'goal-note'+(tone ? ' '+tone : '');
+    card.append(line);
+  }
+  card.append(goalActions(
+    ['Aportar',() => editDeposit(goal,'in'),'primary'],
+    ...(goal.saved > 0 ? [['Retirar',() => editDeposit(goal,'out')]] : []),
+    ['Editar',() => editGoal('save',goal)],
+    ['Excluir',() => { if (confirm('Excluir a meta '+goal.name+' e os aportes registrados nela? O dinheiro nas suas contas não muda.')) save('/goals/remove',{id:goal.id}); },'danger'],
+  ));
+  if (goal.deposits.length) {
+    const details = tag('details'), summary = tag('summary','Movimentações ('+goal.deposits.length+')');
+    details.append(summary,table(['Data','Descrição','Valor','Ações'],goal.deposits.map(d => {
+      const remove = tag('button','Excluir');
+      remove.type = 'button';
+      remove.className = 'danger';
+      remove.onclick = () => { if (confirm('Excluir esta movimentação da meta?')) save('/goals/deposit/remove',{id:d.id}); };
+      return [formatDate(d.date),d.description,cardAmount({amount:d.amount}),remove];
+    }),''));
+    card.append(details);
+  }
+  return card;
+}
+function limitCard(goal, current, period, today) {
+  const spent = goal.category == null ? current.total : current.byCategory.get(goal.category) ?? 0;
+  const ratio = spent/goal.amount, remaining = goal.amount-spent;
+  const tone = ratio >= 1 ? 'over' : ratio >= 0.8 ? 'near' : '';
+  const card = tag('article');
+  card.className = 'goal-card limit'+(tone ? ' '+tone : '');
+  const head = tag('div');
+  head.className = 'goal-head';
+  head.append(tag('h3',goal.name),tag('span',percent(spent,goal.amount)));
+  const scope = goal.category == null ? tag('span','Todas as despesas') : categoryLabel(goal.category);
+  scope.classList.add('goal-scope');
+  // O nome já diz a categoria na maioria dos limites; o rótulo só aparece quando acrescenta algo.
+  scope.hidden = goal.category != null && categoryName(goal.category).toLocaleLowerCase('pt-BR') === goal.name.trim().toLocaleLowerCase('pt-BR');
+  const total = tag('p');
+  total.className = 'goal-total';
+  total.append(tag('strong',money(spent)),' de '+money(goal.amount));
+  card.append(head,scope,goalProgress(spent,goal.amount,tone),total);
+  const notes = [];
+  if (ratio >= 1) notes.push([remaining ? 'Passou '+money(-remaining)+' do limite.' : 'Chegou ao limite.','error']);
+  else notes.push([(tone ? 'Atenção: já usou '+percent(spent,goal.amount)+'. ' : '')+'Restam '+money(remaining)+'.',tone ? 'warn' : '']);
+  // No mês atual, projeta o fim do mês pelo ritmo até hoje e mostra quanto ainda cabe por dia.
+  if (period === today.slice(0,7) && ratio < 1) {
+    const day = Number(today.slice(8)), length = new Date(Date.UTC(...period.split('-').map(Number),0)).getUTCDate();
+    const projected = Math.round(spent/day*length);
+    if (projected > goal.amount) notes.push(['No ritmo atual, o mês termina em '+money(projected)+', acima do limite.','warn']);
+    notes.push(['Cabem '+money(Math.floor(remaining/(length-day+1)))+' por dia até o fim do mês.']);
+  }
+  for (const [text,tone] of notes) {
+    const line = tag('p',text);
+    line.className = 'goal-note'+(tone ? ' '+tone : '');
+    card.append(line);
+  }
+  card.append(goalActions(
+    ['Editar',() => editGoal('limit',goal)],
+    ['Excluir',() => { if (confirm('Excluir o limite '+goal.name+'?')) save('/goals/remove',{id:goal.id}); },'danger'],
+  ));
+  return card;
+}
+function goals() {
+  const today = todayIso(), period = month.value || today.slice(0,7);
+  const list = data.goals.filter(g => g.currency === currency.value);
+  const savings = list.filter(g => g.kind === 'save'), limits = list.filter(g => g.kind === 'limit');
+  $('#saving-goals').replaceChildren(...savings.length ? savings.map(g => savingCard(g,today)) : [tag('p','Nenhuma meta de economia nesta moeda.')]);
+  $('#limit-title').textContent = 'Limites de gasto · '+monthLabel(period);
+  const current = spending(data,period,currency.value,today);
+  $('#limit-goals').replaceChildren(...limits.length ? limits.map(g => limitCard(g,current,period,today)) : [tag('p','Nenhum limite de gasto nesta moeda.')]);
+}
+function editGoal(kind, goal) {
+  const dialog = $('#goal-editor'), form = $('#goal-form'), field = name => form.elements.namedItem(name);
+  form.reset();
+  $('#goal-error').textContent = '';
+  const limit = kind === 'limit';
+  $('#goal-heading').textContent = (goal ? 'Editar ' : 'Novo ')+(limit ? 'limite de gasto' : 'meta de economia').replace(/^Novo meta/,'Nova meta');
+  $('#goal-amount-label').textContent = limit ? 'Limite por mês' : 'Quanto quer juntar';
+  $('#goal-category').hidden = !limit;
+  $('#goal-deadline').hidden = limit;
+  field('name').placeholder = limit ? 'Alimentação' : 'Reserva de emergência';
+  choices(field('category'),[['','Todas as despesas'],...data.categories.filter(c => !c.internal).map(c => [c.id,c.name])]);
+  field('name').value = goal?.name ?? '';
+  field('amount').value = goal ? (goal.amount/100).toFixed(2) : '';
+  field('category').value = goal?.category ?? '';
+  field('deadline').value = goal?.deadline ?? '';
+  // Sem nome digitado, o limite leva o nome da categoria escolhida.
+  field('category').onchange = () => {
+    if (!field('name').value.trim() || field('name').dataset.auto === 'true') {
+      field('name').value = field('category').selectedOptions[0].textContent;
+      field('name').dataset.auto = 'true';
+    }
+  };
+  field('name').oninput = () => { field('name').dataset.auto = 'false'; };
+  $('#goal-cancel').onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    try {
+      await request('goals',{id:goal?.id,kind,name:field('name').value,amount:Math.round(Number(field('amount').value)*100),
+        currency:goal?.currency ?? currency.value,category:limit ? Number(field('category').value) || null : null,
+        deadline:limit ? null : field('deadline').value || null});
+      dialog.close(); await refresh(); notify(limit ? 'Limite salvo.' : 'Meta salva.');
+    } catch (error) { $('#goal-error').textContent = error.message; notify(error.message); }
+  };
+  dialog.showModal();
+}
+function editDeposit(goal, direction) {
+  const dialog = $('#deposit-editor'), form = $('#deposit-form'), field = name => form.elements.namedItem(name);
+  form.reset();
+  $('#deposit-error').textContent = '';
+  $('#deposit-heading').textContent = goal.name;
+  field('direction').value = direction;
+  field('date').value = todayIso();
+  let id;
+  form.oninput = () => { id = null; };
+  $('#deposit-cancel').onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const value = Math.round(Number(field('amount').value)*100);
+    const submit = form.querySelector('button:not([type])');
+    submit.disabled = true;
+    try {
+      id ||= 'goal-'+crypto.randomUUID();
+      await request('goals/deposit',{id,goal:goal.id,date:field('date').value,amount:field('direction').value === 'out' ? -value : value,
+        description:field('description').value.trim()});
+      dialog.close(); await refresh(); notify(field('direction').value === 'out' ? 'Retirada registrada.' : 'Aporte registrado.');
+    } catch (error) { $('#deposit-error').textContent = error.message; notify(error.message); }
+    finally { submit.disabled = false; }
+  };
+  dialog.showModal();
+}
+
+// Previsão: simula uma compra no cartão, sem registrar nada.
+function forecastLine(text, tone) {
+  const line = tag('p',text);
+  if (tone) line.className = tone;
+  return line;
+}
+function forecast() {
+  const form = $('#forecast-form'), result = $('#forecast-result'), field = name => form.elements.namedItem(name);
+  const cards = data.accounts.filter(a => a.type === 'CREDIT' && a.currency === currency.value);
+  choices(field('card'),cards.map(a => [a.id,accountLabel(a)]));
+  form.hidden = !cards.length;
+  if (!cards.length) return result.replaceChildren(tag('p','Nenhum cartão de crédito sincronizado nesta moeda. Conecte um cartão em Conexões para simular compras.'));
+  const card = cards.find(a => a.id === field('card').value) || cards[0];
+  const today = todayIso(), date = field('date').value || today;
+  const amount = Math.round(Number(field('amount').value)*100);
+  const count = Number(field('installments').value) || 1;
+  const rate = Math.max(0,Number(String(field('rate').value).replace(',','.')) || 0)/100;
+  const available = availableLimit(card);
+  const out = [];
+  // Ciclo do cartão: quando fecha a fatura e a partir de quando a compra vai para a seguinte.
+  const {cycle,dates,known} = cardCycle(data,card);
+  const box = tag('div');
+  box.className = 'forecast-cycle panel';
+  box.append(tag('h2','Ciclo do cartão'));
+  if (known) {
+    const bill = cycle(today), {closingDate,dueDate} = dates(bill), next = dates(shift(bill+'-01',1).slice(0,7));
+    box.append(forecastLine('A fatura de '+monthLabel(bill)+' fecha em '+formatDate(closingDate)+' e vence em '+formatDate(dueDate)+'.'),
+      forecastLine('Compras a partir de '+formatDate(addDays(closingDate,1))+' entram na fatura seguinte, com vencimento em '+formatDate(next.dueDate)+'. É o melhor dia para comprar: a primeira parcela só é paga cerca de '+Math.round((Date.parse(next.dueDate)-Date.parse(addDays(closingDate,1)))/86400000)+' dias depois.'));
+  } else box.append(forecastLine('A instituição ainda não informou o fechamento deste cartão. A simulação considera a primeira parcela no mês seguinte ao da compra.','warn'));
+  if (available != null) box.append(forecastLine('Limite disponível hoje: '+money(available)+(card.limit != null ? ' de '+money(card.limit) : '')+'.'));
+  out.push(box);
+  if (amount > 0) {
+    const purchase = {amount,installments:count,rate,date};
+    const simulation = simulate(data,card,purchase,today);
+    const advice = [];
+    const grid = metrics([
+      [count > 1 ? count+' parcelas de' : 'Parcela única',simulation.plan.at(-1)],
+      [simulation.interest ? 'Total com juros' : 'Total da compra',simulation.total],
+      ['Limite disponível depois da compra',available == null ? null : available-simulation.total,available != null && available < simulation.total ? 'result-negative' : null],
+    ]);
+    if (simulation.plan[0] !== simulation.plan.at(-1)) grid.children[0].append(tag('small','a primeira de '+money(simulation.plan[0])));
+    if (simulation.interest) grid.children[1].append(tag('small',money(simulation.interest)+' de juros'));
+    out.push(grid);
+    if (available != null && available < simulation.total) advice.push(forecastLine('A compra passa o limite disponível hoje em '+money(simulation.total-available)+'. O limite volta conforme as faturas são pagas.','error'));
+    if (simulation.firstDue) advice.push(forecastLine('Comprando em '+formatDate(date)+', a compra entra na fatura de '+monthLabel(simulation.months[0])+' e a primeira parcela vence em '+formatDate(simulation.firstDue)+', '+simulation.days+' dias depois.'));
+    // Melhor momento: comparar a data escolhida com o dia seguinte aos próximos fechamentos.
+    const moment = bestMoment(data,card,purchase,today);
+    if (moment) {
+      const {best,later,candidates} = moment;
+      if (best.chosen) advice.push(forecastLine('Boa escolha: '+formatDate(best.date)+' já é logo depois do fechamento, e você tem o prazo máximo para pagar.','ok'));
+      else {
+        const lower = best.peak <= candidates[0].peak*0.9 ? ', e a maior fatura do período cai de '+money(candidates[0].peak)+' para '+money(best.peak) : '';
+        advice.push(forecastLine('Se puder esperar até '+formatDate(best.date)+', a compra vai para a fatura de '+monthLabel(best.firstMonth)+' e você ganha '+(best.days-candidates[0].days)+' dias para pagar a primeira parcela'+lower+'.','ok'));
+      }
+      if (later) advice.push(forecastLine('Comprando em '+formatDate(later.date)+', a maior fatura do período cai de '+money(best.peak)+' para '+money(later.peak)+', porque parcelas atuais terminam antes.','ok'));
+      const compare = tag('div');
+      compare.className = 'panel';
+      compare.append(tag('h2','Quando comprar'),table(['Data da compra','Primeira fatura','1ª parcela vence','Prazo','Maior fatura'],candidates.map(c => {
+        const when = tag('span',formatDate(c.date)+(c.chosen ? ' · escolhida' : ''));
+        if (c === best) { when.append(' '); const badge = tag('b','melhor dia'); badge.className = 'forecast-badge'; when.append(badge); }
+        return [when,monthLabel(c.firstMonth),c.firstDue ? formatDate(c.firstDue) : '—',c.days != null ? c.days+' dias' : '—',money(c.peak)];
+      }),''));
+      out.push(...advice,compare);
+    } else out.push(...advice);
+    // Renda média dos últimos 3 meses fechados, para mostrar quanto de cada fatura ela compromete.
+    const income = [1,2,3].map(n => summarize(data,shift(today.slice(0,7)+'-01',-n).slice(0,7),currency.value,today).income);
+    const average = Math.round(income.reduce((a,b) => a+b,0)/3);
+    const bills = tag('div');
+    bills.className = 'panel';
+    const headers = ['Fatura','Vencimento','Já prevista','Esta compra','Total',...average > 0 ? ['Da renda média'] : []];
+    bills.append(tag('h2','Como ficam as faturas'),table(headers,simulation.rows.map(row => {
+      const share = tag('span',percent(row.total,average));
+      if (average > 0 && row.total > average*0.5) share.className = 'purchase-amount';
+      const extra = tag('span',row.purchase ? money(row.purchase)+' · '+row.installment+'/'+simulation.plan.length : '—');
+      return [monthLabel(row.month),row.dueDate ? formatDate(row.dueDate) : '—',money(row.before),extra,tag('strong',money(row.total)),...average > 0 ? [share] : []];
+    }),''));
+    bills.append(tag('small','“Já prevista” soma as compras e parcelas que a Moneta já conhece em cada fatura.'+(average > 0 ? ' A renda média considera as receitas dos últimos 3 meses ('+money(average)+').' : '')));
+    out.push(bills);
+  } else out.push(tag('p','Informe o valor da compra para ver as parcelas e como ficam as faturas.'));
+  result.replaceChildren(...out);
+}
 // Editor de condições usado na página Regras e no modal da transação. Com inherit ('CPF' ou 'CNPJ'),
 // a condição de CPF ou CNPJ do destinatário usa o da transação aberta, preenchido pelo servidor.
 function conditionEditor(root, conditions, inherit) {
@@ -700,8 +971,8 @@ export function navigate() {
   for (const a of document.querySelectorAll('nav a')) a.setAttribute('aria-current',a.hash === '#'+page ? 'page' : 'false');
   const current = document.querySelector('nav a[aria-current=page]');
   $('#page-title').textContent = current.dataset.title || current.lastChild.textContent;
-  $('.toolbar').hidden = !['relatorio','transacoes','cartoes','vales','carteira','conexoes'].includes(page);
-  $('#period').hidden = page === 'conexoes' || (page === 'relatorio' && overviewTab === 'portfolio') || (page === 'transacoes' && allMonths());
+  $('.toolbar').hidden = !['relatorio','transacoes','cartoes','previsao','vales','metas','carteira','conexoes'].includes(page);
+  $('#period').hidden = ['conexoes','previsao'].includes(page) || (page === 'relatorio' && overviewTab === 'portfolio') || (page === 'transacoes' && allMonths());
   if (page === 'guia') { const query = new URLSearchParams(search || ''); showGuide($('#guide'),query.get('secao'),query.get('aba') || 'bancos'); }
   if (!data) return;
   if (page !== 'transacoes' || !search) {
@@ -746,6 +1017,8 @@ export function navigate() {
   }
   if (page === 'cartoes') cards();
   if (page === 'vales') vouchers();
+  if (page === 'metas') goals();
+  if (page === 'previsao') forecast();
   if (page === 'transacoes') ledger();
   if (['categorias','regras'].includes(page)) manage(page);
 }
@@ -939,6 +1212,13 @@ export function initializeFinance(api, message) {
   };
   $('#new-rule').onclick = () => editRule();
   $('#new-voucher').onclick = () => editVoucher();
+  $('#new-saving').onclick = () => editGoal('save');
+  $('#new-limit').onclick = () => editGoal('limit');
+  const forecastForm = $('#forecast-form');
+  choices(forecastForm.elements.installments,Array.from({length:24},(_,i) => [i+1,i ? (i+1)+'x' : 'À vista (1x)']));
+  forecastForm.elements.date.value = new Date().toLocaleDateString('en-CA');
+  forecastForm.oninput = forecastForm.onchange = () => forecast();
+  forecastForm.onsubmit = event => event.preventDefault();
   $('#export-rules').onclick = () => {
     const origin = $('#rule-origin').value;
     const rules = exportRules(origin);

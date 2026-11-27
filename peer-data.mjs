@@ -9,8 +9,12 @@ const keys = {
   categories:['key'], connections:['id'], wallet:['id'], rules:['id'], vouchers:['id'],
   snapshots:['item'], portfolio_history:['item','day'], notes:['tx'], assignments:['tx'],
   preferences:['name'], rule_history:['tx'], personal_rules:['name'], rule_edits:['key'],
+  goals:['id'], goal_deposits:['id'],
 };
-const categoryRefs = new Set(['rules','vouchers','assignments','rule_history']);
+// Tabelas que versões anteriores não conhecem. O pacote de um aparelho ainda sem elas continua
+// valendo, e, vazias, elas ficam fora da revisão para que os dois aparelhos concordem.
+const recent = new Set(['goals','goal_deposits']);
+const categoryRefs = new Set(['rules','vouchers','assignments','rule_history','goals']);
 const hash = row => createHash('sha256').update(JSON.stringify(row)).digest('base64url');
 const valid = (table,id) => Object.hasOwn(keys,table) && typeof id === 'string' && id.length < 4096;
 
@@ -83,7 +87,8 @@ export function track(db, now = Date.now()) {
 
 export function revision(state) {
   const sorted = Object.keys(keys).map(table =>
-    [table,Object.entries(state[table] || {}).sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0)]);
+    [table,Object.entries(state[table] || {}).sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0)])
+    .filter(([table,entries]) => entries.length || !recent.has(table));
   return createHash('sha256').update(JSON.stringify(sorted)).digest('base64url');
 }
 
@@ -118,6 +123,7 @@ export function merge(db, packet) {
   try {
     for (const [table,fields] of Object.entries(keys)) {
       const incoming = packet.state[table];
+      if (incoming === undefined && recent.has(table)) continue;
       if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw Error('Versão de sincronização incompatível.');
       const columns = db.prepare('PRAGMA table_info('+table+')').all().map(c => c.name)
         .filter(c => table !== 'categories' || c !== 'id');
